@@ -26,17 +26,17 @@
 - **Started:** 2026-03-25
 - **Status:** watering phase (stop adding, let data prove what works)
 - **Context:** Skills, hooks, and rules for team sharing
-- **Last session (2026-04-03 evening):**
-  - Adopted playwright-cli as Tier 1.5 capability tool
-  - Created 3 recipes (greenhouse-e2e, ui-smoke-test, capture-ui-state)
-  - Updated /investigate + auth-preflight with browser capability
-  - Established Tier 1.5 concept in MEMORY.md (aha-003)
-  - Deep exploration of LinkedIn AI measurement ecosystem → mental model built
-  - Queried crew 393 AI usage: 100% adoption, $30.5K/month (Claude $27.4K + Cursor $3K)
-  - Cross-validated cost units against Anthropic Console — confirmed cents, enterprise pricing
-  - eureka-003: multi-source synthesis pattern produces executive-level intelligence
-- **System state:** 23+ skills, 6 recipes, Tier 1/1.5/2/3 taxonomy established
-- **Next:** Use the system for 10 real work sessions. Run /checkpoint + /compound. Measure with /insights.
+- **Last session (2026-04-07):**
+  - Built portable knowledge architecture: ~/claude-knowledge/ git repo with install.sh + sync.sh
+  - Separated durable knowledge (~1MB, 144 files) from ephemeral state (~500MB)
+  - Auto-sync via SessionEnd (push) + UserPromptSubmit (pull) hooks
+  - GitHub repo: bizhou_LinkedIn/claude-knowledge (private, SSH remote)
+  - All ~/.claude knowledge dirs now symlinked to the git repo
+  - VM routing rule for auto-delegation of heavy commands via SSH
+  - vm-setup recipe + vm-bootstrap.sh for one-command VM provisioning
+  - Added ssh/scp/mutagen to bash allowlist
+- **System state:** 23+ skills, 8 recipes, Tier 1/1.5/2/3 taxonomy, portable knowledge repo
+- **Next:** Bootstrap VM (run vm-bootstrap.sh on bizhou-ld2.linkedin.biz), set up mutagen code sync, verify end-to-end knowledge sync cycle
 
 ### AI Usage Intelligence (new — potential recipe)
 - **Started:** 2026-04-03
@@ -51,7 +51,7 @@
 - [ ] Split /compound (8 steps → separate /compound-quick already done as /checkpoint)
 - [ ] Prune rules the agent follows without being told (measure with reward system — if dimension score is +1.0 consistently, the rule may be internalized)
 - [ ] Periodic system health review (after 10 real work sessions: dead skills? stale guides? outdated rules?)
-- [ ] Version tracking for changes (what changed when and why — currently only in git history of ~/.claude/)
+- [x] Version tracking for changes — DONE: ~/claude-knowledge/ is a git repo with full history
 - [ ] Explore how to use Figma from Claude — Figma MCP setup, REST API with personal token, rate limit workarounds (View seat limit), design-to-test-case pipeline, prototype flow extraction. Reference: eureka-004, eureka-006, session 2026-04-03
 - [ ] `/synthesize` skill — combine multiple data sources into a new output none could produce alone. Emerged from eureka-003 (AI usage report). Build when pattern recurs.
 - [ ] **Goal-driven development**: Integrate `connected-projects-shared` (context) with `hp-dev-agents` (execution) via bridge skills. Reframe from task-driven ("fix file X") to goal-driven ("recruiter sees Failed badge when ATS rejects"). The deliverable = a completed goal verified end-to-end, not a PR. Flow: Goal → design (Figma) → architecture (which services) → worktrees (parallel branches) → implementation (guided by patterns) → verification (Playwright + Greenhouse API + grpcurli) → goal COMPLETE when all layers agree. Option B: loose coupling, bridge skills connect repos. Reference: eureka-006, eureka-007, session 2026-04-04/05
