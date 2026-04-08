@@ -74,14 +74,18 @@ if [ ! -L "$OTHER_PROJ_DIR/memory" ]; then
     echo "  memory/ — cross-linked for other machine path key ($OTHER_KEY)"
 fi
 
-# Settings: use machine-specific if exists, else base
-HOSTNAME_SHORT="$(hostname -s)"
-if [ -f "$KNOWLEDGE_DIR/settings/$HOSTNAME_SHORT.json" ]; then
-    echo "  settings — using machine-specific: $HOSTNAME_SHORT.json"
-    cp "$KNOWLEDGE_DIR/settings/$HOSTNAME_SHORT.json" "$CLAUDE_DIR/settings.json"
-elif [ -f "$KNOWLEDGE_DIR/settings/base.json" ]; then
-    echo "  settings — using base settings"
-    cp "$KNOWLEDGE_DIR/settings/base.json" "$CLAUDE_DIR/settings.json"
+# Settings: only copy if no settings.json exists (never overwrite — hooks may differ per machine)
+if [ ! -f "$CLAUDE_DIR/settings.json" ]; then
+    HOSTNAME_SHORT="$(hostname -s)"
+    if [ -f "$KNOWLEDGE_DIR/settings/$HOSTNAME_SHORT.json" ]; then
+        echo "  settings — using machine-specific: $HOSTNAME_SHORT.json"
+        cp "$KNOWLEDGE_DIR/settings/$HOSTNAME_SHORT.json" "$CLAUDE_DIR/settings.json"
+    elif [ -f "$KNOWLEDGE_DIR/settings/base.json" ]; then
+        echo "  settings — using base settings"
+        cp "$KNOWLEDGE_DIR/settings/base.json" "$CLAUDE_DIR/settings.json"
+    fi
+else
+    echo "  settings — already exists, skipping (edit manually if needed)"
 fi
 
 # Set up auto-sync cron (hourly push)
