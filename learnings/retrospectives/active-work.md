@@ -26,17 +26,17 @@
 - **Started:** 2026-03-25
 - **Status:** watering phase (stop adding, let data prove what works)
 - **Context:** Skills, hooks, and rules for team sharing
-- **Last session (2026-04-07):**
-  - Built portable knowledge architecture: ~/claude-knowledge/ git repo with install.sh + sync.sh
-  - Separated durable knowledge (~1MB, 144 files) from ephemeral state (~500MB)
-  - Auto-sync via SessionEnd (push) + UserPromptSubmit (pull) hooks
-  - GitHub repo: bizhou_LinkedIn/claude-knowledge (private, SSH remote)
-  - All ~/.claude knowledge dirs now symlinked to the git repo
-  - VM routing rule for auto-delegation of heavy commands via SSH
-  - vm-setup recipe + vm-bootstrap.sh for one-command VM provisioning
-  - Added ssh/scp/mutagen to bash allowlist
-- **System state:** 23+ skills, 8 recipes, Tier 1/1.5/2/3 taxonomy, portable knowledge repo
-- **Next:** Bootstrap VM (run vm-bootstrap.sh on bizhou-ld2.linkedin.biz), set up mutagen code sync, verify end-to-end knowledge sync cycle
+- **Last session (2026-04-08):**
+  - Bootstrapped VM bizhou-ld2.linkedin.biz: Claude CLI, code-server, tmux, knowledge repo
+  - Passwordless SSH via config.custom + LinkedIn key on VM authorized_keys
+  - Created ~/bin/vm-run: generic sync-and-build from any local repo path
+  - PreToolUse hook vm-route-builds.py auto-intercepts mint/gradlew → vm-run
+  - vm-run has 3-layer fallback: VM unreachable → sync fail → build fail → local
+  - Cloned + built hp-ats-integration-mt on VM (BUILD SUCCESSFUL, 18m50s)
+  - Shell aliases: vm-bootstrap, vm-ssh, vm-claude
+  - SSH permission bug: Bash(ssh:*) pattern doesn't work, bash -c wrapper needed
+- **System state:** 23+ skills, 8 recipes, Tier 1/1.5/2/3 taxonomy, portable knowledge repo, VM build infra
+- **Next:** Verify vm-route-builds hook in fresh session, test vm-run end-to-end from a Claude work session
 
 ### AI Usage Intelligence (new — potential recipe)
 - **Started:** 2026-04-03

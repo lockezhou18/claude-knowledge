@@ -1,1 +1,8 @@
-Session 2026-04-07: Built portable Claude knowledge architecture. Created ~/claude-knowledge/ git repo (144 files, ~1MB) with install.sh, sync.sh, vm-bootstrap.sh. Pushed to bizhou_LinkedIn/claude-knowledge. All ~/.claude knowledge dirs symlinked. Auto-sync hooks: SessionEnd pushes, UserPromptSubmit pulls. VM routing rule + vm-setup recipe ready. SSH/scp/mutagen added to allowlist. Next: run vm-bootstrap.sh on bizhou-ld2.linkedin.biz (needs new session for SSH permissions).
+Session 2026-04-08: VM Bootstrap + Remote Build Infrastructure
+
+Bootstrapped bizhou-ld2.linkedin.biz (Claude CLI, code-server, tmux, knowledge).
+Passwordless SSH via config.custom + LinkedIn key. Created vm-run helper for
+generic sync-and-build from any local repo. PreToolUse hook auto-intercepts
+build commands. 3-layer fallback (VM→sync→local). Built hp-ats-integration-mt
+on VM successfully. SSH permission bug: Bash(ssh:*) doesn't work in Claude Code,
+use bash -c wrapper. Next: verify hook in fresh session.

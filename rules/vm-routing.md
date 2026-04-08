@@ -4,7 +4,7 @@
 
 When running on the local machine (macOS), route heavy commands to the VM via SSH.
 
-### Route to VM (wrap with `bash -c "ssh vm '...'"` — required for Claude Code permissions):
+### Route to VM — use `vm-run` (syncs code + runs remotely):
 - **Build**: `mint build`, `mint test`, `./gradlew`, compilation commands
 - **gRPC/REST calls**: `grpcurli`, `curli` against internal services
 - **Docker**: any `docker` or `docker-compose` commands
@@ -20,25 +20,26 @@ When running on the local machine (macOS), route heavy commands to the VM via SS
 - **Light scripts**: short bash one-liners, jq, etc.
 - **Browser tools**: playwright, observe-agent queries
 
-### SSH command format:
+### Preferred: `vm-run` (auto-sync + run)
+`~/bin/vm-run` detects the current git repo, rsyncs it to `~/workspace/<repo>` on the VM, then runs the command. Works from ANY local path.
+
 ```bash
-# Simple command
-bash -c "ssh vm 'cd ~/workspace/<repo> && mint build'"
+# From any local repo path (e.g., ~/workspace/connected_project_phase2/hp-ats-integration-mt)
+bash -c "cd /path/to/local/repo && vm-run mint build"
+bash -c "cd /path/to/local/repo && vm-run mint test"
+bash -c "cd /path/to/local/repo && vm-run ./gradlew compileJava"
+```
 
-# Multi-command
-bash -c "ssh vm 'cd ~/workspace/<repo> && mint build && mint test'"
-
-# With env vars
-bash -c "ssh vm 'export JAVA_HOME=/path && cd ~/workspace/<repo> && ./gradlew compileJava'"
-
-# File copy to/from VM
+### Direct SSH (for commands not tied to a repo):
+```bash
+bash -c "ssh vm 'grpcurli ...'"
+bash -c "ssh vm 'go-status hp-ats-integration-mt'"
 bash -c "scp vm:~/workspace/<repo>/file.txt /tmp/"
-bash -c "scp /tmp/file.txt vm:~/workspace/<repo>/"
 ```
 
 ### Important:
-- Use `bash -c "ssh vm '...'"` format — direct `ssh` is blocked by Claude Code permissions
+- Use `bash -c "..."` wrapper — direct `ssh` is blocked by Claude Code permissions
 - `vm` is an SSH alias defined in `~/.ssh/config.custom` (passwordless via LinkedIn key)
-- Code must be synced via mutagen before running remote builds
+- `vm-run` rsyncs source code (excluding .gradle, build, out, .git) before running
 - If SSH fails, check: VPN connected? Kerberos valid (`klist`)?
 - For interactive commands, use `linkedin-cli-tools:interactive-cli` with SSH

@@ -251,6 +251,7 @@ The agent should suggest skills when the moment is right, even if the user didn'
 - Complex multi-service design task → "This spans multiple services. Use `mae-core:architect` for parallel planning?"
 - First time scoping a new repo → "Run `linkedin-framework:map-infrastructure` to auto-detect infra systems?"
 - Plan approved, ready to build → "Use `/implement` to work through units systematically?"
+- About to run mint build/test or gradlew locally → vm-remote auto-intercepts, but if it doesn't: "This should run on the VM. Use `bash -c \"cd <repo> && vm-run mint build\"`"
 - Code ready, need to ship → "Use `/ship` for the full PR → prod pipeline?"
 - PR created, waiting on CI/deploy → "Use `/wait-for` to poll across sessions?"
 Don't be pushy — suggest once, move on if the user doesn't engage.
@@ -261,6 +262,7 @@ Don't be pushy — suggest once, move on if the user doesn't engage.
   - `playwright-cli` — browser eyes. Used by `/investigate` (reproduce UI issues), `/recipe ui-smoke-test` (post-deploy verification), `/recipe capture-ui-state` (PR evidence), `/recipe greenhouse-e2e` (sandbox testing), `/recipe ui-session` (record/replay/compare browser test sessions)
   - `observe-agent` — production eyes. Logs, metrics, dependencies.
   - `linkedin-cli-tools` — production hands. Build, deploy, gRPC calls.
+  - `vm-remote` — remote execution hands. `vm-run` (sync+build on VM), direct SSH, file transfer. Used by `/implement` (builds), `/ship` (pre-PR validation), `/investigate` (remote gRPC/curli), `/pr-fix` (compile after fixes), `/oncall` (service queries). Auto-intercepted by PreToolUse hook for mint/gradlew commands. Always use `bash -c "..."` wrapper.
 - **Tier 2: Project skills** (`{repo}/.claude/commands/`) — project-specific, loaded per repo
 - **Tier 3: Recipes** (`~/.claude/commands/recipes/*.md`) — mechanical checklists, no judgment needed
 - Recipes chain UP to skills when they detect issues needing judgment
