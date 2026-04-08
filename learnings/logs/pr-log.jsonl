@@ -179,3 +179,4 @@
 {"timestamp": "2026-04-08T18:22:59.385108+00:00", "repo": "hp-ats-integration-mt", "branch": "bizhou/fix-v2-identity-drift-outbound-writeback", "pr_url": "", "commit_count": "", "commits": ["Fix V2 identity drift in outbound writeback and prevent duplicate V2 creation"]}
 {"timestamp": "2026-04-08T18:24:08.983389+00:00", "repo": "hp-ats-integration-mt", "branch": "bizhou/fix-v2-identity-drift-outbound-writeback", "pr_url": "", "commit_count": "", "commits": ["Fix V2 identity drift in outbound writeback and prevent duplicate V2 creation"]}
 {"timestamp": "2026-04-08T18:43:15.912915+00:00", "repo": "bug-bash", "branch": "main", "pr_url": "", "commit_count": "", "commits": []}
+{"timestamp": "2026-04-08T19:09:50.394754+00:00", "repo": "hp-ats-integration-mt", "branch": "bizhou/entity-registry-v1-v2-resolution", "pr_url": "", "commit_count": "", "commits": ["Use entity registry for V1\u2192V2 resolution in outbound writeback"]}
