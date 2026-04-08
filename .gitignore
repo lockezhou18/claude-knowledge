@@ -1,0 +1,13 @@
+# Machine-specific state (not knowledge)
+*.bak.*
+.DS_Store
+
+# Large binary files
+*.png
+*.jpg
+*.gif
+
+# Temp files
+*.tmp
+*.swp
+*~

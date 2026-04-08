@@ -1,0 +1,60 @@
+---
+id: know-014
+track: knowledge
+type: semantic
+repos: [hp-ats-integration-mt]
+tags: [connected-projects, creation-flow, phase2, pipeline, stages, greenhouse]
+severity: high
+created: 2026-03-31
+last_verified: 2026-03-31
+use_count: 0
+outcome_score: 0
+status: active
+rot_rate: slow
+---
+
+**When** creating a Connected Project with ATS stages, **follow the complete creation chain and verify each step** because stage data depends on a multi-service pipeline that can silently fail at any point.
+
+## Context
+
+### Full Creation Chain
+```
+1. Greenhouse job exists with stages
+2. ATS Gateway ingests → ATS Middleware store (jobRequisitionStagesApi)
+3. IP syncs → IntegrationJobRequisition + IntegrationJobRequisitionStage records
+4. ConnectedProjectsApi/Create called with:
+   - integrationJobRequisitionUrn
+   - ownerSeatUrn, contractUrn
+   - useExistingProjectMetadata (true=attach to existing project, false=create new)
+   - syncProjectWithRequisitionEnabled (true=sync stages)
+5. HP creates:
+   - HiringProject (with atsPipelineUrn)
+   - CandidateHiringPipeline (ATS pipeline) with non-global states
+   - CandidateHiringState per ATS stage (source=ATS, statusType=USER_DEFINED)
+   - Entity mappings: CandidateHiringState ↔ IntegrationJobRequisitionStage
+6. TriggerSync to pull applicants
+```
+
+### Key Failure Points
+- **Step 2**: ATS Middleware ingestion may not populate stage data for sandbox/test jobs → `jobRequisitionStagesApi` returns empty → zero stages. TriggerSync does NOT fix this because it queries the same empty middleware store.
+- **Step 3**: IP `IntegrationJobRequisitionStage` records may exist but lack `integrationJobRequisitionUrn` field → FindByCriteria returns empty.
+- **Step 5**: Non-global states created with `source=ATS` — these won't appear in global pipeline views.
+
+### Connecting to Existing Project
+Use `useExistingProjectMetadata: true` with `hiringProjectUrn` set:
+```bash
+grpcurli --dv-auth SELF -f prod-lva1 d2://connectedProjectsApi \
+  proto.com.linkedin.hire.integration.ConnectedProjectsApi/Create \
+  -d '{"value":{"hiringProjectUrn":{"hiringContext":"urn:li:contract:CONTRACT","hiringProjectId":"PROJECT"},"integrationJobRequisitionUrn":{"integrationJobRequisitionId":"JOB_REQ"},"ownerSeatUrn":{"seatId":"SEAT"},"contractUrn":{"contractId":"CONTRACT"},"useExistingProjectMetadata":true,"syncProjectWithRequisitionEnabled":true},"actorSeatUrn":{"seatId":"SEAT"}}'
+```
+
+## Guidance
+
+Before creating a Connected Project, verify:
+1. IP stages exist: `IntegrationJobRequisitionStageApi/FindByCriteria` returns stages
+2. ATS middleware has data: `jobRequisitionStagesApi` returns stages for the Greenhouse job
+3. After creation: verify ATS pipeline has expected states and all mappings are ACTIVE
+
+## When to Apply
+
+When creating new Connected Projects for testing, or when debugging why a Connected Project has zero ATS stages.

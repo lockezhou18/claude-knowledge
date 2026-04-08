@@ -1,0 +1,27 @@
+---
+id: bug-002
+track: bug
+repos: [hp-ats-integration-mt]
+tags: [race-condition, mapping, sync, phase2, kafka]
+severity: high
+created: 2026-03-23
+last_verified: 2026-03-25
+use_count: 2
+outcome_score: 2
+status: active
+rot_rate: slow
+paths: ["**/ApplicationProcessor.java", "**/ApplicationStageProcessor.java"]
+---
+
+**When** new ATS applicants are stuck in HP sourcing stage ("potential candidate") instead of ATS stage, **check** if the HPC→ApplicationStage mapping exists **because** the IntegrationApplication CREATE event can be processed before the IntegrationApplicationStage exists in IP.
+
+## Symptoms
+- Candidates show "Save to pipeline" instead of "Change stage" in Recruiter UI
+- ApplicationStageResolutionService logs "No resolved stage for HPC, skipping sync"
+- HPC→ApplicationStage entity mapping is empty for the candidate
+
+## Root Cause
+ApplicationProcessor.getAllStages() returns empty when the stage hasn't been synced to IP yet (race condition, ~4 seconds). connect(null) short-circuits → no mapping. When the stage event arrives later, processPhase2() can't find the mapping → skips sync.
+
+## Fix
+PR #526: ensureApplicationStageMappingExists() before resolveAndSyncCurrentState() in processPhase2(). Zero overhead when mapping exists, creates it on the recovery path.

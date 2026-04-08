@@ -1,0 +1,30 @@
+---
+id: know-040
+track: knowledge
+type: semantic
+repos: ["*"]
+tags: ["publication", "patent", "process", "paper", "conference", "legal"]
+severity: medium
+rot_rate: slow
+created: "2026-04-04"
+last_verified: "2026-04-04"
+use_count: 0
+outcome_score: 0
+status: active
+---
+
+## Context
+LinkedIn's engineering publications process (go/engpublications) requires 2 JIRA tickets and ~2-3 months from start to submission. Patent must be filed FIRST.
+
+## Guidance
+When publishing a paper:
+1. File patent at go/inventor FIRST (done — ID 93827, link: https://linkedin-patent.anaqua.com/Details.aspx?ID=93827)
+2. Talk to manager, identify Eng Lead (Sr Director+)
+3. Write one-pager, run Eagle Eye (go/EagleEyeAgent), create JIRA ticket #1 (Initial Review, SLA 15 days)
+4. Write full paper, create JIRA ticket #2 (Final Review, SLA 15 days, needs 2 peer reviewers Staff+)
+5. Submit to venue
+
+Key: No external comms review needed anymore. Eng Lead must be Sr Director+. Two separate JIRA tickets. No changes to draft during review except reviewer feedback.
+
+## When to Apply
+When considering publishing any technical work externally — papers, presentations, blog posts.

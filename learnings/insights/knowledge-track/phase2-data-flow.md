@@ -1,0 +1,60 @@
+---
+id: know-010
+track: knowledge
+type: semantic
+repos: [hp-ats-integration-mt]
+tags: [phase2, data-flow, kafka, sync, architecture, connected-projects]
+severity: high
+created: 2026-03-31
+last_verified: 2026-03-31
+use_count: 0
+outcome_score: 0
+status: active
+rot_rate: slow
+---
+
+**When** working on Connected Projects Phase 2 data sync, **trace the correct data flow direction** because inbound and outbound use different event types, Kafka clusters, and processing paths.
+
+## Context
+
+Phase 2 has two major data flow directions plus a confirmation loop:
+
+### Inbound Sync (ATS → HP)
+```
+ATS (Greenhouse) → ATS Gateway → ATS Middleware → IP Espresso
+  → IntegrationEntityReadyEvent (queuing cluster)
+  → hp-ats-integration-mt processors
+  → HP entities (mcm-mt)
+```
+- Event: `IntegrationEntityReadyEvent` on **queuing** cluster
+- Entity types: IntegrationApplication, IntegrationApplicationStage, IntegrationJobRequisitionStage, IntegrationCandidate
+- `operationType`: CREATE, UPDATE, DELETE (Avro enum: `avro.com.linkedin.events.unifiedintegration.IntegrationEntityOperationType`)
+
+### Outbound WriteBack (HP → ATS)
+```
+Recruiter UI → talent-solutions-api → mcm-mt HiringProjectCandidate
+  → hp-ats-integration-mt ConnectedProjectCandidateApi/ActionWriteBack
+  → IP IntegrationApplicationStageApi/actionUpsert
+  → nexor-backend → Greenhouse API
+```
+- Synchronous gRPC chain, returns requestId immediately
+- HireEntityRequest (Euler store) tracks status: PENDING → SUCCESS/FAILURE
+
+### Confirmation Loop (ATS → IP → HP)
+```
+Greenhouse confirms → IP ingests confirmation
+  → IntegrationExportRequestStatusEvent (tracking cluster)
+  → hp-ats-integration-mt ExportStatusEventProcessor
+  → updates HireEntityRequest status
+  → publishes realtime event for UI
+```
+
+## Guidance
+
+- **Queuing vs Tracking**: Inbound events use `queuing` cluster (LDAP password required on shell host). Export status events use `tracking` cluster (no password, `kafka.tracking-local` config).
+- **Event processing is per-dataProvider**: Multiple data providers for same org → fan-out → same event processed by each. Only one succeeds; others get `FAILED_PRECONDITION` (harmless).
+- **LIX gate**: `talent.connected.project.phase2.enabled` checked per `dataProvider` URN. Currently ramped for `225950754` and `223878556`.
+
+## When to Apply
+
+When debugging sync issues, first determine which direction failed (inbound vs outbound vs confirmation), then trace through the correct chain.

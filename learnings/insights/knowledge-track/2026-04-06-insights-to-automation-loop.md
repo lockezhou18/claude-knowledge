@@ -1,0 +1,54 @@
+---
+id: aha-005
+track: knowledge
+type: semantic
+repos: ["*"]
+tags: ["meta", "compound-learning", "automation", "hooks", "friction", "behavior", "pattern", "aha"]
+severity: high
+rot_rate: permanent
+created: "2026-04-06"
+last_verified: "2026-04-06"
+use_count: 0
+outcome_score: 0
+status: active
+origin_skill: aha
+synthesized_from: ["know-031", "know-032", "eureka-002"]
+---
+
+## Pattern
+When /insights data reveals quantified friction patterns (N instances × M minutes = X hours wasted), those patterns can be directly translated into two concrete automation types:
+1. **CLAUDE.md routing tables** — eliminate wrong-approach guesses by giving the agent a lookup table instead of making it reason about which component to investigate
+2. **Hook-based preflight checks** — eliminate environment/auth failures by auto-detecting broken state at session start and instructing the agent to prompt the user to fix it before starting work
+
+The general formula: **Quantified friction → Root cause classification → Automation at the point of failure**.
+
+## Evidence
+- [know-031]: Original observation — 14 wrong-approach instances across 18 sessions (later grew to 25 across 29)
+- [know-032]: Identified the knowledge-vs-behavior gap — insight capture works but doesn't prevent behavioral mistakes
+- [eureka-002]: The compound learning ecosystem architecture — provided the hook infrastructure that made the fix possible
+- [/insights report 2026-04-06]: Quantified 25 wrong-approach redirections (~12h) + environment/auth issues (~5-8h)
+
+## What We Built
+1. **Service Routing Table** in CLAUDE.md — 13-row lookup: problem area → correct service → NOT this service. Eliminates the most common wrong-approach pattern (guessing which component to investigate).
+2. **Strengthened BEHAVIORAL GATE** — updated from 14→25 count, added hard-stop-on-redirect, curli>Trino, observe-agent>local-grep, simple>clever rules.
+3. **Auth preflight in knowledge-scout hook** — auto-checks Kerberos, GitHub, Captain MCP, browser auth on first prompt. Reports issues via stdout so Claude proactively tells user what to fix.
+
+## Implication
+The /insights report isn't just a retrospective — it's an **input to the compound learning system**. Each friction category maps to a specific automation:
+- "Wrong tool/API" → routing table
+- "Wrong component" → routing table
+- "Over-engineered" → code style rules
+- "Didn't pivot on redirect" → behavioral gate strengthening
+- "Auth expired mid-session" → preflight hook
+- "MCP tools failed" → preflight hook
+
+Future /insights runs should trigger a systematic check: "Which friction categories are automatable?"
+
+## When to Apply
+After running /insights or /compound, look at the friction categories. For each one, ask:
+- Can this be prevented by a **lookup table** in CLAUDE.md? (wrong-approach patterns → routing tables)
+- Can this be prevented by a **hook**? (environment/state issues → preflight checks)
+- Can this be prevented by a **behavioral rule**? (style/approach issues → BEHAVIORAL GATE additions)
+- Is this a **human process issue**? (auth renewals → reminders, not automation)
+
+If friction count × avg_minutes > 5 hours, it's worth automating.
