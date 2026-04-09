@@ -59,7 +59,13 @@ When you need to call a Rest.li service you've never used before (no existing cu
 - **Don't route curli to VM** when DV auth is needed — `authn-cli` SSO times out over non-interactive SSH, password fallback hits EOFError (no TTY). Use `--force-insecure-d2` locally instead.
 - Test with `-f` pointing to different prod fabrics if you get 404 (data may be in a different colo)
 
+### Step 7: Protocol Version (CRITICAL for Associations)
+- **`@RestLiAssociation`** (extends `AssociationResourceAsyncTemplate`): Do NOT use `X-RestLi-Protocol-Version:2.0.0`. Assoc keys go in path: `d2://resource/key1=val1&key2=val2?q=finder`. No URL encoding needed for URN values.
+- **`@RestLiCollection` with ComplexKey** (extends `ComplexKeyResourceTemplate`): Use v2 protocol with `(field1:val1,field2:val2)` format.
+- See know-050 for detailed examples and error patterns.
+
 ## When to Apply
 - Any time you need to call a Rest.li service you haven't used before
 - When building curli commands from code inspection rather than copying existing examples
 - When debugging "Invalid D2 service name" or "context field not present" errors
+- When debugging "not a Compound key" errors (likely v2 protocol on an Association)

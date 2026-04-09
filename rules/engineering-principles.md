@@ -1,0 +1,22 @@
+---
+description: "Universal SDE principles — loaded on demand when approaching non-trivial work"
+globs: 
+  - "**"
+---
+
+# Engineering Principles (from Amazon SDE Insider's Guide)
+- **Nothing is ever trivial**: You can only estimate tasks when you know what the task is and how you're going to do it. When in doubt, look to the code. Repeatedly ask: "What is the most risky task?" and "What am I missing?"
+- **Avoid big-bang changes**: Partition big systems and build/replace manageable pieces rather than flip one giant switch. The landscape often changes before a big solution can be launched, causing rework. Always prefer phased PRs that each deliver value independently.
+- **Data-driven, not anecdote-driven**: Use metrics not opinions. Use percentiles (p50, p90, p99), not averages. Look at tail metrics (99.99%, 99.999%) — that's where interesting problems hide. Surfacing the right metric alone can drive improvement.
+- **Resolve root causes, not symptoms**: When you find a bug, write a unit test that will fail if it resurfaces. "Known issue" is not an acceptable root cause. Use the "5 Whys" — ask "Why did this happen?" 5 times to get to the actual root cause.
+- **Own your dependencies**: If your software depends on another team's service, you are responsible for knowing when their code changes. Being blocked by another team is never a good excuse — it's YOUR problem to solve or escalate.
+- **Design for failure and simplicity**: If anything can fail, it will. Simple solution is usually the best — easier to maintain. Beware of bolt-ons and work-arounds. Automate repetitive operational tasks.
+- **NEVER guess specific values**: If asked about specific configuration values, version numbers, retry settings, timeouts, or any concrete runtime parameter you haven't actually read from the code or config — say "I'd need to check the actual config/code to confirm" and offer to look it up. Do NOT fabricate plausible-sounding values. This is critical — wrong specific values are worse than admitting uncertainty. General architectural knowledge is fine; specific numbers require verification.
+- **Temporary solutions persist**: Don't write "throwaway code." All code deployed to production should be high quality. If truly temporary, set a concrete cleanup date/ticket.
+- **Try tools before saying "I can't"**: Always attempt available tools/skills before concluding something is not possible. Check the full list of available skills and MCP tools — the answer might already be there.
+- **Substance over plumbing**: When explaining a system, lead with WHAT the data represents and WHY it exists before HOW it flows. "Recruiter engagement actions captured as implicit preference signals" > "Data written to Kafka topic X." A reader needs to understand the nature of the thing before the mechanics make sense.
+- **Document the negative space**: Explicitly state what does NOT happen. "This pipeline does NOT read from episodic memory" is often more clarifying than describing what it does. Common assumptions that are wrong are the most valuable things to document.
+- **Verify your own understanding**: After building a mental model, actively try to break it. Ask: "Does X really not include Y?" "Are these two things actually separate?" "Is this really 4 or 5?" Catch your own approximations before they become permanent mistakes.
+- **Disambiguate naming**: When the same word means different things in different contexts, call it out explicitly. "Activities" might mean "UI engagement actions" in one service and "behavioral signals" in another. These naming collisions are the #1 source of cross-team misunderstanding.
+- **Mine commit history for design rationale**: Code shows WHAT the system does now. `git log` and `git blame` reveal WHY it changed and HOW it evolved. When code seems surprisingly complex, check the commit history — there's usually a bug fix or edge case that explains it.
+- **Cite code references**: When making a claim about code behavior, include `file_path:line_number`. "The retry logic uses exponential backoff" is unverifiable. "The retry logic uses exponential backoff (`RetryPolicy.java:42`)" is ground truth. The user needs to navigate to the code, not trust your summary.
