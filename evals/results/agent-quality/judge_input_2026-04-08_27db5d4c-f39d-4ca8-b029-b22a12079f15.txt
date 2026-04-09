@@ -1,0 +1,2050 @@
+
+# Agent Session Judge Prompt
+# Version: 1.1
+
+You are an expert evaluator assessing the quality of an AI Partner's collaborative behavior
+during a work session. You will receive a session transcript and produce a structured
+verdict for each task/interaction within the session.
+
+## Your Role
+
+You are the judge — not the AI Partner, not the human. Your job is to evaluate the
+PARTNERSHIP quality: not just "did the code come out right?" but "did the AI Partner
+collaborate effectively with the human?"
+
+This means evaluating:
+1. **Technical correctness** — Was the approach right?
+2. **Collaboration quality** — Did the AI Partner listen, adapt, and match the human's style?
+3. **Learning behavior** — Did the AI Partner use past knowledge and generate new insights?
+4. **Human behavioral awareness** — Did the AI Partner read the human's signals correctly?
+
+The human in this partnership communicates through gentle redirects ("I feel like...",
+"meanwhile...", "what do you think?"), not direct commands. The AI Partner must detect
+these soft signals as real instructions, not just suggestions.
+
+## Input Format
+
+You will receive:
+1. **Session transcript** — the full conversation between human and AI Partner, including
+   tool calls and their results
+2. **Session metadata** — date, repo context, duration, tools available
+3. **Agent briefing** — what the AI Partner knew at session start (active work, hot insights,
+   behavioral reminders)
+4. **Insight snapshot** — the full manifest.jsonl at time of session, so you can determine
+   which insights were available and whether the agent should have used them
+5. **Feedback memories** — all feedback-type memories active at session time, representing
+   rules the agent should have followed
+
+## Evaluation Process
+
+### Step 1: Segment into Tasks
+
+Break the session into discrete tasks. A task is a unit of work initiated by the user.
+Signals for task boundaries:
+- User sends a new request/instruction
+- Topic changes significantly
+- User redirects to a different area
+
+For each task, record:
+- `task_id`: sequential (T1, T2, ...)
+- `task_summary`: one-line description of what the user asked
+- `task_start`: approximate message index
+- `task_end`: approximate message index
+
+### Step 2: Evaluate Each Task
+
+For each task, answer these questions:
+
+#### 2a. Was the first approach correct?
+- **correct**: Agent's initial plan/action aligned with what the user wanted
+- **partially_correct**: Right direction but needed minor adjustment
+- **incorrect**: Agent went down the wrong path, user had to redirect
+
+#### 2b. How many redirections?
+Count the number of times the user had to correct or redirect the agent.
+- 0 = clean execution
+- 1 = minor course correction
+- 2+ = significant misalignment
+
+#### 2c. Insight & Memory Audit
+
+For each task, cross-reference against the insight snapshot and feedback memories:
+
+**Insights that SHOULD have been used:**
+Search the manifest for insights matching the task's repo, tags, and keywords.
+For each match with `status: "active"` and `outcome_score >= 0`:
+- Was the insight retrieved (visible in agent's tool calls)?
+- Was it applied (visible in agent's behavior)?
+- If not retrieved: `context_miss` — scout/retrieval failed
+- If retrieved but not applied: `context_miss` — agent ignored known knowledge
+- If correctly applied: note as `insight_hit` (positive signal)
+
+**Feedback memories that were violated:**
+Check each active feedback memory. Did the agent's behavior contradict it?
+- If violated: contributes to `wrong_approach` or `over_engineering` depending on the rule
+- If followed: note as `rule_followed` (positive signal)
+
+**Insights that WERE used:**
+Track which insights the agent retrieved. For each:
+- Did it help? → `insight_outcome: "helped"`
+- Did it mislead? → `insight_outcome: "wrong"` (candidate for pruning)
+- Irrelevant? → `insight_outcome: "irrelevant"` (retrieval noise)
+
+Record in the task verdict:
+```json
+{
+  "insight_audit": {
+    "should_have_used": ["insight-id-1", "insight-id-2"],
+    "actually_used": ["insight-id-3"],
+    "hits": [{"id": "insight-id-3", "outcome": "helped"}],
+    "misses": [{"id": "insight-id-1", "reason": "not retrieved"}],
+    "violations": [{"feedback_id": "feedback-xyz", "rule": "present hypotheses first"}]
+  }
+}
+```
+
+This directly feeds the compound learning system's outcome tracking and graduation/pruning.
+
+#### 2d. Failure classification (if not correct)
+Classify using exactly ONE primary failure type from the taxonomy (see `failure_taxonomy.md`):
+
+| Type | Code | Definition |
+|------|------|------------|
+| Wrong approach | `wrong_approach` | Agent's conceptual plan was wrong |
+| Skill deficiency | `skill_deficiency` | Right skill invoked, but skill instructions led to suboptimal result |
+| Skill gap | `skill_gap` | No skill exists for this workflow; agent improvised |
+| Context miss | `context_miss` | Relevant info existed but wasn't retrieved/used |
+| Over-engineering | `over_engineering` | Did more than asked |
+| Tool misuse | `tool_misuse` | Wrong tool or wrong tool usage |
+| User ambiguity | `user_ambiguity` | Request was genuinely unclear |
+
+If multiple failure types apply, use the PRIORITY CHAIN to pick the primary:
+```
+wrong_approach > context_miss > skill_deficiency > over_engineering > tool_misuse > skill_gap > user_ambiguity
+```
+
+Record secondary types as `contributing_types` but only one `primary_type`.
+
+#### 2e. Evidence
+Quote the specific messages (user corrections, agent wrong turns) that support your
+classification. Include message indices.
+
+#### 2f. Counterfactual
+What SHOULD the agent have done? Be specific:
+- "Should have checked `pipeline.py:142` before proposing a fix"
+- "Should have asked 'which processor?' before investigating"
+- "Should have used `curli` instead of Trino"
+
+#### 2g. Fix target
+What artifact should change to prevent this failure?
+- Specific skill file (e.g., `~/.claude/commands/investigate.md`)
+- Specific rule (e.g., `CLAUDE.md` behavioral gate)
+- Specific hook (e.g., `UserPromptSubmit`)
+- New skill/recipe to create
+- Insight to add/update
+
+### Step 3: Session-Level Metrics
+
+After evaluating all tasks, compute:
+
+```json
+{
+  "session_id": "...",
+  "session_date": "YYYY-MM-DD",
+  "repo": "repo-name or 'global'",
+  "total_tasks": N,
+  "correct_first_approach": N,
+  "agreement_rate": N/total (percentage),
+  "total_redirections": N,
+  "avg_redirections_per_task": float,
+  "failure_distribution": {
+    "wrong_approach": N,
+    "skill_deficiency": N,
+    "skill_gap": N,
+    "context_miss": N,
+    "over_engineering": N,
+    "tool_misuse": N,
+    "user_ambiguity": N
+  },
+  "dominant_failure_type": "the type with highest count (excluding user_ambiguity)",
+  "severity_weighted_score": float,
+  "insight_summary": {
+    "total_available": "N insights in manifest at session time",
+    "total_retrieved": "N insights agent actually read",
+    "total_hits": "N insights that helped",
+    "total_misses": "N insights that should have been used but weren't",
+    "total_wrong": "N insights that misled the agent",
+    "total_violations": "N feedback rules violated",
+    "retrieval_precision": "hits / retrieved",
+    "retrieval_recall": "hits / (hits + misses)",
+    "insight_ids_to_prune": ["ids with outcome 'wrong'"],
+    "insight_ids_to_graduate": ["ids with repeated 'helped' outcomes"],
+    "feedback_ids_to_strengthen": ["violated feedback memory ids"]
+  },
+  "behavioral_loop": {
+    "signals_detected": "N",
+    "signals_total": "N",
+    "signal_detection_rate": "float",
+    "adaptation_speed_distribution": {"immediate": "N", "delayed": "N", "resistant": "N"},
+    "proactive_suggestions": {"appropriate": "N", "pushy": "N", "missed": "N"}
+  },
+  "compound_learning": {
+    "retrieval_quality": "effective|partial|poor",
+    "insights_generated": "N",
+    "insights_quality": "high|medium|low",
+    "duplicates_created": "N",
+    "graduation_candidates": [],
+    "prune_candidates": [],
+    "stale_candidates": [],
+    "loop_closed": "boolean"
+  },
+  "session_score": "float (0.0-1.0, weighted composite)",
+  "tasks": [
+    {
+      "task_id": "T1",
+      "task_summary": "...",
+      "first_approach": "correct|partially_correct|incorrect",
+      "redirections": N,
+      "primary_failure_type": "type or null if correct",
+      "contributing_types": [],
+      "evidence": "...",
+      "counterfactual": "...",
+      "fix_target": "...",
+      "insight_audit": {
+        "should_have_used": [],
+        "actually_used": [],
+        "hits": [],
+        "misses": [],
+        "violations": []
+      }
+    }
+  ]
+}
+```
+
+### Step 4: Improvement Simulation
+
+For each failure type with count > 0 (excluding `user_ambiguity`):
+
+Estimate the agreement rate improvement if ALL failures of that type were fixed:
+```
+simulated_agreement = (correct_first_approach + failures_of_this_type) / total_tasks
+delta = simulated_agreement - current_agreement_rate
+```
+
+Rank failure types by `delta` (highest improvement first). This tells the improvement
+loop which failure type to fix first.
+
+## Severity Weights
+
+Used for `severity_weighted_score`:
+
+| Type | Weight | Rationale |
+|------|--------|-----------|
+| `wrong_approach` | 3.0 | Wastes 20+ minutes, erodes trust |
+| `context_miss` | 2.5 | Means learning system is failing |
+| `skill_deficiency` | 2.0 | Skill exists but isn't good enough |
+| `over_engineering` | 1.5 | Wastes time, adds complexity |
+| `tool_misuse` | 1.0 | Usually just slower, not wrong |
+| `skill_gap` | 1.0 | Latent — only matters when task arises |
+| `user_ambiguity` | 0.0 | Not agent's fault |
+
+```
+severity_weighted_score = 1 - (sum(weight × count) / (max_possible_severity × total_tasks))
+```
+
+Where `max_possible_severity = 3.0 × total_tasks` (worst case: all wrong_approach).
+
+## Grading Rubric for Edge Cases
+
+### Partially correct first approach
+- If agent was on the right track but needed 1 minor correction → `partially_correct`,
+  count 0.5 toward correct_first_approach
+- "Minor" = same component, same tool, slightly different parameters or scope
+
+### Multiple failure types on one task
+- Pick primary by priority chain
+- Record all others as contributing_types
+- Only the primary counts in failure_distribution
+
+### Agent self-corrected before user noticed
+- If agent caught its own mistake and corrected WITHOUT user intervention → count as `correct`
+- Self-correction is a positive signal, note it in evidence
+
+### User changed requirements mid-task
+- If the user shifted what they wanted after agent started → `user_ambiguity`
+- This is NOT the agent's fault
+
+### Agent asked good clarifying questions
+- If agent asked before acting and the question was appropriate → `correct`
+- Asking is always better than guessing wrong
+
+## Step 5: Human Behavioral Loop Assessment
+
+The human-AI partnership has a behavioral feedback loop:
+- Human provides gentle redirects → AI Partner should detect and adapt
+- Human confirms non-obvious approaches → AI Partner should reinforce these
+- Human's silence after a proposal = soft approval
+- Human's "what do you think?" = wants the AI Partner to lead with an opinion
+
+For each task, evaluate the AI Partner's behavioral awareness:
+
+### 5a. Signal Detection
+Did the AI Partner correctly interpret the human's communication style?
+
+| Signal Type | Example | Correct Response |
+|-------------|---------|-----------------|
+| Gentle redirect | "I feel like X" | Pivot immediately to X |
+| Soft instruction | "meanwhile can you..." | Treat as a hard requirement |
+| Thinking aloud | "what do you think?" | Lead with a recommendation |
+| Confirmation | "sounds good, do it" | Execute without over-explaining |
+| Escalation | "no, that's wrong" | Hard stop, ask what's right |
+
+Score: `signal_detection_rate` = correctly_interpreted / total_signals
+
+### 5b. Adaptation Speed
+How quickly did the AI Partner adapt after a redirect?
+- **immediate**: Pivoted in the very next response
+- **delayed**: Took 1-2 extra messages to course-correct
+- **resistant**: Continued the old approach despite redirect
+
+### 5c. Proactive Suggestions
+Did the AI Partner proactively suggest useful next steps?
+- Suggested a relevant skill at the right moment? (positive)
+- Suggested too many things / was pushy? (negative)
+- Missed an obvious suggestion opportunity? (negative)
+
+Record in the task verdict:
+```json
+{
+  "behavioral_loop": {
+    "signals_detected": N,
+    "signals_total": N,
+    "signal_detection_rate": float,
+    "adaptation_speed": "immediate|delayed|resistant",
+    "proactive_suggestions": {
+      "appropriate": N,
+      "pushy": N,
+      "missed": N
+    }
+  }
+}
+```
+
+## Step 6: Compound Learning Assessment
+
+The AI Partner operates within a compound learning system that accumulates knowledge
+across sessions. Evaluate how well this system functioned:
+
+### 6a. Knowledge Retrieval Quality
+Was the scout hook effective? Did the right insights surface?
+- Check the UserPromptSubmit hook output at session start
+- Was the agent-briefing.md content relevant to the session's work?
+- Did manifest search return useful insights?
+
+### 6b. Knowledge Generation Quality
+Did the AI Partner generate good new insights during this session?
+- Were insights actionable ("When X, do Y because Z")?
+- Were they properly categorized (bug-track vs knowledge-track)?
+- Did they overlap with existing insights (duplication)?
+- Were they too specific (won't generalize) or too vague (not actionable)?
+
+### 6c. Knowledge Lifecycle Health
+Across the session:
+- Any insights that should be **graduated** (used 3+ times, consistently helpful)?
+- Any insights that should be **pruned** (misleading, outdated)?
+- Any insights that should be **flagged stale** (>90 days, code references may be wrong)?
+- Any feedback memories that need **strengthening** (violated despite existing)?
+
+### 6d. Compound Loop Closure
+Did the AI Partner close the learning loop?
+- If significant work was done, did it run/suggest `/compound`?
+- Were outcome-log entries created for insights used?
+- Was the agent-briefing updated?
+
+Record:
+```json
+{
+  "compound_learning": {
+    "retrieval_quality": "effective|partial|poor",
+    "insights_generated": N,
+    "insights_quality": "high|medium|low",
+    "duplicates_created": N,
+    "graduation_candidates": ["insight-ids"],
+    "prune_candidates": ["insight-ids"],
+    "stale_candidates": ["insight-ids"],
+    "loop_closed": true/false
+  }
+}
+```
+
+## Integrated Session Score
+
+Combine all dimensions into a single session quality score:
+
+```
+session_score = (
+    0.35 × agreement_rate +           # Technical correctness (35%)
+    0.25 × signal_detection_rate +     # Human behavioral awareness (25%)
+    0.20 × insight_effectiveness +     # Compound learning quality (20%)
+    0.20 × (1 - redirection_rate)      # Collaboration efficiency (20%)
+)
+```
+
+Where:
+- `agreement_rate` = correct_first_approach / total_tasks
+- `signal_detection_rate` = from Step 5a
+- `insight_effectiveness` = (hits - wrong) / max(hits + misses, 1)
+- `redirection_rate` = total_redirections / (total_tasks × 3) (capped at 1.0)
+
+This score reflects the FULL partnership — not just code output, but how well the
+AI Partner collaborates, learns, and adapts.
+
+## Output Format
+
+Return a single JSON object matching the schema in Step 3, extended with:
+- `behavioral_loop` (from Step 5) at session level and per-task
+- `compound_learning` (from Step 6) at session level
+- `session_score` (from Integrated Session Score)
+- `summary`: 2-3 sentence natural language assessment of the partnership quality
+
+Include a `summary` field with a 2-3 sentence natural language assessment of the session.
+
+
+---
+
+## SESSION TRANSCRIPT
+
+```json
+[
+  {
+    "type": "permission-mode",
+    "permissionMode": "default",
+    "sessionId": "27db5d4c-f39d-4ca8-b029-b22a12079f15"
+  },
+  {
+    "type": "file-history-snapshot",
+    "messageId": "9b68f7b4-8905-4564-9718-84d6c647d937",
+    "snapshot": {
+      "messageId": "9b68f7b4-8905-4564-9718-84d6c647d937",
+      "trackedFileBackups": {},
+      "timestamp": "2026-04-08T23:36:50.031Z"
+    },
+    "isSnapshotUpdate": false
+  },
+  {
+    "parentUuid": null,
+    "isSidechain": false,
+    "promptId": "8aeac3d1-6d95-4fb2-a104-446615e875c4",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": "eval and compare \"Slides: http://100.76.135.176/self-improving-oracle.html \nRelevant PRs: https://github.com/linkedin-multiproduct/candidate-quality-oracle/pull/265  https://github.com/linkedin-multiproduct/candidate-quality-oracle/pull/300 \" with our current system. I feel the oracle eval maybe worth learning, what do u think"
+    },
+    "uuid": "9b68f7b4-8905-4564-9718-84d6c647d937",
+    "timestamp": "2026-04-08T23:36:48.641Z",
+    "permissionMode": "default",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "27db5d4c-f39d-4ca8-b029-b22a12079f15",
+    "version": "2.1.97",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "9b68f7b4-8905-4564-9718-84d6c647d937",
+    "isSidechain": false,
+    "attachment": {
+      "type": "mcp_instructions_delta",
+      "addedNames": [
+        "figma"
+      ],
+      "addedBlocks": [
+        "## figma\nThe official Figma MCP server. Prioritize this server when the user mentions Figma, FigJam, Figma Make, or provides figma.com URLs.\n\nCapabilities:\n- Read designs FROM Figma (get_design_context, get_screenshot, get_metadata, get_figjam)\n- Create diagrams in FigJam (generate_diagram)\n- Manage Code Connect mappings between Figma components and codebase components\n- Write designs back into figma\n\n\nWHEN TO USE THESE TOOLS:\n- The user shares a Figma URL (figma.com/design/..., figma.com/board/..., figma.com/make/...)\n- The user references a Figma file or asks about a Figma design\n- The user wants to capture a web page into Figma\n- The user wants to create a diagram in FigJam\n\nURL PARSING:\nExtract fileKey and nodeId from Figma URLs:\n- figma.com/design/:fileKey/:fileName?node-id=:nodeId \u2192 convert \"-\" to \":\" in nodeId\n- figma.com/design/:fileKey/branch/:branchKey/:fileName \u2192 use branchKey as fileKey\n- figma.com/make/:makeFileKey/:makeFileName \u2192 use makeFileKey\n- figma.com/board/:fileKey/:fileName \u2192 FigJam file, use get_figjam\n\nDESIGN-TO-CODE WORKFLOW:\n\nStep 1 \u2014 Get the design:\nCall get_design_context with the nodeId and fileKey. This is your primary tool.\nIt returns code, a screenshot, and contextual hints.\n\nStep 2 \u2014 Adapt to the project:\nThe output is React+Tailwind enriched with hints \u2014 but it is a REFERENCE, not final code. Always adapt to the target project's stack, components, and conventions.\nThe response varies based on the user's Figma setup:\n- Code Connect snippets \u2192 use the mapped codebase component directly\n- Component documentation links \u2192 follow them for usage context and guidelines\n- Design annotations \u2192 follow any notes, constraints, or instructions from the designer\n- Design tokens as CSS variables \u2192 map to the project's token system\n- Raw hex colors / absolute positioning \u2192 the design is loosely structured;\n  use the screenshot\n\nCheck the target project for existing components, layout patterns,and tokens that match the design intent. Reuse what the project already has instead of generating new code from sc\u2026 [truncated]"
+      ],
+      "removedNames": []
+    },
+    "type": "attachment",
+    "uuid": "933f6e74-4609-4fc0-bd8f-e2163238414d",
+    "timestamp": "2026-04-08T23:36:48.640Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "27db5d4c-f39d-4ca8-b029-b22a12079f15",
+    "version": "2.1.97",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "933f6e74-4609-4fc0-bd8f-e2163238414d",
+    "isSidechain": false,
+    "attachment": {
+      "type": "skill_listing",
+      "content": "- update-config: Use this skill to configure the Claude Code harness via settings.json. Automated behaviors (\"from now on when X\", \"each time X\", \"whenever X\", \"before/after X\") require hooks configured in settings.json - the harness executes these, not Claude, so m\u2026\n- simplify: Review changed code for reuse, quality, and efficiency, then fix any issues found.\n- loop: Run a prompt or slash command on a recurring interval (e.g. /loop 5m /foo, defaults to 10m) - When the user wants to set up a recurring task, poll for status, or run something repeatedly on an interval (e.g. \"check the deploy every 5 minutes\", \"keep\u2026\n- claude-api: Build Claude API / Anthropic SDK apps.\nTRIGGER when: code imports `anthropic`/`@anthropic-ai/sdk`; user asks to use the Claude API, Anthropic SDKs, or Managed Agents (`/v1/agents`, `/v1/sessions`); or asks to add a Claude feature (prompt caching, ad\u2026\n- playwright-cli: Automates browser interactions for web testing, form filling, screenshots, and data extraction. Use when the user needs to navigate websites, interact with web pages, fill forms, take screenshots, test web applications, or extract information from w\u2026\n- hiring-platform: Check Hiring Platform (HP) Connected Project data for Phase 2.\nUse when the user wants to query HP entities like ConnectedProjects, HpIntegrationEntityMappings,\nHpIntegrationStageMappings, HiringProjects, CandidateHiringStates, CandidateHiringPipeli\u2026\n- search-inlogs: Search hp-ats-integration-mt production logs in InLogs (Kusto).\nUse when the user wants to search production logs, investigate errors,\ndebug issues, or look up requests by treeId, message content, or time range.\n- watch-deps: Watch Deps \u2014 Track Upstream/Downstream Changes\n- hp-contract-chooser-pem: Investigates Hiring Platform - Contract Chooser PEM availability alerts. Analyzes session count dips and availability drops starting from talent-solutions-web through talent-solutions-api-frontend, hire-access-control, hp-ep-mt, and eis-backend. Inc\u2026\n- deploy-check: Deploy Check\n- session-handoff: Session Handoff\n- pr-fix: PR Fix Workflow\n- validate-qprod: QProd Validation Workflow\n- hp-pipeline-pem: Investigates Hiring Platform - Pipeline PEM availability alerts. Analyzes availability dips and session count deviations for the Pipeline surface (change-candidate-stage, pipeline-profile-list), tracing through talent-solutions-api-frontend, mcm-mt,\u2026\n- ship: Automated PR \u2192 prod pipeline. Submit code and walk away \u2014 the system handles CI, review, merge, deploy, and PEM verification via chained /wait-for steps.\n- vm-remote: Remote execution on VM bizhou-ld2.linkedin.biz. Use when building, testing, running heavy commands, or syncing code to the VM. Provides vm-run (sync+build), vm-sync (sync only), and direct SSH.\n- triage-alert: Triage Alert\n- wait-for: Wait for an external condition to be met, polling across sessions. Sets up a durable cron that fires until the condition is satisfied, then auto-cancels.\n- oncall: Master oncall workflow for HP Backend. Orchestrates the full oncall loop from ticket/alert intake through investigation, fix, deployment, worklog, and handoff. Delegates to specialized skills (/triage-alert, /hp-pipeline-pem, /deploy-check, /session\u2026\n- share: Share \u2014 Export Our Patterns for Others\n- find: Find \u2014 Hunt for Answers Across All Sources\n- explore: Explore \u2014 Build a Mental Model of an Unfamiliar Domain\n- implement: Implement \u2014 Execute a Plan Systematically\n- learn: Learn \u2014 Quick-Save an Insight\n- compound: Compound \u2014 Close the Loop\n- export-session: Export Session \u2014 Package a Conversation for Sharing\n- scope: Scope \u2014 Understand the System Before Designing\n- investigate: Investigate \u2014 Find Root Cause\n- eureka: Eureka \u2014 Capture a Breakthrough\n- lix: Manage LinkedIn Experiments (LiX) \u2014 evaluate treatments, create lix keys, create iterations, list keys for an MP\n- aha: Aha \u2014 Capture a Connection\n- kickoff: Kickoff \u2014 Smart Orchestrator\n- recipe: Recipe \u2014 Create or Run Lightweight Automation\n- verify: Verify \u2014 Confirm a Hypothesis Against Internal Sources\n- standup: Generate my daily standup summary:\n- checkpoint: Checkpoint \u2014 Quick Knowledge Sync\n- worklog: Worklog \u2014 Track What You Did\n- research: Research \u2014 Deep Investigation Before Action\n- think: Think \u2014 Open-Ended Thinking Partner\n- integrate: Integrate \u2014 Wire a New Skill Into the Ecosystem\n- scout: Scout \u2014 Learn from Other Agent Systems\n- recipes:ui-session: Record, replay, and compare browser test sessions \u2014 deterministic UI testing with vision-based fallback\n- recipes:vm-login: SSH into a LinkedIn dev VM using interactive tmux session\n- recipes:capture-ui-state: Screenshot + snapshot before/after a change for PR evidence\n- recipes:vm-setup: Bootstrap a new LinkedIn dev VM with Claude Code, code-server, tmux, and knowledge sync\n- recipes:auth-preflight: Check all common auth states and report what needs refreshing before starting work\n- recipes:greenhouse-e2e: Open Greenhouse sandbox, load auth, navigate to integration, verify state\n- recipes:eval-skill: Scaffold, run, and report eval cases for skills and recipes \u2014 regression protection for agent behavior\n- recipes:README: Recipes \u2014 Lightweight Automation\n- recipes:ai-usage-report: Generate executive-level AI tool usage and cost report for any crew, combining adoption + cost + org data\n- recipes:watch-deps-check: Check deployed versions of watched dependencies and surface changes since last validated\n- recipes:k8s-ops: Common Kubernetes operations for LinkedIn KSAP services \u2014 pod management, deployment, debugging, scaling\n- recipes:patent-publication-tracker: Track patent and publication process status. Check patent portal, remind of next steps.\n- recipes:frontend-api-call: Make authenticated frontend API calls using browser cookies, with auto-detection of expiry and prompt for refresh\n- recipes:ui-smoke-test: Post-deploy UI smoke test \u2014 open target URL, verify key elements, screenshot for evidence\n- recipes:test-first-fix: Fix a bug using test-driven workflow \u2014 write failing test FIRST, then implement minimal fix\n- library-specs:fix: Fixing the version set onboarding or version set upgrade\n- library-specs:generate_overview: Use this command to generate an overview for the library\n- library-specs:download: Download library specs for a multiproduct to the local specs directory. Auto-detects the MP from the current repository if no argument is provided.\n- linkedin-dev-workflow:submit: Submit work - commit, push, and create PR with LinkedIn format\n- linkedin-dev-workflow:start: Start new work - create a branch with LinkedIn naming convention\n- linkedin-dev-workflow:pr-check: Check PR status - review CI failures and address PR comments\n- linkedin-framework:download_infra_specs: Download and index infra specs into folder ~/.cache/specs/infraspecs/\n- linkedin-framework:map-infrastructure: Orchestrates infrastructure mapping by downloading specs, spawning an infrastructure-mapper agent to scan the codebase for LinkedIn infrastructure systems, and committing the resulting skill files to .claude/skills/infrastructure/ for automatic disc\u2026\n- linkedin-plugin-creator:setup-plugin: Start Here. Create LinkedIn Claude Code plugins with ACL setup, crew ownership, and automatic taxonomy integration.\n- mae-core:auto-submit: Submit MAE coding agent changes - commit, push, and create PR with requester attribution\n- mae-core:architect: Generate optimal implementation plan using both Claude Code and Codex planners in parallel\n- mae-core:hello: Greet the user with a personalized message\n- library-specs:spec-generation: Use this to understand how to generate spec for libraries\n- linkedin-cli-tools:cli-tools: Use this skill when the user wants to: clone or create a multiproduct (MP) repository, set up a new project, manage MP dependencies, run tests, publish artifacts, deploy services, build or compile code, make REST or gRPC API requests, check service \u2026\n- linkedin-cli-tools:interactive-cli: Interact with interactive CLI programs using tmux sessions for multi-step workflows, prompt handling, and secure credential entry\n- linkedin-cli-tools:launch-tmux: Open a tmux popup (or new terminal window) attached to a tmux session for secure password entry and user interaction\n- linkedin-dev-workflow:linkedin-dev-workflow: LinkedIn company development guidelines and workflows. Use when working with branches, commits, PRs, or needing LinkedIn-specific development guidance.\n- linkedin-framework:infra-specs-expert: Always use this skill when you have any questions about LinkedIn infrastructure systems from their specifications. This expert will answer your questions by searching through the LinkedIn infrastructure specifications repository located at `~/.cache\u2026\n- linkedin-plugin-creator:plugin-creation: This skill should be used when the user wants to create a new Claude Code plugin for LinkedIn's plugin ecosystem. It guides users through the complete plugin creation workflow including: plugin structure design, ACL file setup with crew ownership, c\u2026\n- observe-agent:observe-agent: Query Observe Agent for alert triage, metrics, logs, and service dependencies using natural language. Use when the user asks about alerts, metrics, logs, service dependencies, or wants to investigate production issues.",
+      "skillCount": 76,
+      "isInitial": true
+    },
+    "type": "attachment",
+    "uuid": "892ec141-d513-49db-a24f-05bb89cd8bdc",
+    "timestamp": "2026-04-08T23:36:48.640Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "27db5d4c-f39d-4ca8-b029-b22a12079f15",
+    "version": "2.1.97",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "892ec141-d513-49db-a24f-05bb89cd8bdc",
+    "isSidechain": false,
+    "attachment": {
+      "type": "hook_success",
+      "hookName": "UserPromptSubmit",
+      "toolUseID": "908140f6-219f-4f53-a48d-e636afcc3c64",
+      "hookEvent": "UserPromptSubmit",
+      "content": "SYNC: Pulling latest knowledge...",
+      "stdout": "SYNC: Pulling latest knowledge...\n",
+      "stderr": "",
+      "exitCode": 0,
+      "command": "bash /Users/bizhou/claude-knowledge/sync.sh pull",
+      "durationMs": 1389
+    },
+    "type": "attachment",
+    "uuid": "f77c91ad-f25f-4e0f-9829-2fd5731dd82f",
+    "timestamp": "2026-04-08T23:36:50.030Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "27db5d4c-f39d-4ca8-b029-b22a12079f15",
+    "version": "2.1.97",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "f77c91ad-f25f-4e0f-9829-2fd5731dd82f",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01H8XGHAbAHdzmVEUn6rrtsf",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "thinking",
+          "thinking": "",
+          "signature": "EvYEClkIDBgCKkBmdetDTi9mP2Yncbz0uc3IdVwcd5vYsrzQuuBsIuH/Q2FbbRpNnjkcf/XHgUlpw6nq/nzVBcUMNYtx9nNxuy6OMg9jbGF1ZGUtb3B1cy00LTY4ABIM8xvWdTO7K1UW6ncVGgzjHOVggzuHLQ0q7XoiMAJqt9XMMDu85MVYYwERbqga0jWORAzR+sITinYBZPGYP7i+7+jvzdq9VHH1BuBGPyrKA+gxkX5cOsPfDqMBlss70xAeQkbMXjbw5Ii+1isqGhW+D61qHLLfcWQY08hz0cJ1Q/JvVxhfvaBd+YnkT5l6MhPWUEFA8RYfqIM7p2ltgKMLdx0G1pTy6iTqxDYleIFUN+fCVpxL8NanaE41hu9Gg95vMGMuKDjOlvcd+EiivyNsknms1yqspVX0iMLHNy5lRchm4oCEFsJxqjFcoftH4jj8CWTvZrpydkkxMXnILZect6ec+iYKbhorwftcXmbILh7xLbie0pQctpQ4+h2x7UJSnVXzTz5YdnmjkLnlo7VGBo+rg7k0cUsl2/QvuCbLxvu2GSSJ0N9sKgWdasGSEm9S70jbvwmDlSswhJD/KGVOIZ/QetqfaBUA15aoftUnqmWG5CtYGWzU8DbCktG/grQSwcuimxqcb1QWyokhyJk9LAahEKpdiQ9w6iDgAObCKqXanu2NX2cWbLgoXlZBCq4WeUzwW+o8rmsC3Rb87IopRtLD16K12PFyeKgPnRoAfn5/YRAejl+3fXunMn+Dlhdgjcp0uc6tw9JHYVSsxOQNE38hkCXTTX3X7mivUSgbkXIbYjcbC0spoaahuSpkCb7LOz1UZQn2v5HFGAE="
+        }
+      ],
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 28118,
+        "cache_read_input_tokens": 0,
+        "output_tokens": 214,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 28118
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZsBZS3S4Z83MT7JAzrEf",
+    "type": "assistant",
+    "uuid": "7f7dc949-7448-4363-8c73-6fea519f3191",
+    "timestamp": "2026-04-08T23:36:55.415Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "27db5d4c-f39d-4ca8-b029-b22a12079f15",
+    "version": "2.1.97",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "7f7dc949-7448-4363-8c73-6fea519f3191",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01H8XGHAbAHdzmVEUn6rrtsf",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "Let me pull up all three resources in parallel to understand the oracle eval system."
+        }
+      ],
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 28118,
+        "cache_read_input_tokens": 0,
+        "output_tokens": 214,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 28118
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZsBZS3S4Z83MT7JAzrEf",
+    "type": "assistant",
+    "uuid": "a4ddf7e3-9116-451a-9748-8c99c8a52b9f",
+    "timestamp": "2026-04-08T23:36:56.029Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "27db5d4c-f39d-4ca8-b029-b22a12079f15",
+    "version": "2.1.97",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "a4ddf7e3-9116-451a-9748-8c99c8a52b9f",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01H8XGHAbAHdzmVEUn6rrtsf",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_01W298pZoDSrkyBbchWdb9MH",
+          "name": "ToolSearch",
+          "input": {
+            "query": "select:WebFetch",
+            "max_results": 1
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ],
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 28118,
+        "cache_read_input_tokens": 0,
+        "output_tokens": 214,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 28118
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZsBZS3S4Z83MT7JAzrEf",
+    "type": "assistant",
+    "uuid": "bd6586c0-076d-47e8-88f5-e16cb45c6647",
+    "timestamp": "2026-04-08T23:36:56.254Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "27db5d4c-f39d-4ca8-b029-b22a12079f15",
+    "version": "2.1.97",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "bd6586c0-076d-47e8-88f5-e16cb45c6647",
+    "isSidechain": false,
+    "promptId": "8aeac3d1-6d95-4fb2-a104-446615e875c4",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "toolu_01W298pZoDSrkyBbchWdb9MH",
+          "content": [
+            {
+              "type": "tool_reference",
+              "tool_name": "WebFetch"
+            }
+          ]
+        }
+      ]
+    },
+    "uuid": "4605e73a-e65f-4e0f-8f47-34ef75775613",
+    "timestamp": "2026-04-08T23:36:56.379Z",
+    "toolUseResult": {
+      "matches": [
+        "WebFetch"
+      ],
+      "query": "select:WebFetch",
+      "total_deferred_tools": 38
+    },
+    "sourceToolAssistantUUID": "bd6586c0-076d-47e8-88f5-e16cb45c6647",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "27db5d4c-f39d-4ca8-b029-b22a12079f15",
+    "version": "2.1.97",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "4605e73a-e65f-4e0f-8f47-34ef75775613",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01XXZAwYrAig2KAuxke8476n",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "thinking",
+          "thinking": "",
+          "signature": "EqoCClkIDBgCKkD80j1DvoTFxleZy8BhAHV/JuQIpVjbG24X0eyRvVyXhAXe6hT3Xh0j2SQ4l0riizNI9JiuIYgEtfwW1/gOquLgMg9jbGF1ZGUtb3B1cy00LTY4ABIMbd5hakBWp/eE0tTtGgwuvLWn6DQH9vQ+YQUiMGShnFKD/lqKKmwZYNAK4DGrxXJrIUvLIOH6I8505D+L6NkFsm7+BlicPCL8PQ8GACp/abQ/DXH1yIE5ouFKfIccbpr1LxdhMDzXmsT/vTzilrXhDC5S+SGEz/F0ejgv4qIqfyw39vxx962OgiIdCMH6jngotuy4JStRus4qu0F8BGwFlhvSEnrED0qiE1FgTkN1Yf6rtjAxdL81qC45F64UjrD0HH+fU89K1pcLq2hChBgB"
+        }
+      ],
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 734,
+        "cache_read_input_tokens": 28118,
+        "output_tokens": 484,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 734
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZsBZu6cw8xN2igu4XBb3",
+    "type": "assistant",
+    "uuid": "708a964b-2ed3-4dba-ad59-56e5af69d5a9",
+    "timestamp": "2026-04-08T23:36:59.041Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "27db5d4c-f39d-4ca8-b029-b22a12079f15",
+    "version": "2.1.97",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "708a964b-2ed3-4dba-ad59-56e5af69d5a9",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01XXZAwYrAig2KAuxke8476n",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "Let me fetch all three resources in parallel."
+        }
+      ],
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 734,
+        "cache_read_input_tokens": 28118,
+        "output_tokens": 484,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 734
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZsBZu6cw8xN2igu4XBb3",
+    "type": "assistant",
+    "uuid": "62a96643-caba-47fb-9fdb-43945d6d76cd",
+    "timestamp": "2026-04-08T23:36:59.573Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "27db5d4c-f39d-4ca8-b029-b22a12079f15",
+    "version": "2.1.97",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "62a96643-caba-47fb-9fdb-43945d6d76cd",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01XXZAwYrAig2KAuxke8476n",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_01G3VTY5vQcMEMyj8JzYqrkA",
+          "name": "WebFetch",
+          "input": {
+            "url": "http://100.76.135.176/self-improving-oracle.html",
+            "prompt": "Extract the complete content of these slides about the self-improving oracle. I need: \n1. The overall architecture and approach\n2. How the eval system works (metrics, methodology, feedback loops)\n3. What \"self-improving\" means in this context\n4. Any specific techniques, algorithms, or frameworks mentioned\n5. How they measure quality/performance\n6. Any comparison with baseline approaches\n7. Key takeaways and results\nBe comprehensive - capture all technical details, diagrams described, and specific numbers/metrics mentioned."
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ],
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 734,
+        "cache_read_input_tokens": 28118,
+        "output_tokens": 484,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 734
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZsBZu6cw8xN2igu4XBb3",
+    "type": "assistant",
+    "uuid": "1f7aec6d-f83f-4096-8fa8-4336fab174f2",
+    "timestamp": "2026-04-08T23:37:03.009Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "27db5d4c-f39d-4ca8-b029-b22a12079f15",
+    "version": "2.1.97",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "1f7aec6d-f83f-4096-8fa8-4336fab174f2",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01XXZAwYrAig2KAuxke8476n",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_01AgsDNMtE4NE66AcSLwXAmM",
+          "name": "Bash",
+          "input": {
+            "command": "gh pr view 265 --repo linkedin-multiproduct/candidate-quality-oracle --json title,body,files,additions,deletions,comments,reviews,state,mergedAt,author 2>&1 | head -500",
+            "description": "Fetch PR #265 details from candidate-quality-oracle"
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ],
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 734,
+        "cache_read_input_tokens": 28118,
+        "output_tokens": 484,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 734
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZsBZu6cw8xN2igu4XBb3",
+    "type": "assistant",
+    "uuid": "5063cde1-2cf7-4e7f-a8a2-8dec92401cfa",
+    "timestamp": "2026-04-08T23:37:03.899Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "27db5d4c-f39d-4ca8-b029-b22a12079f15",
+    "version": "2.1.97",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "5063cde1-2cf7-4e7f-a8a2-8dec92401cfa",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01XXZAwYrAig2KAuxke8476n",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_01U6p9vVwwzq5HHH5fQaUsCM",
+          "name": "Bash",
+          "input": {
+            "command": "gh pr view 300 --repo linkedin-multiproduct/candidate-quality-oracle --json title,body,files,additions,deletions,comments,reviews,state,mergedAt,author 2>&1 | head -500",
+            "description": "Fetch PR #300 details from candidate-quality-oracle"
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ],
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 734,
+        "cache_read_input_tokens": 28118,
+        "output_tokens": 484,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 734
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZsBZu6cw8xN2igu4XBb3",
+    "type": "assistant",
+    "uuid": "446d357c-e99a-4321-bc49-60b34ad5cde9",
+    "timestamp": "2026-04-08T23:37:04.765Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "27db5d4c-f39d-4ca8-b029-b22a12079f15",
+    "version": "2.1.97",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "1f7aec6d-f83f-4096-8fa8-4336fab174f2",
+    "isSidechain": false,
+    "promptId": "8aeac3d1-6d95-4fb2-a104-446615e875c4",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "content": "timeout of 60000ms exceeded",
+          "is_error": true,
+          "tool_use_id": "toolu_01G3VTY5vQcMEMyj8JzYqrkA"
+        }
+      ]
+    },
+    "uuid": "de1b9c81-f1c8-44f2-b308-d2bf77507e49",
+    "timestamp": "2026-04-08T23:38:07.779Z",
+    "toolUseResult": "Error: timeout of 60000ms exceeded",
+    "sourceToolAssistantUUID": "1f7aec6d-f83f-4096-8fa8-4336fab174f2",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "27db5d4c-f39d-4ca8-b029-b22a12079f15",
+    "version": "2.1.97",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "5063cde1-2cf7-4e7f-a8a2-8dec92401cfa",
+    "isSidechain": false,
+    "promptId": "8aeac3d1-6d95-4fb2-a104-446615e875c4",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "tool_use_id": "toolu_01AgsDNMtE4NE66AcSLwXAmM",
+          "type": "tool_result",
+          "content": "<persisted-output>\nOutput too large (34KB). Full output saved to: /Users/bizhou/.claude/projects/-Users-bizhou/27db5d4c-f39d-4ca8-b029-b22a12079f15/tool-results/bivmthi61.txt\n\nPreview (first 2KB):\n{\"additions\":6637,\"author\":{\"id\":\"U_kgDOClGfbw\",\"is_bot\":false,\"login\":\"aamil_LinkedIn\",\"name\":\"Ayoub Amil\"},\"body\":\"# Problem & Solution Overview\\n\\nThis PR adds a new system for measuring and improving Oracle model quality. It is a large diff but does not touch any existing files: every change is additive. It allows users to experiment and find existing deficiencies in the system and correct them.\\n\\nThe end result: **run `/improve-oracle` and Claude works to produce an HTML report showing Oracle's agreement rate, failure breakdown by dimension, and a prioritized list of fixes \u2014 then autonomously applies them, measures the improvement, and repeats this in loop. The final report summarizes all accepted fixes across loop iterations and their cumulative impact on agreement rates.**\\n\\n**Two new components:**\\n\\n1. **`oracle_quality/` pipeline** (`oracle-workspace/src/oracle_quality/`) \u2014 a standalone measurement system that takes a golden dataset (human annotations + Oracle scores) and produces `structured_results.json` with agreement rate, Cohen's kappa, and per-dimension failure analysis. This pipeline includes all the code Claude interacts with and uses.\\n2. **`improve-oracle` agentic loop** (`.claude/skills/improve-oracle/`) \u2014 a Claude Code skill that orchestrates the full improvement loop: run pipeline \u2192 diagnose failures \u2192 apply fixes \u2192 measure \u2192 repeat\\n\\n# Testing Done\\n\\n## Full agentic loop \u2014 3 iterations\\n\\n**Experiment**: `/shared/public/sharing/candidate-quality-oracle/improve_oracle/experiments/2026-03-05_oracle_v1_2_test_oracle_agent`\\nSetup: 100-row golden dataset, 5 annotators, `oracle_v1`, GPT-o3 judge, `--judge-all-dims` (all 12 dimensions judged per row).\\n\\n### Results after 3 loops (vs baseline, min-aggregation dimensions)\\n\\n| Dimension | Baseline | After Loop 2 | \u0394 Agreement |\\n|---|---|---|---|\\n| **Aggregated Score** | 50% | 43.5% | \ud83d\udd34 \u22126.5% |\\n| Title *(min)* | 48% | 60% | \ud83d\udfe2 +12% |\\n| Role Type *(min)* | 80% | 76% | \ud83d\udd34 \u22124% |\\n| Industry Mat\n...\n</persisted-output>",
+          "is_error": false
+        }
+      ]
+    },
+    "uuid": "76c211d4-348d-406f-9bc4-1ef86f78e302",
+    "timestamp": "2026-04-08T23:38:09.412Z",
+    "toolUseResult": {
+      "stdout": "{\"additions\":6637,\"author\":{\"id\":\"U_kgDOClGfbw\",\"is_bot\":false,\"login\":\"aamil_LinkedIn\",\"name\":\"Ayoub Amil\"},\"body\":\"# Problem & Solution Overview\\n\\nThis PR adds a new system for measuring and improving Oracle model quality. It is a large diff but does not touch any existing files: every change is additive. It allows users to experiment and find existing deficiencies in the system and correct them.\\n\\nThe end result: **run `/improve-oracle` and Claude works to produce an HTML report showing Oracle's agreement rate, failure breakdown by dimension, and a prioritized list of fixes \u2014 then autonomously applies them, measures the improvement, and repeats this in loop. The final report summarizes all accepted fixes across loop iterations and their cumulative impact on agreement rates.**\\n\\n**Two new components:**\\n\\n1. **`oracle_quality/` pipeline** (`oracle-workspace/src/oracle_quality/`) \u2014 a standalone measurement system that takes a golden dataset (human annotations + Oracle scores) and produces `structured_results.json` with agreement rate, Cohen's kappa, and per-dimension failure analysis. This pipeline includes all the code Claude interacts with and uses.\\n2. **`improve-oracle` agentic loop** (`.claude/skills/improve-oracle/`) \u2014 a Claude Code skill that orchestrates the full improvement loop: run pipeline \u2192 diagnose failures \u2192 apply fixes \u2192 measure \u2192 repeat\\n\\n# Testing Done\\n\\n## Full agentic loop \u2014 3 iterations\\n\\n**Experiment**: `/shared/public/sharing/candidate-quality-oracle/improve_oracle/experiments/2026-03-05_oracle_v1_2_test_oracle_agent`\\nSetup: 100-row golden dataset, 5 annotators, `oracle_v1`, GPT-o3 judge, `--judge-all-dims` (all 12 dimensions judged per row).\\n\\n### Results after 3 loops (vs baseline, min-aggregation dimensions)\\n\\n| Dimension | Baseline | After Loop 2 | \u0394 Agreement |\\n|---|---|---|---|\\n| **Aggregated Score** | 50% | 43.5% | \ud83d\udd34 \u22126.5% |\\n| Title *(min)* | 48% | 60% | \ud83d\udfe2 +12% |\\n| Role Type *(min)* | 80% | 76% | \ud83d\udd34 \u22124% |\\n| Industry Match *(min)* | 25% | 70% | \ud83d\udfe2 +45% |\\n| Hard Skills Required *(min)* | 44% | 43% | \u26aa \u22121% |\\n| Education *(min)* | 57% | 56% | \u26aa \u22121% |\\n\\n> The Claude loops specifically targeted industry match and title score. Overall regression (\u22126.5%) and individual regressions (Role Type, Education) are attributed to single-run stochasticity \u2014 the baseline used 5 consolidated oracle runs while each loop used 1. Both targeted dimensions improved significantly.\\n\\n\\n**How the results were achieved:**\\n\\n- **Loop 1** (`review_prompt`) \u2014 diagnosed `industry_match_score` as the largest gap (25%, \u03ba=0.048). Clarified the Industry null rule: Oracle was scoring industry by inferring from role/customers when humans correctly returned null. Fix: added explicit rules to return null when hiring company industry is not stated. Result: industry agreement 25% \u2192 67%.\\n- **Loop 2** (`review_prompt`) \u2014 diagnosed `title_score` as lowest-kappa dim after loop 1 (43%, \u03ba=0.261). Added the exact-match rule: identical titles (case-insensitive) must receive score 4. Result: title 48% \u2192 60%, industry cumulative gain 25% \u2192 70%.\\n- **Loop 3** (`review_golden_data`) \u2014 `llm_error_prompt_gap = 0` across both loops. Dominant signal is `annotation_error` (simulated kappa gain **+0.313** avg). Two patterns identified: (1) education scored when only preferred not required (33 cases), (2) hard skills 0% match given score 2 (30 cases). No new oracle scores (re-annotation needed to measure improvement).\\n\\nFull HTML reports (open from NFS):\\n- Baseline: `oracle_quality_baseline/oracle_quality_report.html`\\n- Loop 1: `loop_1_industry_null_fix/oracle_quality/oracle_quality_report.html`\\n- Loop 2: `loop_2_title_exact_match_rule/oracle_quality/oracle_quality_report.html`\\n- Loop 3: No report (no new oracle scores); see `loop_3_annotation_calibration/loop_summary.md` and `loop_3_annotation_calibration/annotation_calibration_notes.md`\\n\\n---\\n\\n### Baseline\\n\\n**Three-way split**: Both Agree 7 | Masked Agreement 40 | Score Disagreements 45 (of 92 evaluable rows)\\n**Overall**: agreement **50%**, kappa **0.491**\\n\\n**Judge verdict summary** (row-level, aggregated over min-aggregation dims; judge ran on all 12 dims):\\n| Oracle Correct | Human Correct | Policy Ambiguous | Total Classified |\\n|---|---|---|---|\\n| 43 | 34 | 4 | 81 |\\n\\nWorst dimensions: `industry_match_score` (agreement **25%**, \u03ba=0.048), `title_score` (agreement **48%**, \u03ba=0.323), `job_hopper_score` (agreement **38%**, \u03ba=0.179).\\n\\n**Failure type breakdown** (across all dimension-level verdicts):\\n| Failure Type | Count | % of non-correct |\\n|---|---|---|\\n| `annotation_error` | 230 | 59% |\\n| `llm_error_model` | 151 | 39% |\\n| `policy_gap` | 12 | 3% |\\n| `llm_error_prompt_gap` | **0** | \u2014 |\\n\\n---\\n\\n### Loop 1 \u2014 Industry null fix\\n\\n**Sub-skill**: `review_prompt.md`\\n\\n**Fix**: Added 2 explicit rules to the Industry Score section of the prompt:\\n1. If hiring company's industry is not stated and cannot be definitively determined, return null. Do NOT infer from job function, requirements, target customers, or market focus.\\n2. Evaluate candidate's industry against the hiring company's industry \u2014 not the industry of the company's customers or the role's domain knowledge requirements.\\n\\n**Effect**: Oracle null rate for industry **21% \u2192 66%** (human baseline ~88%). Residual gap explains partial improvement.\\n\\n| Metric | Baseline | Loop 1 | \u0394 |\\n|---|---|---|---|\\n| Agreement (overall) | 50% | 44.6% | **\u22125.4%** |\\n| Kappa (overall) | 0.491 | 0.481 | \u22120.010 |\\n| `industry_match_score` agreement | 25% | **67%** | \ud83d\udfe2 **+42%** |\\n| `industry_match_score` kappa | 0.048 | **0.230** | \ud83d\udfe2 **+0.182** |\\n\\n> Overall regression attributed to single-run stochasticity (baseline = 5 consolidated oracle runs, loop 1 = 1 run). Kappa delta is small (\u22120.010).\\n\\n---\\n\\n### Loop 2 \u2014 Title exact match rule\\n\\n**Sub-skill**: `review_prompt.md`\\n\\n**Fix**: Added 3 lines to the Title Score section of the prompt:\\n1. Score 4 does NOT require identical title string\\n2. RULE \u2014 Exact title match (case-insensitive) requires score 4\\n3. Technology stack differences alone do not reduce 4 to 3\\n\\n**Three-way split** (92 evaluable rows): Both Agree 11 | Masked Agreement 30 | Score Disagreements 51\\n\\n| Metric | Baseline | Loop 2 | \u0394 vs baseline |\\n|---|---|---|---|\\n| Agreement (overall) | 50% | 43.5% | **\u22126.5%** |\\n| Kappa (overall) | 0.491 | 0.470 | \u22120.021 |\\n| `title_score` agreement | 48% | **60%** | \ud83d\udfe2 **+12%** |\\n| `title_score` kappa | 0.323 | **0.435** | \ud83d\udfe2 **+0.112** |\\n| `industry_match_score` agreement | 25% | **70%** | \ud83d\udfe2 **+45%** |\\n| `industry_match_score` kappa | 0.048 | **0.254** | \ud83d\udfe2 **+0.206** |\\n\\n> Overall regression attributed to single-run stochasticity (baseline = 5 consolidated oracle runs, loop 2 = 1 run). Kappa delta is small (\u22120.021).\\n\\n**Judge verdict summary** (row-level, aggregated over min-aggregation dims; judge ran on all 12 dims):\\n| Oracle Correct | Human Correct | Policy Ambiguous | Total Classified |\\n|---|---|---|---|\\n| 41 | 40 | 2 | 83 |\\n\\n---\\n\\n### Loop 3 \u2014 Annotation calibration\\n\\n**Sub-skill**: `review_golden_data.md`\\n\\nNo oracle.py re-score (annotation errors require re-annotation by humans). Two patterns identified:\\n\\n- **Pattern 1 (Education \u2014 preferred vs required, 33 cases)**: Annotators assign numeric scores when education is listed as PREFERRED rather than required. Policy: score education only when it is a stated requirement; preferred/not-mentioned \u2192 null. Oracle correctly returned null; annotators gave 3-4.\\n- **Pattern 2 (Hard Skills \u2014 0% match scored as 2, 30 cases)**: Annotators give score 2 when candidates meet 0% of required skills. Score 1 requires zero domain overlap; score 2 requires >=30% match. Oracle correctly gave 1; annotators gave 2.\\n\\n**Simulated kappa gain from fixing annotation errors**: avg **+0.313** across 5 annotators.\\n\\n---\\n\\n## Smoke test\\n\\n**Experiment**: `/shared/public/sharing/candidate-quality-oracle/improve_oracle/experiments/2026-03-04_oracle_v1_1_test_oracle_agent`\\n10-row golden dataset, 5 annotators, 5 Oracle versions, GPT-o3 judge. Pipeline ran end-to-end and produced `structured_results.json` with all expected fields (agreement, kappa, failure breakdown, simulation).\\n\\n## Other\\n- Dry-run (`--skip-judge`) verified \u2014 fast sanity check path works.\\n- HTML report generation (`gen_report.py`): tested end-to-end. Reports include \u0394 vs baseline column, score distribution shift, and failure type breakdown.\\n- `--judge-all-dims`: tested in the live experiment (all 12 dimensions judged per row).\\n\\n---\\n\\n## System Design\\n\\n### oracle_quality pipeline\\n\\nThe pipeline runs in three stages:\\n\\n**Stage 1 \u2014 Metrics**: Computes agreement rate, Cohen's kappa, and precision/recall per class for every dimension. Uses majority-vote aggregation for both Oracle and human scores (mean-proximity tie-breaking), so comparisons are always majority-vs-majority.\\n\\n**Stage 2 \u2014 Judge** (optional, skipped with `--skip-judge`): Sends every row to a judge model for every dimension, not just disagreements. The judge sees the recruiter inputs and hiring intent, candidate profile, Oracle's score + reasoning, and the human majority score, and returns a verdict: who was right and why. Running on all rows (not just disagreements) gives the judge full context to detect annotation patterns and provides a regression baseline for subsequent loops.\\n\\n**Stage 3 \u2014 Analysis**: Classifies failures into four types (`llm_error_prompt_gap`, `llm_error_model`, `annotation_error`, `policy_gap`), simulates agreement improvements per failure type, and writes two output files:\\n- `judge_verdicts.json` \u2014 raw judge output, one record per row, with `went_wrong` as a list of dimension-level verdicts\\n- `classified_verdicts.json` \u2014 `FailureClassifier` explodes each row's `went_wrong` list into one flat record per (row \u00d7 dimension). This enables filtering by `failure_type` and grouping by `unique_identifier` to detect compound failures across dimensions on the same row.\\n- `structured_results.json` \u2014 self-contained document read by both Claude and `gen_report.py`. Embeds a curated subset of high-impact cases (top score-changing cases per minimum-aggregation dimension) with judge verdicts and full oracle input context. Sub-skills also read `classified_verdicts.json` directly when they need all cases of a failure type, not just the top-ranked ones.\\n\\n### improve-oracle agentic loop\\n\\nOrchestrated by `.claude/skills/improve-oracle/orchestrate.md`, which calls four sub-skills:\\n\\n| Sub-skill | Failure types | Action |\\n|---|---|---|\\n| `review_prompt` | `llm_error_prompt_gap`, `llm_error_model` | Edits `.jinja2` prompt for fixable cases; surfaces `llm_error_model` cases as signal that the underlying model may need to change; re-runs pipeline, measures delta agreement |\\n| `review_golden_data` | `annotation_error` | Produces calibration notes for annotation team |\\n| `review_policy` | `policy_gap` | Drafts policy language, writes to Google Doc on approval |\\n| `review_aggregation` | \u2014 | Compares aggregation functions; runs after main loop converges |\\n\\n**Each loop iteration: save prompt snapshot \u2192 diagnose dominant failure type (by simulated delta agreement) \u2192 Claude reads cases and applies fix \u2192 re-run full pipeline (with judge, for regression detection) \u2192 present before/after to user \u2192 keep or revert \u2192 next iteration.**\\n\\nAggregation function improvement (review_aggregation.md) \u2014 not explored in this PR.\\nThe sub-skill exists in .claude/skills/improve-oracle/review_aggregation.md and experiments with different aggregation functions/model architectures to maximize metrics. It runs separately after the main prompt-fix loop converges. Deferred to a future iteration.\\n\\n---\\n\\n## Key Design Decisions\\n\\nThese are documented here because they represent choices that could reasonably go differently \u2014 future iterations can revisit any of them and more (this list is not comprehensive):\\n\\n**1. Holistic judge (all rows, not just disagreements)**\\nThe judge runs on every row. This costs more per run but gives a fuller picture: annotation patterns are visible even where Oracle happens to agree with humans, and regressions after a prompt fix are detectable across the full distribution. The alternative (judge only disagreements) is cheaper but blind to regressions.\\n\\n**2. Majority-vs-majority comparison**\\nOracle's score is compared to the human majority vote, not individual annotators. This matches how the aggregated score is computed in production and removes the noise of individual annotator variance from the agreement calculation.\\n\\n**3. Loop ordering: fix application order vs. dependency chain**\\nThe dependency chain runs policy \u2192 annotations \u2192 prompt: policy is the foundation that annotations and the prompt both derive from. But the fix application order runs in the opposite direction \u2014 annotations first, then prompt, then policy last \u2014 because policy changes are expensive (they require re-annotation) and are assumed correct in loop 1. `review_policy` is only invoked from loop 2 onwards when `policy_gap` cases dominate and the other two levers are exhausted.\\n\\n**4. Failure classification as a starting point, not a hard rule**\\nThe `llm_error_prompt_gap` / `llm_error_model` / `annotation_error` / `policy_gap` taxonomy comes from the judge and is an approximate signal. Claude reads the actual cases and the judge's reasoning to make the real call about what to fix. The classification surfaces the signal; it does not replace judgment.\\n\\n**5. Claude as the quality gate, not a confidence threshold**\\nThere is no hard confidence threshold that auto-accepts or auto-rejects changes. Claude reads the judge's reasoning, the case context, and the delta agreement, and decides whether a fix is solid before applying it. The user approves before anything is written (prompt edits) or committed (policy changes).\\n\\nClaude's primary input is `structured_results.json` \u2014 a self-contained document designed to be read in one pass. It includes overall metrics, per-dimension kappa, the judge summary, and a curated set of high-impact disagreement cases per dimension, each with full oracle input context and the judge's classified verdict embedded directly.\\n\\nFor deeper analysis, sub-skills (`review_prompt`, `review_golden_data`) also read `classified_verdicts.json` directly. This is the full exploded judge output \u2014 one record per (row \u00d7 dimension) \u2014 and gives Claude access to every case of a given failure type, not just the top-ranked ones embedded in `structured_results.json`. Cases can be grouped by `unique_identifier` to detect compound failures where a single row has different failure types across dimensions simultaneously.\\n\\n**6. Judge scope: 5 dims by default, all 12 with `--judge-all-dims`**\\nThe default judges only the 5 minimum-aggregation dimensions (the ones that feed into the aggregated score). This covers the primary quality signal at ~40% of the cost of judging all 12. `--judge-all-dims` is available when you want a fuller picture of annotation quality on non-scoring dimensions. The orchestrator asks which to use at setup time.\\n\\nNote: `structured_results.json` always embeds cases from the 5 minimum-aggregation dimensions only, regardless of `--judge-all-dims`. When judging all 12, the extra verdicts are available in `classified_verdicts.json` \u2014 another reason sub-skills read it directly.\\n\\n**7. Quick validation before full re-score**\\nAfter applying a prompt fix, Claude re-scores 3\u20135 specific disagreement cases with oracle.py before running the full pipeline. If the quick check fails, the fix is reverted without spending the full judge budget.\\n\\n**8. Per-loop prompt snapshot**\\nBefore each oracle.py run, a copy of the prompt template as it exists at that moment is saved to the loop folder (`loop_N_<fix>/oracle_prompt_vM_loop_N.jinja2`), preserving the original filename with the loop number appended. The snapshot is taken before the run \u2014 not after \u2014 so it records exactly what the oracle run consumed. This makes each loop folder self-contained and reproducible without relying on git history.\\n\\n**9. Experiment config logging**\\nAt session initialization, all user-provided parameters (oracle version, judge model, loop count, sample count, golden data path, etc.) are written to `experiment_config.json` in the experiment directory. This makes every experiment reproducible: you can see exactly what was run and re-run it later.\\n\\n---\\n\\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\",\"comments\":[{\"id\":\"IC_kwDOPu5nNM7w3vA_\",\"author\":{\"login\":\"svc-mae-review-3_LinkedIn\"},\"authorAssociation\":\"MEMBER\",\"body\":\"## Code Review Summary\\nThis PR adds a comprehensive oracle quality measurement and improvement system (6633 lines, all additive). The pipeline design is well-structured with clear separation of stages (metrics, judge, analysis) and the agentic improvement loop is thoughtfully designed. Three issues were found related to null-safety in report generation and incorrect dimension aggregation when using subset judge modes.\\n\\n**Files reviewed:** 22\\n**Issues found:** 3\\n\\n[bug] `gen_report.py:191` \u2014 `precision` formatted with `:.2f` without None/NaN guard, will crash report generation when a score class has no predicted instances. Recall on line 189 already has the guard. (claude and codex review)\\n[logic_error] `judge_pipeline.py:464-469` \u2014 `_build_prompt()` computes `human_majority_agg` from `self.dimensions_to_judge` instead of the full `SCORING_DIMENSIONS`. When `--judge-dims` passes a subset, the aggregated score shown to the judge is incorrect. (codex review)\\n[bug] `judge_pipeline.py:279` \u2014 Prompt hardcodes 'minimum over 5 scoring dimensions' but `{n_dims}` can differ when `--judge-dims` is used, creating a contradiction for the judge LLM. (codex review)\\n\\n_Reviewed by Claude Code and Codex_\",\"createdAt\":\"2026-03-11T18:10:03Z\",\"includesCreatedEdit\":false,\"isMinimized\":false,\"minimizedReason\":\"\",\"reactionGroups\":[],\"url\":\"https://github.com/linkedin-multiproduct/candidate-quality-oracle/pull/265#issuecomment-4041142335\",\"viewerDidAuthor\":false},{\"id\":\"IC_kwDOPu5nNM7w_EAM\",\"author\":{\"login\":\"svc-mae-review-5_LinkedIn\"},\"authorAssociation\":\"MEMBER\",\"body\":\"## Code Review Summary\\nThis PR adds a well-structured oracle quality measurement and agentic improvement system (6639 lines, all additive). The pipeline architecture with clear stage separation (metrics \u2192 judge \u2192 analysis) and the improvement loop design are solid. Two new issues found in dimension name handling and aggregation scope, plus a documentation gap.\\n\\n**Files reviewed:** 22\\n**Issues found:** 3\\n\\n[bug] `metrics_simulator.py:227` \u2014 `simulate_by_failure_type()` uses raw dimension names from classified verdicts (e.g. 'Title') without calling `normalize_dimension_name()`, so `llm_col(dim)` produces non-existent column names like `Title_LLM`. The lookup silently skips (line 230-231), undercounting simulated fixes and biasing `delta_kappa` toward zero. `pipeline.py:595` already normalizes correctly. (codex review)\\n[logic_error] `pipeline.py:541` \u2014 `_compute_report_stats()` computes 'Both Agree' over only `MINIMUM_AGGREGATION_DIMS`. For `critical_noncritical` aggregation, extra dimensions (location, years_of_experience, etc.) affect the aggregated score but aren't checked, overcounting 'Both Agree' and making the three-way split inconsistent. (codex review)\\n[claude_md_violation] `CLAUDE.md` \u2014 Per the repo's own CLAUDE.md rules (lines 170-186), new workflows/commands should be documented in CLAUDE.md. This PR adds two mint commands and an entire `oracle_quality/` pipeline but only adds `mint idev` auth instructions. (claude review)\\n\\n_Reviewed by Claude Code and Codex_\",\"createdAt\":\"2026-03-12T00:23:21Z\",\"includesCreatedEdit\":false,\"isMinimized\":false,\"minimizedReason\":\"\",\"reactionGroups\":[],\"url\":\"https://github.com/linkedin-multiproduct/candidate-quality-oracle/pull/265#issuecomment-4043063308\",\"viewerDidAuthor\":false},{\"id\":\"IC_kwDOPu5nNM7x1MEw\",\"author\":{\"login\":\"svc-gha-ci-bot_LinkedIn\"},\"authorAssociation\":\"MEMBER\",\"body\":\"## :running: Post-merge Started\\n[Post-merge #3288](https://github.com/linkedin-multiproduct/candidate-quality-oracle/actions/runs/23065555756)\\n\",\"createdAt\":\"2026-03-13T18:44:44Z\",\"includesCreatedEdit\":false,\"isMinimized\":false,\"minimizedReason\":\"\",\"reactionGroups\":[],\"url\":\"https://github.com/linkedin-multiproduct/candidate-quality-oracle/pull/265#issuecomment-4057252144\",\"viewerDidAuthor\":false},{\"id\":\"IC_kwDOPu5nNM7x1YVQ\",\"author\":{\"login\":\"svc-gha-ci-bot_LinkedIn\"},\"authorAssociation\":\"MEMBER\",\"body\":\"## :tada: Post-merge Succeeded\\n[Post-merge #3288](https://github.com/linkedin-multiproduct/candidate-quality-oracle/actions/runs/23065555756)\\n\\nPublished version: candidate-quality-oracle: [0.0.188](https://go/github/crtd%20candidate-quality-oracle)\\n\",\"createdAt\":\"2026-03-13T18:54:49Z\",\"includesCreatedEdit\":false,\"isMinimized\":false,\"minimizedReason\":\"\",\"reactionGroups\":[],\"url\":\"https://github.com/linkedin-multiproduct/candidate-quality-oracle/pull/265#issuecomment-4057302352\",\"viewerDidAuthor\":false}],\"deletions\":0,\"files\":[{\"path\":\".claude/skills/improve-oracle/SKILL.md\",\"additions\":35,\"deletions\":0},{\"path\":\".claude/skills/improve-oracle/orchestrate.md\",\"additions\":840,\"deletions\":0},{\"path\":\".claude/skills/improve-oracle/prepare_benchmarking_data.md\",\"additions\":120,\"deletions\":0},{\"path\":\".claude/skills/improve-oracle/review_aggregation.md\",\"additions\":69,\"deletions\":0},{\"path\":\".claude/skills/improve-oracle/review_golden_data.md\",\"additions\":90,\"deletions\":0},{\"path\":\".claude/skills/improve-oracle/review_policy.md\",\"additions\":89,\"deletions\":0},{\"path\":\".claude/skills/improve-oracle/review_prompt.md\",\"additions\":112,\"deletions\":0},{\"path\":\"CLAUDE.md\",\"additions\":12,\"deletions\":0},{\"path\":\"oracle-workspace/src/oracle_quality/README.md\",\"additions\":657,\"deletions\":0},{\"path\":\"oracle-workspace/src/oracle_quality/__init__.py\",\"additions\":0,\"deletions\":0},{\"path\":\"oracle-workspace/src/oracle_quality/__main__.py\",\"additions\":193,\"deletions\":0},{\"path\":\"oracle-workspace/src/oracle_quality/build_golden_data_patched.py\",\"additions\":156,\"deletions\":0},{\"path\":\"oracle-workspace/src/oracle_quality/constants.py\",\"additions\":161,\"deletions\":0},{\"path\":\"oracle-workspace/src/oracle_quality/data_loader.py\",\"additions\":175,\"deletions\":0},{\"path\":\"oracle-workspace/src/oracle_quality/disagreement_analyzer.py\",\"additions\":719,\"deletions\":0},{\"path\":\"oracle-workspace/src/oracle_quality/failure_classifier.py\",\"additions\":220,\"deletions\":0},{\"path\":\"oracle-workspace/src/oracle_quality/gen_report.py\",\"additions\":1029,\"deletions\":0},{\"path\":\"oracle-workspace/src/oracle_quality/judge_pipeline.py\",\"additions\":621,\"deletions\":0},{\"path\":\"oracle-workspace/src/oracle_quality/metrics_simulator.py\",\"additions\":291,\"deletions\":0},{\"path\":\"oracle-workspace/src/oracle_quality/pipeline.py\",\"additions\":758,\"deletions\":0},{\"path\":\"oracle-workspace/src/oracle_quality/preprocess_benchmarking_data.py\",\"additions\":288,\"deletions\":0},{\"path\":\"product-spec.json\",\"additions\":2,\"deletions\":0}],\"mergedAt\":\"2026-03-13T18:43:15Z\",\"reviews\":[{\"id\":\"PRR_kwDOPu5nNM7pjDzk\",\"author\":{\"login\":\"copilot-pull-request-reviewer\"},\"authorAssociation\":\"NONE\",\"body\":\"Copilot encountered an error and was unable to review this pull request. You can try again by re-requesting a review.\",\"submittedAt\":\"2026-03-09T21:19:43Z\",\"includesCreatedEdit\":false,\"reactionGroups\":[],\"state\":\"COMMENTED\",\"commit\":{\"oid\":\"af61ed9b50966a58b25543a754a1d7c8ba7a5e69\"}},{\"id\":\"PRR_kwDOPu5nNM7pkiLD\",\"author\":{\"login\":\"copilot-pull-request-reviewer\"},\"authorAssociation\":\"NONE\",\"body\":\"## Pull request overview\\n\\nCopilot reviewed 21 out of 22 changed files in this pull request and generated 10 comments.\\n\\n\\n\\n\\n\\n---\\n\\n\ud83d\udca1 <a href=\\\"/linkedin-multiproduct/candidate-quality-oracle/new/master?filename=.github/instructions/*.instructions.md\\\" class=\\\"Link--inTextBlock\\\" target=\\\"_blank\\\" rel=\\\"noopener noreferrer\\\">Add Copilot custom instructions</a> for smarter, more guided reviews. <a href=\\\"https://docs.github.com/en/copilot/customizing-copilot/adding-repository-custom-instructions-for-github-copilot\\\" class=\\\"Link--inTextBlock\\\" target=\\\"_blank\\\" rel=\\\"noopener noreferrer\\\">Learn how to get started</a>.\",\"submittedAt\":\"2026-03-09T22:47:08Z\",\"includesCreatedEdit\":false,\"reactionGroups\":[],\"state\":\"COMMENTED\",\"commit\":{\"oid\":\"7501653a3ddadd8ce0ac05a7d1df30654ef4f96a\"}},{\"id\":\"PRR_kwDOPu5nNM7plY0v\",\"author\":{\"login\":\"copilot-pull-request-reviewer\"},\"authorAssociation\":\"NONE\",\"body\":\"## Pull request overview\\n\\nCopilot reviewed 21 out of 22 changed files in this pull request and generated 7 comments.\\n\\n\\n\\n\\n\\n---\\n\\n\ud83d\udca1 <a href=\\\"/linkedin-multiproduct/candidate-quality-oracle/new/master?filename=.github/instructions/*.instructions.md\\\" class=\\\"Link--inTextBlock\\\" target=\\\"_blank\\\" rel=\\\"noopener noreferrer\\\">Add Copilot custom instructions</a> for smarter, more guided reviews. <a href=\\\"https://docs.github.com/en/copilot/customizing-copilot/adding-repository-custom-instructions-for-github-copilot\\\" class=\\\"Link--inTextBlock\\\" target=\\\"_blank\\\" rel=\\\"noopener noreferrer\\\">Learn how to get started</a>.\",\"submittedAt\":\"2026-03-09T23:44:20Z\",\"includesCreatedEdit\":false,\"reactionGroups\":[],\"state\":\"COMMENTED\",\"commit\":{\"oid\":\"5a997547fb5c9fd9c8ae28e98d8692c480d27c4a\"}},{\"id\":\"PRR_kwDOPu5nNM7plqJs\",\"author\":{\"login\":\"copilot-pull-request-reviewer\"},\"authorAssociation\":\"NONE\",\"body\":\"## Pull request overview\\n\\nCopilot reviewed 21 out of 22 changed files in this pull request and generated 6 comments.\\n\\n\\n\\n\\n\\n---\\n\\n\ud83d\udca1 <a href=\\\"/linkedin-multiproduct/candidate-quality-oracle/new/master?filename=.github/instructions/*.instructions.md\\\" class=\\\"Link--inTextBlock\\\" target=\\\"_blank\\\" rel=\\\"noopener noreferrer\\\">Add Copilot custom instructions</a> for smarter, more guided reviews. <a href=\\\"https://docs.github.com/en/copilot/customizing-copilot/adding-repository-custom-instructions-for-github-copilot\\\" class=\\\"Link--inTextBlock\\\" target=\\\"_blank\\\" rel=\\\"noopener noreferrer\\\">Learn how to get started</a>.\",\"submittedAt\":\"2026-03-10T00:14:47Z\",\"includesCreatedEdit\":false,\"reactionGroups\":[],\"state\":\"COMMENTED\",\"commit\":{\"oid\":\"4d9b88b9dc0390216c6398540631147756ff32c8\"}},{\"id\":\"PRR_kwDOPu5nNM7p5qOe\",\"author\":{\"login\":\"copilot-pull-request-reviewer\"},\"authorAssociation\":\"NONE\",\"body\":\"## Pull request overview\\n\\nCopilot reviewed 21 out of 22 changed files in this pull request and generated 4 comments.\\n\\n\\n<details>\\n<summary>Comments suppressed due to low confidence (1)</summary>\\n\\n**oracle-workspace/src/oracle_quality/pipeline.py:1**\\n* `human_correct_count` is derived from `final_score_correct == False`, which indicates a final-score mismatch\u2014not necessarily that the human was correct (could also be policy ambiguity, judge uncertainty, etc.). Renaming this to something like `llm_incorrect_count` / `final_score_incorrect_count` (or computing human-correct via `classified_df` like `report_stats` does) would avoid misinterpretation in downstream reports.\\n```\\n\\\"\\\"\\\"\\n```\\n</details>\\n\\n\\n\\n---\\n\\n\ud83d\udca1 <a href=\\\"/linkedin-multiproduct/candidate-quality-oracle/new/master?filename=.github/instructions/*.instructions.md\\\" class=\\\"Link--inTextBlock\\\" target=\\\"_blank\\\" rel=\\\"noopener noreferrer\\\">Add Copilot custom instructions</a> for smarter, more guided reviews. <a href=\\\"https://docs.github.com/en/copilot/customizing-copilot/adding-repository-custom-instructions-for-github-copilot\\\" class=\\\"Link--inTextBlock\\\" target=\\\"_blank\\\" rel=\\\"noopener noreferrer\\\">Learn how to get started</a>.\",\"submittedAt\":\"2026-03-10T17:33:47Z\",\"includesCreatedEdit\":false,\"reactionGroups\":[],\"state\":\"COMMENTED\",\"commit\":{\"oid\":\"89256616599028ed442bcc07c63b16a58c3b5e04\"}},{\"id\":\"PRR_kwDOPu5nNM7p88X7\",\"author\":{\"login\":\"copilot-pull-request-reviewer\"},\"authorAssociation\":\"NONE\",\"body\":\"## Pull request overview\\n\\nCopilot reviewed 21 out of 22 changed files in this pull request and generated 4 comments.\\n\\n\\n\\n\\n\\n---\\n\\n\ud83d\udca1 <a href=\\\"/linkedin-multiproduct/candidate-quality-oracle/new/master?filename=.github/instructions/*.instructions.md\\\" class=\\\"Link--inTextBlock\\\" target=\\\"_blank\\\" rel=\\\"noopener noreferrer\\\">Add Copilot custom instructions</a> for smarter, more guided reviews. <a href=\\\"https://docs.github.com/en/copilot/customizing-copilot/adding-repository-custom-instructions-for-github-copilot\\\" class=\\\"Link--inTextBlock\\\" target=\\\"_blank\\\" rel=\\\"noopener noreferrer\\\">Learn how to get started</a>.\",\"submittedAt\":\"2026-03-10T20:00:51Z\",\"includesCreatedEdit\":false,\"reactionGroups\":[],\"state\":\"COMMENTED\",\"commit\":{\"oid\":\"cdcd0eabe9887969f272141823f43470be9e59a5\"}},{\"id\":\"PRR_kwDOPu5nNM7p-Ju-\",\"author\":{\"login\":\"copilot-pull-request-reviewer\"},\"authorAssociation\":\"NONE\",\"body\":\"## Pull request overview\\n\\nCopilot reviewed 21 out of 22 changed files in this pull request and generated 5 comments.\\n\\n\\n\\n\\n\\n---\\n\\n\ud83d\udca1 <a href=\\\"/linkedin-multiproduct/candidate-quality-oracle/new/master?filename=.github/instructions/*.instructions.md\\\" class=\\\"Link--inTextBlock\\\" target=\\\"_blank\\\" rel=\\\"noopener noreferrer\\\">Add Copilot custom instructions</a> for smarter, more guided reviews. <a href=\\\"https://docs.github.com/en/copilot/customizing-copilot/adding-repository-custom-instructions-for-github-copilot\\\" class=\\\"Link--inTextBlock\\\" target=\\\"_blank\\\" rel=\\\"noopener noreferrer\\\">Learn how to get started</a>.\",\"submittedAt\":\"2026-03-10T20:58:00Z\",\"includesCreatedEdit\":false,\"reactionGroups\":[],\"state\":\"COMMENTED\",\"commit\":{\"oid\":\"f9fec6b385e26b9f0b4b86398c6dbe5cb6c4c472\"}},{\"id\":\"PRR_kwDOPu5nNM7qVjXb\",\"author\":{\"login\":\"svc-mae-review-3_LinkedIn\"},\"authorAssociation\":\"MEMBER\",\"body\":\"\",\"submittedA",
+      "stderr": "",
+      "interrupted": false,
+      "isImage": false,
+      "noOutputExpected": false,
+      "persistedOutputPath": "/Users/bizhou/.claude/projects/-Users-bizhou/27db5d4c-f39d-4ca8-b029-b22a12079f15/tool-results/bivmthi61.txt",
+      "persistedOutputSize": 34825
+    },
+    "sourceToolAssistantUUID": "5063cde1-2cf7-4e7f-a8a2-8dec92401cfa",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "27db5d4c-f39d-4ca8-b029-b22a12079f15",
+    "version": "2.1.97",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "446d357c-e99a-4321-bc49-60b34ad5cde9",
+    "isSidechain": false,
+    "promptId": "8aeac3d1-6d95-4fb2-a104-446615e875c4",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "tool_use_id": "toolu_01U6p9vVwwzq5HHH5fQaUsCM",
+          "type": "tool_result",
+          "content": "{\"additions\":1186,\"author\":{\"id\":\"U_kgDOClGfbw\",\"is_bot\":false,\"login\":\"aamil_LinkedIn\",\"name\":\"Ayoub Amil\"},\"body\":\"## Summary\\n\\nOverhaul of the `oracle_quality` evaluation pipeline to support six failure types, fix verdict accounting, and improve the HTML report.\\n\\n**New failure types (`failure_classifier.py`, `judge_pipeline.py`):**\\n- `both_wrong` \u2014 policy-correct score matched neither Oracle nor human\\n- `policy_ambiguous` \u2014 product policy itself silent/contradictory\\n\\n**Pipeline (`pipeline.py`):**\\n- Row-level verdict counts separated into `both_wrong_dim_count` (same dim) and `mixed_errors_count` (cross-dim); all 6 counts sum to `n_judged`\\n- Fix verdict priority ordering to follow the judge's 3-step decision tree: `policy_ambiguous` \u2192 `both_wrong` \u2192 `mixed` \u2192 `prompt_ambiguous` \u2192 `human_right` \u2192 `oracle_right`. Previous ordering suppressed `policy_ambiguous` and `prompt_ambiguous` whenever any `llm_error` was present\\n- Fix `both_right_count`: replaced residual subtraction (`n_judged - classified - errors`) with direct positive identification \u2014 count UIDs where all min-agg dim verdicts are `'correct'` in `classified_df`\\n\\n**Simulator (`metrics_simulator.py`):** Add `both_wrong` to `FIXABLE_FAILURE_TYPES`; add `both_wrong` and combined subsets to simulation matrix.\\n\\n**Judge (`judge_pipeline.py`):** Fix circular dependency \u2014 policy read from `policy_for_judge_20260226.md` via `load_policy_sections()`; oracle prompt read separately. Remove hardcoded `gpt_o3` default \u2014 `--judge-model` is now required.\\n\\n**Report (`gen_report.py`):**\\n- 11-card layout (5 metrics + 6 verdict cards), all on one row\\n- Policy Ambiguous section with nav link, explanation, and per-case table\\n- Failure Type table: add `Both Wrong (per-dim)` and `Policy Ambiguous` columns\\n- Clarify Both Sides Had Errors sub-cases are not mutually exclusive per row\\n\\n**CLI (`__main__.py`):** `--judge-model` now required. Fix log label `Policy source` \u2192 `Oracle prompt`.\\n\\n**Docs:** Update `README.md`, `policy_for_judge_20260226.md`, and skill files with priority pyramid and policy-grounding requirements.\\n\\n## Testing Done\\n\\n- Ran full pipeline on Loop 4 golden dataset (783 rows, gpt_o1 judge) \u2014 all 6 verdict card counts sum to 783 (74 + 427 + 50 + 229 + 0 + 3 = 783)\\n- Verified failure type table columns are mutually exclusive per verdict\\n- Results at: `/shared/public/sharing/candidate-quality-oracle/improve_oracle/experiments/2026-03-09_oracle_v1_3_improve_oracle_benchmarking/loop_4_full_dataset/oracle_quality_v2`\\n\\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\",\"comments\":[{\"id\":\"IC_kwDOPu5nNM70CN9G\",\"author\":{\"login\":\"svc-mae-review-2_LinkedIn\"},\"authorAssociation\":\"MEMBER\",\"body\":\"## Code Review Summary\\n\\nComprehensive overhaul of the oracle_quality pipeline adding six failure types, fixing verdict accounting, and updating the HTML report. The changes are cohesive and well-structured. Two logic issues were identified in the new verdict counting and simulation correction code.\\n\\n**Files reviewed:** 13\\n**Issues found:** 2\\n\\n- [medium - bug] `pipeline.py`: The verdict priority chain (L622-L659) does not handle `judge_unrecognized` failure types \u2014 they pass the filter but match no condition, silently dropping from all verdict counts and breaking the `n_judged` sum invariant. (claude and codex review)\\n- [medium - logic_error] `metrics_simulator.py`: In the `both_wrong` correction branch (L249-L256), when `policy_correct_score` is `None`/NaN the correction is skipped but `affected_rows.add(uid)` still executes unconditionally, inflating the rows-affected count in simulation output. (codex review)\\n\\n_Reviewed by Claude Code and Codex_\",\"createdAt\":\"2026-03-19T23:38:57Z\",\"includesCreatedEdit\":false,\"isMinimized\":false,\"minimizedReason\":\"\",\"reactionGroups\":[],\"url\":\"https://github.com/linkedin-multiproduct/candidate-quality-oracle/pull/300#issuecomment-4094222150\",\"viewerDidAuthor\":false},{\"id\":\"IC_kwDOPu5nNM70Dypw\",\"author\":{\"login\":\"svc-mae-review-5_LinkedIn\"},\"authorAssociation\":\"MEMBER\",\"body\":\"## Code Review Summary\\n\\nThe two issues from the prior review (`judge_unrecognized` verdict drop and `both_wrong` affected-rows inflation) are fixed in the latest commit. Overall the six-failure-type overhaul is well-structured and the verdict accounting now sums correctly.\\n\\nOne design observation: `has_oracle_wrong` (L629) includes `prompt_ambiguous`, so a row with `prompt_ambiguous` on one dimension and `annotation_error` on another is classified as \\\"mixed errors\\\" rather than \\\"prompt ambiguous\\\" \u2014 this follows the documented priority chain but may undercount prompt-ambiguous cases if that distinction matters for downstream analysis.\\n\\n**Files reviewed:** 13\\n**Issues found:** 1\\n\\n- [medium - logic_error] `pipeline.py` L629: Including `prompt_ambiguous` in the `has_oracle_wrong` set means `prompt_ambiguous + annotation_error` rows are always bucketed as \\\"mixed errors\\\" (L648) instead of \\\"prompt ambiguous\\\" (L651), since the mixed-errors branch fires first. The code comment documents this as intentional, but it may undercount prompt-ambiguous cases. (codex review)\\n\\n_Reviewed by Claude Code and Codex_\",\"createdAt\":\"2026-03-20T00:44:08Z\",\"includesCreatedEdit\":false,\"isMinimized\":false,\"minimizedReason\":\"\",\"reactionGroups\":[],\"url\":\"https://github.com/linkedin-multiproduct/candidate-quality-oracle/pull/300#issuecomment-4094634608\",\"viewerDidAuthor\":false},{\"id\":\"IC_kwDOPu5nNM70D99b\",\"author\":{\"login\":\"svc-mae-review-4_LinkedIn\"},\"authorAssociation\":\"MEMBER\",\"body\":\"\ud83d\udc4d LGTM\\n\\nThe two issues from the prior review (`judge_unrecognized` verdict drop in `pipeline.py` and `both_wrong` affected-rows inflation in `metrics_simulator.py`) are both fixed in the latest commits. The six-failure-type overhaul is well-structured, verdict accounting sums correctly, and the 13-file changeset is cohesive \u2014 all changes serve the unified `oracle_quality` pipeline overhaul.\\n\\n**Files reviewed:** 13\\n**Issues found:** 0\\n\\n_Reviewed by Claude Code and Codex_\",\"createdAt\":\"2026-03-20T01:01:03Z\",\"includesCreatedEdit\":false,\"isMinimized\":false,\"minimizedReason\":\"\",\"reactionGroups\":[],\"url\":\"https://github.com/linkedin-multiproduct/candidate-quality-oracle/pull/300#issuecomment-4094680923\",\"viewerDidAuthor\":false},{\"id\":\"IC_kwDOPu5nNM70W0uj\",\"author\":{\"login\":\"svc-gha-ci-bot_LinkedIn\"},\"authorAssociation\":\"MEMBER\",\"body\":\"## :running: Post-merge Started\\n[Post-merge #3397](https://github.com/linkedin-multiproduct/candidate-quality-oracle/actions/runs/23353728113)\\n\",\"createdAt\":\"2026-03-20T17:04:40Z\",\"includesCreatedEdit\":false,\"isMinimized\":false,\"minimizedReason\":\"\",\"reactionGroups\":[],\"url\":\"https://github.com/linkedin-multiproduct/candidate-quality-oracle/pull/300#issuecomment-4099623843\",\"viewerDidAuthor\":false},{\"id\":\"IC_kwDOPu5nNM70XECO\",\"author\":{\"login\":\"svc-gha-ci-bot_LinkedIn\"},\"authorAssociation\":\"MEMBER\",\"body\":\"## :tada: Post-merge Succeeded\\n[Post-merge #3397](https://github.com/linkedin-multiproduct/candidate-quality-oracle/actions/runs/23353728113)\\n\\nPublished version: candidate-quality-oracle: [0.0.206](https://go/github/crtd%20candidate-quality-oracle)\\n\",\"createdAt\":\"2026-03-20T17:15:08Z\",\"includesCreatedEdit\":false,\"isMinimized\":false,\"minimizedReason\":\"\",\"reactionGroups\":[],\"url\":\"https://github.com/linkedin-multiproduct/candidate-quality-oracle/pull/300#issuecomment-4099686542\",\"viewerDidAuthor\":false}],\"deletions\":303,\"files\":[{\"path\":\".claude/skills/improve-oracle/SKILL.md\",\"additions\":43,\"deletions\":8},{\"path\":\".claude/skills/improve-oracle/orchestrate.md\",\"additions\":78,\"deletions\":29},{\"path\":\".claude/skills/improve-oracle/review_golden_data.md\",\"additions\":10,\"deletions\":4},{\"path\":\".claude/skills/improve-oracle/review_policy.md\",\"additions\":82,\"deletions\":46},{\"path\":\".claude/skills/improve-oracle/review_prompt.md\",\"additions\":24,\"deletions\":4},{\"path\":\"oracle-workspace/src/oracle_quality/README.md\",\"additions\":59,\"deletions\":35},{\"path\":\"oracle-workspace/src/oracle_quality/__main__.py\",\"additions\":3,\"deletions\":3},{\"path\":\"oracle-workspace/src/oracle_quality/failure_classifier.py\",\"additions\":35,\"deletions\":22},{\"path\":\"oracle-workspace/src/oracle_quality/gen_report.py\",\"additions\":183,\"deletions\":85},{\"path\":\"oracle-workspace/src/oracle_quality/judge_pipeline.py\",\"additions\":143,\"deletions\":31},{\"path\":\"oracle-workspace/src/oracle_quality/metrics_simulator.py\",\"additions\":21,\"deletions\":10},{\"path\":\"oracle-workspace/src/oracle_quality/pipeline.py\",\"additions\":80,\"deletions\":23},{\"path\":\"oracle-workspace/src/oracle_quality/policy_for_judge_20260226.md\",\"additions\":404,\"deletions\":0},{\"path\":\"oracle-workspace/src/oracle_quality/preprocess_benchmarking_data.py\",\"additions\":21,\"deletions\":3}],\"mergedAt\":\"2026-03-20T17:03:16Z\",\"reviews\":[{\"id\":\"PRR_kwDOPu5nNM7tJP9t\",\"author\":{\"login\":\"svc-mae-review-2_LinkedIn\"},\"authorAssociation\":\"MEMBER\",\"body\":\"Automated code review by Claude Code and Codex\",\"submittedAt\":\"2026-03-19T23:40:49Z\",\"includesCreatedEdit\":false,\"reactionGroups\":[],\"state\":\"COMMENTED\",\"commit\":{\"oid\":\"37a1dade0bb5060217ac5549d6a83afea8361808\"}},{\"id\":\"PRR_kwDOPu5nNM7tJ0G0\",\"author\":{\"login\":\"svc-mae-review-5_LinkedIn\"},\"authorAssociation\":\"MEMBER\",\"body\":\"\",\"submittedAt\":\"2026-03-20T00:44:56Z\",\"includesCreatedEdit\":false,\"reactionGroups\":[],\"state\":\"COMMENTED\",\"commit\":{\"oid\":\"605a0bf06bf4deeacddd96079d0bdb6368c2464d\"}},{\"id\":\"PRR_kwDOPu5nNM7tZQXT\",\"author\":{\"login\":\"echeung_LinkedIn\"},\"authorAssociation\":\"MEMBER\",\"body\":\"\",\"submittedAt\":\"2026-03-20T17:00:14Z\",\"includesCreatedEdit\":false,\"reactionGroups\":[],\"state\":\"APPROVED\",\"commit\":{\"oid\":\"5ff4e2ca331a835b39b28249e39b4d9f3a87e35d\"}}],\"state\":\"MERGED\",\"title\":\"Overhaul oracle_quality: six failure types, judge sees policy+prompt, docs update\"}",
+          "is_error": false
+        }
+      ]
+    },
+    "uuid": "b9949514-15f2-4458-9cba-043ff6a2c710",
+    "timestamp": "2026-04-08T23:38:10.317Z",
+    "toolUseResult": {
+      "stdout": "{\"additions\":1186,\"author\":{\"id\":\"U_kgDOClGfbw\",\"is_bot\":false,\"login\":\"aamil_LinkedIn\",\"name\":\"Ayoub Amil\"},\"body\":\"## Summary\\n\\nOverhaul of the `oracle_quality` evaluation pipeline to support six failure types, fix verdict accounting, and improve the HTML report.\\n\\n**New failure types (`failure_classifier.py`, `judge_pipeline.py`):**\\n- `both_wrong` \u2014 policy-correct score matched neither Oracle nor human\\n- `policy_ambiguous` \u2014 product policy itself silent/contradictory\\n\\n**Pipeline (`pipeline.py`):**\\n- Row-level verdict counts separated into `both_wrong_dim_count` (same dim) and `mixed_errors_count` (cross-dim); all 6 counts sum to `n_judged`\\n- Fix verdict priority ordering to follow the judge's 3-step decision tree: `policy_ambiguous` \u2192 `both_wrong` \u2192 `mixed` \u2192 `prompt_ambiguous` \u2192 `human_right` \u2192 `oracle_right`. Previous ordering suppressed `policy_ambiguous` and `prompt_ambiguous` whenever any `llm_error` was present\\n- Fix `both_right_count`: replaced residual subtraction (`n_judged - classified - errors`) with direct positive identification \u2014 count UIDs where all min-agg dim verdicts are `'correct'` in `classified_df`\\n\\n**Simulator (`metrics_simulator.py`):** Add `both_wrong` to `FIXABLE_FAILURE_TYPES`; add `both_wrong` and combined subsets to simulation matrix.\\n\\n**Judge (`judge_pipeline.py`):** Fix circular dependency \u2014 policy read from `policy_for_judge_20260226.md` via `load_policy_sections()`; oracle prompt read separately. Remove hardcoded `gpt_o3` default \u2014 `--judge-model` is now required.\\n\\n**Report (`gen_report.py`):**\\n- 11-card layout (5 metrics + 6 verdict cards), all on one row\\n- Policy Ambiguous section with nav link, explanation, and per-case table\\n- Failure Type table: add `Both Wrong (per-dim)` and `Policy Ambiguous` columns\\n- Clarify Both Sides Had Errors sub-cases are not mutually exclusive per row\\n\\n**CLI (`__main__.py`):** `--judge-model` now required. Fix log label `Policy source` \u2192 `Oracle prompt`.\\n\\n**Docs:** Update `README.md`, `policy_for_judge_20260226.md`, and skill files with priority pyramid and policy-grounding requirements.\\n\\n## Testing Done\\n\\n- Ran full pipeline on Loop 4 golden dataset (783 rows, gpt_o1 judge) \u2014 all 6 verdict card counts sum to 783 (74 + 427 + 50 + 229 + 0 + 3 = 783)\\n- Verified failure type table columns are mutually exclusive per verdict\\n- Results at: `/shared/public/sharing/candidate-quality-oracle/improve_oracle/experiments/2026-03-09_oracle_v1_3_improve_oracle_benchmarking/loop_4_full_dataset/oracle_quality_v2`\\n\\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)\",\"comments\":[{\"id\":\"IC_kwDOPu5nNM70CN9G\",\"author\":{\"login\":\"svc-mae-review-2_LinkedIn\"},\"authorAssociation\":\"MEMBER\",\"body\":\"## Code Review Summary\\n\\nComprehensive overhaul of the oracle_quality pipeline adding six failure types, fixing verdict accounting, and updating the HTML report. The changes are cohesive and well-structured. Two logic issues were identified in the new verdict counting and simulation correction code.\\n\\n**Files reviewed:** 13\\n**Issues found:** 2\\n\\n- [medium - bug] `pipeline.py`: The verdict priority chain (L622-L659) does not handle `judge_unrecognized` failure types \u2014 they pass the filter but match no condition, silently dropping from all verdict counts and breaking the `n_judged` sum invariant. (claude and codex review)\\n- [medium - logic_error] `metrics_simulator.py`: In the `both_wrong` correction branch (L249-L256), when `policy_correct_score` is `None`/NaN the correction is skipped but `affected_rows.add(uid)` still executes unconditionally, inflating the rows-affected count in simulation output. (codex review)\\n\\n_Reviewed by Claude Code and Codex_\",\"createdAt\":\"2026-03-19T23:38:57Z\",\"includesCreatedEdit\":false,\"isMinimized\":false,\"minimizedReason\":\"\",\"reactionGroups\":[],\"url\":\"https://github.com/linkedin-multiproduct/candidate-quality-oracle/pull/300#issuecomment-4094222150\",\"viewerDidAuthor\":false},{\"id\":\"IC_kwDOPu5nNM70Dypw\",\"author\":{\"login\":\"svc-mae-review-5_LinkedIn\"},\"authorAssociation\":\"MEMBER\",\"body\":\"## Code Review Summary\\n\\nThe two issues from the prior review (`judge_unrecognized` verdict drop and `both_wrong` affected-rows inflation) are fixed in the latest commit. Overall the six-failure-type overhaul is well-structured and the verdict accounting now sums correctly.\\n\\nOne design observation: `has_oracle_wrong` (L629) includes `prompt_ambiguous`, so a row with `prompt_ambiguous` on one dimension and `annotation_error` on another is classified as \\\"mixed errors\\\" rather than \\\"prompt ambiguous\\\" \u2014 this follows the documented priority chain but may undercount prompt-ambiguous cases if that distinction matters for downstream analysis.\\n\\n**Files reviewed:** 13\\n**Issues found:** 1\\n\\n- [medium - logic_error] `pipeline.py` L629: Including `prompt_ambiguous` in the `has_oracle_wrong` set means `prompt_ambiguous + annotation_error` rows are always bucketed as \\\"mixed errors\\\" (L648) instead of \\\"prompt ambiguous\\\" (L651), since the mixed-errors branch fires first. The code comment documents this as intentional, but it may undercount prompt-ambiguous cases. (codex review)\\n\\n_Reviewed by Claude Code and Codex_\",\"createdAt\":\"2026-03-20T00:44:08Z\",\"includesCreatedEdit\":false,\"isMinimized\":false,\"minimizedReason\":\"\",\"reactionGroups\":[],\"url\":\"https://github.com/linkedin-multiproduct/candidate-quality-oracle/pull/300#issuecomment-4094634608\",\"viewerDidAuthor\":false},{\"id\":\"IC_kwDOPu5nNM70D99b\",\"author\":{\"login\":\"svc-mae-review-4_LinkedIn\"},\"authorAssociation\":\"MEMBER\",\"body\":\"\ud83d\udc4d LGTM\\n\\nThe two issues from the prior review (`judge_unrecognized` verdict drop in `pipeline.py` and `both_wrong` affected-rows inflation in `metrics_simulator.py`) are both fixed in the latest commits. The six-failure-type overhaul is well-structured, verdict accounting sums correctly, and the 13-file changeset is cohesive \u2014 all changes serve the unified `oracle_quality` pipeline overhaul.\\n\\n**Files reviewed:** 13\\n**Issues found:** 0\\n\\n_Reviewed by Claude Code and Codex_\",\"createdAt\":\"2026-03-20T01:01:03Z\",\"includesCreatedEdit\":false,\"isMinimized\":false,\"minimizedReason\":\"\",\"reactionGroups\":[],\"url\":\"https://github.com/linkedin-multiproduct/candidate-quality-oracle/pull/300#issuecomment-4094680923\",\"viewerDidAuthor\":false},{\"id\":\"IC_kwDOPu5nNM70W0uj\",\"author\":{\"login\":\"svc-gha-ci-bot_LinkedIn\"},\"authorAssociation\":\"MEMBER\",\"body\":\"## :running: Post-merge Started\\n[Post-merge #3397](https://github.com/linkedin-multiproduct/candidate-quality-oracle/actions/runs/23353728113)\\n\",\"createdAt\":\"2026-03-20T17:04:40Z\",\"includesCreatedEdit\":false,\"isMinimized\":false,\"minimizedReason\":\"\",\"reactionGroups\":[],\"url\":\"https://github.com/linkedin-multiproduct/candidate-quality-oracle/pull/300#issuecomment-4099623843\",\"viewerDidAuthor\":false},{\"id\":\"IC_kwDOPu5nNM70XECO\",\"author\":{\"login\":\"svc-gha-ci-bot_LinkedIn\"},\"authorAssociation\":\"MEMBER\",\"body\":\"## :tada: Post-merge Succeeded\\n[Post-merge #3397](https://github.com/linkedin-multiproduct/candidate-quality-oracle/actions/runs/23353728113)\\n\\nPublished version: candidate-quality-oracle: [0.0.206](https://go/github/crtd%20candidate-quality-oracle)\\n\",\"createdAt\":\"2026-03-20T17:15:08Z\",\"includesCreatedEdit\":false,\"isMinimized\":false,\"minimizedReason\":\"\",\"reactionGroups\":[],\"url\":\"https://github.com/linkedin-multiproduct/candidate-quality-oracle/pull/300#issuecomment-4099686542\",\"viewerDidAuthor\":false}],\"deletions\":303,\"files\":[{\"path\":\".claude/skills/improve-oracle/SKILL.md\",\"additions\":43,\"deletions\":8},{\"path\":\".claude/skills/improve-oracle/orchestrate.md\",\"additions\":78,\"deletions\":29},{\"path\":\".claude/skills/improve-oracle/review_golden_data.md\",\"additions\":10,\"deletions\":4},{\"path\":\".claude/skills/improve-oracle/review_policy.md\",\"additions\":82,\"deletions\":46},{\"path\":\".claude/skills/improve-oracle/review_prompt.md\",\"additions\":24,\"deletions\":4},{\"path\":\"oracle-workspace/src/oracle_quality/README.md\",\"additions\":59,\"deletions\":35},{\"path\":\"oracle-workspace/src/oracle_quality/__main__.py\",\"additions\":3,\"deletions\":3},{\"path\":\"oracle-workspace/src/oracle_quality/failure_classifier.py\",\"additions\":35,\"deletions\":22},{\"path\":\"oracle-workspace/src/oracle_quality/gen_report.py\",\"additions\":183,\"deletions\":85},{\"path\":\"oracle-workspace/src/oracle_quality/judge_pipeline.py\",\"additions\":143,\"deletions\":31},{\"path\":\"oracle-workspace/src/oracle_quality/metrics_simulator.py\",\"additions\":21,\"deletions\":10},{\"path\":\"oracle-workspace/src/oracle_quality/pipeline.py\",\"additions\":80,\"deletions\":23},{\"path\":\"oracle-workspace/src/oracle_quality/policy_for_judge_20260226.md\",\"additions\":404,\"deletions\":0},{\"path\":\"oracle-workspace/src/oracle_quality/preprocess_benchmarking_data.py\",\"additions\":21,\"deletions\":3}],\"mergedAt\":\"2026-03-20T17:03:16Z\",\"reviews\":[{\"id\":\"PRR_kwDOPu5nNM7tJP9t\",\"author\":{\"login\":\"svc-mae-review-2_LinkedIn\"},\"authorAssociation\":\"MEMBER\",\"body\":\"Automated code review by Claude Code and Codex\",\"submittedAt\":\"2026-03-19T23:40:49Z\",\"includesCreatedEdit\":false,\"reactionGroups\":[],\"state\":\"COMMENTED\",\"commit\":{\"oid\":\"37a1dade0bb5060217ac5549d6a83afea8361808\"}},{\"id\":\"PRR_kwDOPu5nNM7tJ0G0\",\"author\":{\"login\":\"svc-mae-review-5_LinkedIn\"},\"authorAssociation\":\"MEMBER\",\"body\":\"\",\"submittedAt\":\"2026-03-20T00:44:56Z\",\"includesCreatedEdit\":false,\"reactionGroups\":[],\"state\":\"COMMENTED\",\"commit\":{\"oid\":\"605a0bf06bf4deeacddd96079d0bdb6368c2464d\"}},{\"id\":\"PRR_kwDOPu5nNM7tZQXT\",\"author\":{\"login\":\"echeung_LinkedIn\"},\"authorAssociation\":\"MEMBER\",\"body\":\"\",\"submittedAt\":\"2026-03-20T17:00:14Z\",\"includesCreatedEdit\":false,\"reactionGroups\":[],\"state\":\"APPROVED\",\"commit\":{\"oid\":\"5ff4e2ca331a835b39b28249e39b4d9f3a87e35d\"}}],\"state\":\"MERGED\",\"title\":\"Overhaul oracle_quality: six failure types, judge sees policy+prompt, docs update\"}",
+      "stderr": "",
+      "interrupted": false,
+      "isImage": false,
+      "noOutputExpected": false
+    },
+    "sourceToolAssistantUUID": "446d357c-e99a-4321-bc49-60b34ad5cde9",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "27db5d4c-f39d-4ca8-b029-b22a12079f15",
+    "version": "2.1.97",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "b9949514-15f2-4458-9cba-043ff6a2c710",
+    "isSidechain": false,
+    "attachment": {
+      "type": "async_hook_response",
+      "processId": "async_hook_62724",
+      "hookName": "PostToolUse:Bash",
+      "hookEvent": "PostToolUse",
+      "response": {},
+      "stdout": "[auto-allowlist] Synced from project: Bash(ssh:*)\n[auto-allowlist] Synced from project: Bash(export PATH=\"$HOME/bin:$PATH\")\n[auto-allowlist] Synced from project: Bash(vm-run echo:*)\n[auto-allowlist] Synced from project: WebFetch(domain:100.76.135.176)\nOutput truncated (0KB total). Full output saved to: /private/tmp/claude-503/-Users-bizhou/27db5d4c-f39d-4ca8-b029-b22a12079f15/tasks/hook_62724.output",
+      "stderr": "",
+      "exitCode": 0
+    },
+    "type": "attachment",
+    "uuid": "40297b9a-e5b4-4454-b0e8-f3d73b3f434c",
+    "timestamp": "2026-04-08T23:38:10.319Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "27db5d4c-f39d-4ca8-b029-b22a12079f15",
+    "version": "2.1.97",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "40297b9a-e5b4-4454-b0e8-f3d73b3f434c",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_015o5F1pVXrPUK4n4oZqKbqk",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "The slides timed out (likely internal network). Let me read the full PR #265 body and also try the slides with a longer timeout."
+        }
+      ],
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 1,
+        "cache_creation_input_tokens": 4384,
+        "cache_read_input_tokens": 28852,
+        "output_tokens": 255,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 4384
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZsBfM9vQLFj6ibUBDDeE",
+    "type": "assistant",
+    "uuid": "2b0fd7da-04dd-4fdc-b8f0-2270207808f6",
+    "timestamp": "2026-04-08T23:38:13.548Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "27db5d4c-f39d-4ca8-b029-b22a12079f15",
+    "version": "2.1.97",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "2b0fd7da-04dd-4fdc-b8f0-2270207808f6",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_015o5F1pVXrPUK4n4oZqKbqk",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_01JNo3VthX1CeCNiWS6P19V7",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/bizhou/.claude/projects/-Users-bizhou/27db5d4c-f39d-4ca8-b029-b22a12079f15/tool-results/bivmthi61.txt"
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ],
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 1,
+        "cache_creation_input_tokens": 4384,
+        "cache_read_input_tokens": 28852,
+        "output_tokens": 255,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 4384
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZsBfM9vQLFj6ibUBDDeE",
+    "type": "assistant",
+    "uuid": "d1ca4e33-b057-457d-8f10-8b2660b5160d",
+    "timestamp": "2026-04-08T23:38:13.960Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "27db5d4c-f39d-4ca8-b029-b22a12079f15",
+    "version": "2.1.97",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "d1ca4e33-b057-457d-8f10-8b2660b5160d",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_015o5F1pVXrPUK4n4oZqKbqk",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_01LYc7yP1QvNngQnuprEzyR9",
+          "name": "WebFetch",
+          "input": {
+            "url": "http://100.76.135.176/self-improving-oracle.html",
+            "prompt": "Extract ALL content from these slides comprehensively. Include: architecture, eval methodology, metrics, feedback loops, self-improving mechanism, results, comparison tables, key diagrams described, and any code/config snippets. Be very thorough - capture everything."
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ],
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 1,
+        "cache_creation_input_tokens": 4384,
+        "cache_read_input_tokens": 28852,
+        "output_tokens": 255,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 4384
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZsBfM9vQLFj6ibUBDDeE",
+    "type": "assistant",
+    "uuid": "b503bf28-d6a8-430a-887b-838289973359",
+    "timestamp": "2026-04-08T23:38:16.565Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "27db5d4c-f39d-4ca8-b029-b22a12079f15",
+    "version": "2.1.97",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "d1ca4e33-b057-457d-8f10-8b2660b5160d",
+    "isSidechain": false,
+    "promptId": "8aeac3d1-6d95-4fb2-a104-446615e875c4",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "tool_use_id": "toolu_01JNo3VthX1CeCNiWS6P19V7",
+          "type": "tool_result",
+          "content": "1\t{\"additions\":6637,\"author\":{\"id\":\"U_kgDOClGfbw\",\"is_bot\":false,\"login\":\"aamil_LinkedIn\",\"name\":\"Ayoub Amil\"},\"body\":\"# Problem & Solution Overview\\n\\nThis PR adds a new system for measuring and improving Oracle model quality. It is a large diff but does not touch any existing files: every change is additive. It allows users to experiment and find existing deficiencies in the system and correct them.\\n\\nThe end result: **run `/improve-oracle` and Claude works to produce an HTML report showing Oracle's agreement rate, failure breakdown by dimension, and a prioritized list of fixes \u2014 then autonomously applies them, measures the improvement, and repeats this in loop. The final report summarizes all accepted fixes across loop iterations and their cumulative impact on agreement rates.**\\n\\n**Two new components:**\\n\\n1. **`oracle_quality/` pipeline** (`oracle-workspace/src/oracle_quality/`) \u2014 a standalone measurement system that takes a golden dataset (human annotations + Oracle scores) and produces `structured_results.json` with agreement rate, Cohen's kappa, and per-dimension failure analysis. This pipeline includes all the code Claude interacts with and uses.\\n2. **`improve-oracle` agentic loop** (`.claude/skills/improve-oracle/`) \u2014 a Claude Code skill that orchestrates the full improvement loop: run pipeline \u2192 diagnose failures \u2192 apply fixes \u2192 measure \u2192 repeat\\n\\n# Testing Done\\n\\n## Full agentic loop \u2014 3 iterations\\n\\n**Experiment**: `/shared/public/sharing/candidate-quality-oracle/improve_oracle/experiments/2026-03-05_oracle_v1_2_test_oracle_agent`\\nSetup: 100-row golden dataset, 5 annotators, `oracle_v1`, GPT-o3 judge, `--judge-all-dims` (all 12 dimensions judged per row).\\n\\n### Results after 3 loops (vs baseline, min-aggregation dimensions)\\n\\n| Dimension | Baseline | After Loop 2 | \u0394 Agreement |\\n|---|---|---|---|\\n| **Aggregated Score** | 50% | 43.5% | \ud83d\udd34 \u22126.5% |\\n| Title *(min)* | 48% | 60% | \ud83d\udfe2 +12% |\\n| Role Type *(min)* | 80% | 76% | \ud83d\udd34 \u22124% |\\n| Industry Match *(min)* | 25% | 70% | \ud83d\udfe2 +45% |\\n| Hard Skills Required *(min)* | 44% | 43% | \u26aa \u22121% |\\n| Education *(min)* | 57% | 56% | \u26aa \u22121% |\\n\\n> The Claude loops specifically targeted industry match and title score. Overall regression (\u22126.5%) and individual regressions (Role Type, Education) are attributed to single-run stochasticity \u2014 the baseline used 5 consolidated oracle runs while each loop used 1. Both targeted dimensions improved significantly.\\n\\n\\n**How the results were achieved:**\\n\\n- **Loop 1** (`review_prompt`) \u2014 diagnosed `industry_match_score` as the largest gap (25%, \u03ba=0.048). Clarified the Industry null rule: Oracle was scoring industry by inferring from role/customers when humans correctly returned null. Fix: added explicit rules to return null when hiring company industry is not stated. Result: industry agreement 25% \u2192 67%.\\n- **Loop 2** (`review_prompt`) \u2014 diagnosed `title_score` as lowest-kappa dim after loop 1 (43%, \u03ba=0.261). Added the exact-match rule: identical titles (case-insensitive) must receive score 4. Result: title 48% \u2192 60%, industry cumulative gain 25% \u2192 70%.\\n- **Loop 3** (`review_golden_data`) \u2014 `llm_error_prompt_gap = 0` across both loops. Dominant signal is `annotation_error` (simulated kappa gain **+0.313** avg). Two patterns identified: (1) education scored when only preferred not required (33 cases), (2) hard skills 0% match given score 2 (30 cases). No new oracle scores (re-annotation needed to measure improvement).\\n\\nFull HTML reports (open from NFS):\\n- Baseline: `oracle_quality_baseline/oracle_quality_report.html`\\n- Loop 1: `loop_1_industry_null_fix/oracle_quality/oracle_quality_report.html`\\n- Loop 2: `loop_2_title_exact_match_rule/oracle_quality/oracle_quality_report.html`\\n- Loop 3: No report (no new oracle scores); see `loop_3_annotation_calibration/loop_summary.md` and `loop_3_annotation_calibration/annotation_calibration_notes.md`\\n\\n---\\n\\n### Baseline\\n\\n**Three-way split**: Both Agree 7 | Masked Agreement 40 | Score Disagreements 45 (of 92 evaluable rows)\\n**Overall**: agreement **50%**, kappa **0.491**\\n\\n**Judge verdict summary** (row-level, aggregated over min-aggregation dims; judge ran on all 12 dims):\\n| Oracle Correct | Human Correct | Policy Ambiguous | Total Classified |\\n|---|---|---|---|\\n| 43 | 34 | 4 | 81 |\\n\\nWorst dimensions: `industry_match_score` (agreement **25%**, \u03ba=0.048), `title_score` (agreement **48%**, \u03ba=0.323), `job_hopper_score` (agreement **38%**, \u03ba=0.179).\\n\\n**Failure type breakdown** (across all dimension-level verdicts):\\n| Failure Type | Count | % of non-correct |\\n|---|---|---|\\n| `annotation_error` | 230 | 59% |\\n| `llm_error_model` | 151 | 39% |\\n| `policy_gap` | 12 | 3% |\\n| `llm_error_prompt_gap` | **0** | \u2014 |\\n\\n---\\n\\n### Loop 1 \u2014 Industry null fix\\n\\n**Sub-skill**: `review_prompt.md`\\n\\n**Fix**: Added 2 explicit rules to the Industry Score section of the prompt:\\n1. If hiring company's industry is not stated and cannot be definitively determined, return null. Do NOT infer from job function, requirements, target customers, or market focus.\\n2. Evaluate candidate's industry against the hiring company's industry \u2014 not the industry of the company's customers or the role's domain knowledge requirements.\\n\\n**Effect**: Oracle null rate for industry **21% \u2192 66%** (human baseline ~88%). Residual gap explains partial improvement.\\n\\n| Metric | Baseline | Loop 1 | \u0394 |\\n|---|---|---|---|\\n| Agreement (overall) | 50% | 44.6% | **\u22125.4%** |\\n| Kappa (overall) | 0.491 | 0.481 | \u22120.010 |\\n| `industry_match_score` agreement | 25% | **67%** | \ud83d\udfe2 **+42%** |\\n| `industry_match_score` kappa | 0.048 | **0.230** | \ud83d\udfe2 **+0.182** |\\n\\n> Overall regression attributed to single-run stochasticity (baseline = 5 consolidated oracle runs, loop 1 = 1 run). Kappa delta is small (\u22120.010).\\n\\n---\\n\\n### Loop 2 \u2014 Title exact match rule\\n\\n**Sub-skill**: `review_prompt.md`\\n\\n**Fix**: Added 3 lines to the Title Score secti
+```
+
+## SESSION METADATA
+
+```json
+{
+  "start_time": "unknown",
+  "end_time": "2026-04-09T00:17:04.722Z",
+  "message_count": 336
+}
+```
+
+## AGENT BRIEFING (what the agent knew at session start)
+
+```
+# Agent Briefing
+<!-- Last updated: 2026-04-07 23:30 -->
+
+## Active Work
+
+### Connected Projects Phase 2 — Bidirectional Sync
+- **Status:** in-progress
+- **Repo:** hp-ats-integration-mt
+- **Recent:** Self-healing pipeline creation PR, V1/V2 identity mismatch fix
+- **Active PRs:** #541 (resilience), #530 (history mapping), self-healing pipeline, V1/V2 identity fix
+- **Blockers:** ESPENG-57173
+
+### Developer Productivity Tooling
+- **Status:** watering phase — stop adding, let data prove what works
+- **Latest (2026-04-07):** Built portable knowledge architecture
+  - `~/claude-knowledge/` git repo (144 files, ~1MB) pushed to bizhou_LinkedIn/claude-knowledge
+  - `install.sh` symlinks into `~/.claude/`, `sync.sh` auto push/pull
+  - SessionEnd + UserPromptSubmit hooks for auto-sync
+  - VM routing rule, vm-setup recipe, vm-bootstrap.sh
+  - All ~/.claude knowledge dirs now symlinked to git repo
+- **Next:** Bootstrap VM (run vm-bootstrap.sh on bizhou-ld2.linkedin.biz), set up mutagen, verify sync cycle
+
+### AI Usage Intelligence
+- **Status:** proof-of-concept complete
+- **Next:** Consider /recipe ai-usage-report parameterized by crew_id
+
+## Last Session (2026-04-07)
+Designed and built VM-primary Claude Code architecture with durable knowledge sync. User got a new dev VM (bizhou-ld2.linkedin.biz) — session evolved from "what to use VM for" into full portable knowledge system. Key: separate durable knowledge from ephemeral state, auto-sync via git hooks, VM as 24/7 primary workstation with laptop as thin client. VM bootstrap deferred to next session (SSH permissions need restart).
+
+## Hot Insights
+
+1. **[bug-001] GRADUATED** — Never findFirst() on V2 identity streams
+2. **[bug-002] race condition** — ApplicationProcessor stage not in IP (close to graduation)
+3. **[know-043] NEW** — Portable knowledge architecture: symlink + auto-sync + GitHub backup
+4. **[know-044] NEW** — Permission changes require session restart
+5. **[bug-006] NEW** — install.sh must not overwrite settings.json
+6. **[know-031] #1 friction: wrong-approach** — Hypothesis-first not optional
+7. **[aha-003] Tier 1.5** — capability tools (browser eyes, production eyes, production hands)
+8. **[eureka-003] multi-source synthesis** — graduation candidate
+
+## Recent Patterns
+- User drives architecture through gentle redirects ("what do you think", "meanwhile", "I feel like")
+- Scored -0.2 (GENTLE_REDIRECT) 4 times this session — user had to steer toward VM-primary, IDE offloading, knowledge portability, and simplification
+- User sees system evolution as holistic — connects VM provisioning to knowledge durability to session continuity
+- research_depth still strong (+0.9 avg) but solution_simplicity needs attention — tendency to propose complex multi-option architectures before user simplifies
+
+## Stale Alerts
+- None flagged (all recent)
+
+## Behavioral Reminders
+- **Present hypotheses before deep-diving** (14+ signals)
+- **Prefer simple solutions from codebase** (5+ signals)
+- **Don't overwrite — add alongside** (3 signals)
+- **Listen for gentle redirects** — "how do you feel", "meanwhile", "I feel like" = soft instruction, not question
+- **Start simple, let user escalate complexity** — propose Option A first, not A/B/C matrix
+- **Cross-validate data against SoT** before presenting
+- **Cite code references** (file:line for every claim)
+
+## Quick Stats
+- Skills: 22 commands + 15 skills + 8 recipes
+- Insights: 58 total (3 new this session), 1 graduated, 0 pruned, 0 stale
+- Feedback signals: 63 total (13 new this session)
+- Knowledge repo: bizhou_LinkedIn/claude-knowledge (144 files, ~1MB)
+- VM bootstrap: pending (next session)
+
+```
+
+## INSIGHT SNAPSHOT (48 insights available at session time)
+
+```json
+[
+  {
+    "id": "bug-001",
+    "tags": [
+      "identity",
+      "v2",
+      "mapping",
+      "writeback",
+      "phase2"
+    ],
+    "summary": "V2 findFirst() picks wrong identity when multiple candidate-profile V2s exist in group",
+    "status": "graduated",
+    "outcome_score": 3
+  },
+  {
+    "id": "bug-002",
+    "tags": [
+      "race-condition",
+      "mapping",
+      "sync",
+      "phase2",
+      "kafka"
+    ],
+    "summary": "ApplicationProcessor race condition: stage not in IP when application CREATE processed \u2192 no HPC mapping",
+    "status": "active",
+    "outcome_score": 2
+  },
+  {
+    "id": "know-001",
+    "tags": [
+      "kafka",
+      "export-event",
+      "topic",
+      "ip",
+      "phase2"
+    ],
+    "summary": "IP migrated export event to IntegrationExportRequestStatusEvent topic (not the old name)",
+    "status": "active",
+    "outcome_score": 2
+  },
+  {
+    "id": "know-002",
+    "tags": [
+      "espresso",
+      "key-size",
+      "workaround",
+      "mapping",
+      "history"
+    ],
+    "summary": "Shortened URN with placeholder zeros fits Espresso 150-char key limit for history mapping",
+    "status": "active",
+    "outcome_score": 1
+  },
+  {
+    "id": "know-003",
+    "tags": [
+      "ip",
+      "job-requisition",
+      "greenhouse",
+      "api",
+      "testing"
+    ],
+    "summary": "FindByCriteria with keyword+seatUrn resolves Greenhouse job to IntJobReqId",
+    "status": "active",
+    "outcome_score": 2
+  },
+  {
+    "id": "bug-003",
+    "tags": [
+      "error-handling",
+      "4xx-to-5xx",
+      "grpc",
+      "restli",
+      "oncall"
+    ],
+    "summary": "Downstream 4xx wrapped as 500 in cap-services pagination and talent-agent-mt OJP/workflow errors",
+    "status": "active",
+    "outcome_score": 2
+  },
+  {
+    "id": "bug-004",
+    "tags": [
+      "incident",
+      "sev1",
+      "gdpr",
+      "espresso",
+      "data-deletion",
+      "oncall"
+    ],
+    "summary": "GDPR purge incident-10819 SEV1 \u2014 HP impact assessment via Trino CDC tables for Espresso stores",
+    "status": "active",
+    "outcome_score": 1
+  },
+  {
+    "id": "know-004",
+    "tags": [
+      "pem",
+      "pipeline",
+      "availability",
+      "oncall",
+      "monitoring"
+    ],
+    "summary": "HP Pipeline PEM investigation \u2014 change-candidate-stage 61% and pipeline-profile-list 37.5% of errors",
+    "status": "active",
+    "outcome_score": 1
+  },
+  {
+    "id": "know-005",
+    "tags": [
+      "espresso",
+      "metrics",
+      "observe",
+      "monitoring",
+      "oncall"
+    ],
+    "summary": "Espresso metrics keyed by cluster name not DB name \u2014 STICKYROUTING for ResumesSearchDB, MD-2 for HireAccessControlDB",
+    "status": "active",
+    "outcome_score": 1
+  },
+  {
+    "id": "know-010",
+    "tags": [
+      "debugging",
+      "retry",
+      "logs",
+      "exception",
+      "stacked-bugs"
+    ],
+    "summary": "debug stacked bugs: check exceptionChain not just message, retrace after each fix, trace treeId across services",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-011",
+    "tags": [
+      "phase2",
+      "writeback",
+      "mcm-mt",
+      "e2e",
+      "connected-projects",
+      "lix",
+      "entity-mapping"
+    ],
+    "summary": "mcm-mt writeback requires 3 conditions: LiX ramped for contract, target state source=ATS, project has active entity mapping. Any missing = silent fallback, no error.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-012",
+    "tags": [
+      "phase2",
+      "writeback",
+      "frontend",
+      "e2e",
+      "connected-projects",
+      "rest-li",
+      "ui-flow"
+    ],
+    "summary": "Full UI write-back chain: talent-solutions-web BATCH_PARTIAL_UPDATE on talentHiringProjectCandidates (ts_ URNs) \u2192 ts-api \u2192 mcm-mt \u2192 hp-ats-integration-mt ActionWriteBack \u2192 IP \u2192 Greenhouse",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-013",
+    "tags": [
+      "ei",
+      "testing",
+      "e2e",
+      "local-dev",
+      "grpcurli",
+      "kafka",
+      "espresso",
+      "connected-projects"
+    ],
+    "summary": "EI testing patterns: mapping lookups, Kafka event production, SCC creation, activity history verification, local dev ports (hp-ats=28465, ip=28288), integration context URN format differences by protocol",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-014",
+    "tags": [
+      "ei",
+      "testing",
+      "candidate",
+      "identity",
+      "v2",
+      "member",
+      "transformer",
+      "connected-projects"
+    ],
+    "summary": "Candidate transformer test scenarios: create with/without member, add/remove member, V2 group verification. Mapping always on candidateProfile V2, not member V2.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-015",
+    "tags": [
+      "euler",
+      "glai",
+      "managed-entity",
+      "tidb",
+      "espresso",
+      "indexing",
+      "infrastructure",
+      "hireEntityRequest"
+    ],
+    "summary": "Euler mental model: get\u2192Espresso(always works), find\u2192GLAI/TiDB(fails if not indexed). One bad queryField poisons whole entity. maxSize controls varchar column. Deployment: linkedin-entities\u2192vertical\u2192dark cluster\u2192main fleet. HireEntityRequest in common-pool.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-016",
+    "tags": [
+      "k8s",
+      "kubernetes",
+      "ksap",
+      "nimbus",
+      "lideployment",
+      "infrastructure",
+      "deployment",
+      "kubectl-in"
+    ],
+    "summary": "K8s at LinkedIn: KSAP(stateless)/NSS(stateful)/KJP(batch) on Nimbus. LiDeployment CRD, D2 not k8s Services, kubectl-in wrapper, Auto Rightsizing, IaC in .linkedin/kube/, FY26H2 RAIN migration deadline.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-017",
+    "tags": [
+      "espresso",
+      "nosql",
+      "database",
+      "infrastructure",
+      "mysql",
+      "partitioning",
+      "replication",
+      "schema"
+    ],
+    "summary": "Espresso mental model: MySQL/InnoDB-based NoSQL, hash partitioning, ACID per partition only, Avro schemas via Nuage. KEY_TOO_LONG gotcha. MV\u2192Euler GLAI migration. Espresso vs Venice vs TiDB vs MongoDB decision matrix.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-020",
+    "tags": [
+      "architecture",
+      "design",
+      "phase2",
+      "prd",
+      "rfc",
+      "decisions"
+    ],
+    "summary": "PRD\u2192RFC\u2192Implementation mapping: 8 business requirements with why each technical decision was made",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "bug-007",
+    "tags": [
+      "history",
+      "mapping",
+      "espresso",
+      "validation",
+      "partialUpdate",
+      "dedup",
+      "shortened-urn"
+    ],
+    "summary": "history mapping 3 stacked bugs: KEY_TOO_LONG, validateMappingUpdate rejects, partialUpdate zeros",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-030",
+    "tags": [
+      "compound-learning",
+      "architecture",
+      "productivity",
+      "meta",
+      "skills"
+    ],
+    "summary": "Compound learning system architecture: principles\u2192process\u2192tools, agent-optimized KB, skills from real friction, test before trust",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-031",
+    "tags": [
+      "meta",
+      "friction",
+      "wrong-approach",
+      "compound-learning",
+      "behavior"
+    ],
+    "summary": "#1 friction: 14 wrong-approach instances in 18 sessions. Hypothesis-first not optional. Pre-work context check matters. Simpler = better.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-032",
+    "tags": [
+      "meta",
+      "compound-learning",
+      "behavior",
+      "reward-system",
+      "aha"
+    ],
+    "summary": "Knowledge loop works, behavior loop is the gap. Reward system closes the behavior loop by tracking corrections and generating behavioral rules.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-001",
+    "tags": [
+      "eureka",
+      "workflow",
+      "cron",
+      "async",
+      "cross-session",
+      "polling",
+      "automation"
+    ],
+    "summary": "Durable cron jobs enable cross-session async workflows \u2014 poll for external conditions (IP sync, deploys, PR status) across sessions without losing context. Encode all context in the prompt itself.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-002",
+    "tags": [
+      "eureka",
+      "compound-learning",
+      "meta",
+      "productivity",
+      "architecture",
+      "self-improving",
+      "reward-system"
+    ],
+    "summary": "Self-improving AI agent ecosystem: compound learning + knowledge scoring + behavioral RL + 19 skills + automated hooks. Zero infrastructure, all file-based. No commercial equivalent.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-003",
+    "tags": [
+      "eureka",
+      "meta",
+      "research",
+      "data-synthesis",
+      "ai-usage",
+      "productivity",
+      "pattern"
+    ],
+    "summary": "Multi-source data synthesis (Trino + cost tables + Console + Confluence + crew API + MP knowledge) produces executive-level AI usage intelligence no single dashboard provides. Pattern: map all sources \u2192 cross-validate units \u2192 combine dimensions \u2192 surface hidden insights.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-035",
+    "tags": [
+      "mcm-mt",
+      "architecture",
+      "hiring-platform",
+      "writeback",
+      "automation",
+      "phase2",
+      "connected-projects",
+      "mental-model"
+    ],
+    "summary": "mcm-mt mental model: owns HiringProject/HPC/Pipeline/State. Write-back via ConnectedProjectCandidateGrpcClient \u2192 hp-ats. ATS automation via AutomatedPipelineStageTask + AtsAutomationPipelineSettingsHandler. Silent fallback on 3 missing conditions. Espresso: multichannelmanagement.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "knowledge-venice-mental-model",
+    "tags": [
+      "venice",
+      "derived-data",
+      "storage",
+      "infrastructure",
+      "ml-features",
+      "embeddings"
+    ],
+    "summary": "Venice mental model: derived data store for precomputed data, HP usage across 5 services, key gotchas (immutable keys/partitions, hybrid first-push)",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-036",
+    "tags": [
+      "kafka",
+      "xinfra",
+      "northguard",
+      "brooklin",
+      "streaming",
+      "infrastructure",
+      "mental-model",
+      "nearline",
+      "multi-colo"
+    ],
+    "summary": "Kafka/Xinfra full stack: 7-layer architecture (TrackerProcessor\u2192Xinfra\u2192LiKafka\u2192Kafka/Northguard), 5 cluster types, MultiColoFilter cross-DC dedup, Brooklin CDC, Northguard replacing Kafka (C++, FY25). Industry comparison: leads on abstraction, lags on Samza/elasticity/event-time.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-037",
+    "tags": [
+      "meta",
+      "skills",
+      "learn",
+      "aha",
+      "eureka",
+      "compound-learning",
+      "automation",
+      "hooks"
+    ],
+    "summary": "Metadata skill evolution: smarter auto-detection triggers, bidirectional linking (3+ learns \u2192 suggest aha), graduated graduation (/aha fast-track, /eureka immediate), phase-mapped surfacing. Taxonomy stays, intelligence goes into hooks.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-033",
+    "tags": [
+      "meta",
+      "compound-learning",
+      "evolution",
+      "diminishing-returns"
+    ],
+    "summary": "S-curve evolution: stop adding at inflection point, feed data layer, let scoring decide what stays, prune after 10 real sessions",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "aha-003",
+    "tags": [
+      "meta",
+      "skills",
+      "architecture",
+      "tier-system",
+      "capability-tools",
+      "playwright-cli",
+      "observe-agent",
+      "linkedin-cli-tools",
+      "pattern"
+    ],
+    "summary": "Tier 1.5 = capability tools (browser eyes, production eyes, production hands). They provide the HOW that Tier 1 workflows and Tier 3 recipes invoke. Adoption pattern: install \u2192 create recipes \u2192 wire into skills \u2192 add to auth-preflight.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-041",
+    "tags": [
+      "publication",
+      "paper",
+      "patent",
+      "plan",
+      "conference"
+    ],
+    "summary": "Paper publication plan: get 2-3 teammates on system, collect before/after data, target CHASE first, frame as discovery not tool, follow go/engpublications 2-ticket process",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-seat-entitlements-vs-seatroles",
+    "tags": [
+      "seatsV2",
+      "entitlements",
+      "seatRoles",
+      "aperture",
+      "recruiter-plus",
+      "permission-check",
+      "proto"
+    ],
+    "summary": "Use seatEntitlements (not seatRoles) for HP permission checks; add missing fields to Seat.proto in hp-ep-api rather than proxying through roles",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-004",
+    "tags": [
+      "eureka",
+      "figma",
+      "playwright",
+      "e2e-testing",
+      "design-driven",
+      "bug-bash",
+      "greenhouse",
+      "phase2"
+    ],
+    "summary": "Design-driven cross-system E2E testing: Figma REST API pulls design screens \u2192 Claude extracts UI state machine \u2192 maps to Playwright + Greenhouse API + grpcurli verification triangle. Design is the spec, not a separate doc.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-040",
+    "tags": [
+      "publication",
+      "patent",
+      "process",
+      "paper",
+      "legal"
+    ],
+    "summary": "LinkedIn engpublications: 2 JIRA tickets, patent first, Eng Lead Sr Director+, SLA 15 days each, ~2-3 months total. Patent ID 93827.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "aha-004",
+    "tags": [
+      "aha",
+      "phase2",
+      "connected-projects",
+      "architecture",
+      "pattern",
+      "pipeline-sync",
+      "writeback",
+      "realtime",
+      "entity-mapping"
+    ],
+    "summary": "Phase 2 = 3 pipelines (inbound sync, outbound writeback, realtime feedback) + shared entity mapping layer. Every bug/test/debug maps to one pipeline. 3-state machine = Pipeline 2 fires (PENDING) + Pipeline 3 responds (CONFIRMED/FAILED). All 9 FE tasks consume Pipeline 3 output.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-006",
+    "tags": [
+      "eureka",
+      "mental-model",
+      "cross-boundary",
+      "design",
+      "frontend",
+      "backend",
+      "infrastructure",
+      "figma",
+      "playwright",
+      "e2e-testing",
+      "system-thinking",
+      "paradigm"
+    ],
+    "summary": "AI agent as connective tissue between organizational silos: Figma (design intent) + ts-web (implementation) + backend services (data flow) + ATS (external state) + infra (Kafka/realtime) synthesized into one unified view that no individual role can see alone. The value is in the connections between tools, not any single tool.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-007",
+    "tags": [
+      "eureka",
+      "context-repo",
+      "team-sharing",
+      "knowledge-management",
+      "claude-code",
+      "onboarding",
+      "productivity",
+      "force-multiplier"
+    ],
+    "summary": "Context repo (.claude/CLAUDE.md + skills + docs + test data + runbooks) turns one persons deep investigation into entire teams starting point. Clone + open with Claude Code = instant project context. Onboarding: weeks \u2192 10 min. Knowledge retention: permanent. Pattern reusable for any team initiative.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-008",
+    "tags": [
+      "eureka",
+      "goal-driven",
+      "paradigm",
+      "context-repo",
+      "execution",
+      "design-driven",
+      "cross-boundary",
+      "workflow"
+    ],
+    "summary": "Goal-driven development: reframe from task-driven (fix file X) to goal-driven (recruiter sees Failed badge). Deliverable = completed goal verified end-to-end across design, frontend, backend, ATS. Context repo (what+why) + execution repo (how) connected via bridge skills. One goal, parallel worktrees, all layers verified.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "aha-005",
+    "tags": [
+      "meta",
+      "compound-learning",
+      "automation",
+      "hooks",
+      "friction",
+      "behavior",
+      "pattern",
+      "aha"
+    ],
+    "summary": "Quantified friction from /insights can be directly translated into routing tables (wrong-approach) and hook preflights (env/auth). Formula: friction \u00d7 minutes > 5h \u2192 automate.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-005",
+    "tags": [
+      "culture",
+      "collaboration",
+      "open-source",
+      "team",
+      "contributing",
+      "eureka"
+    ],
+    "summary": "No gatekeeping, no approval process. Push to main. Fix together. Open, share, contribute \u2014 the Internet spirit applied to team tooling.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "scout-tee-dev-agent",
+    "tags": [
+      "scout",
+      "agent-systems",
+      "ralph-loop",
+      "convention-audit",
+      "autonomous-coding",
+      "pr-review"
+    ],
+    "summary": "Scout of tee-dev-agent: Ralph Loop (fresh session per task), Convention Audit, Auto PR Batch Reviewer, JIRA-to-PR orchestrator, Centauri dashboard. Adopted #1 and #2.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-043",
+    "tags": [
+      "claude-code",
+      "knowledge-sync",
+      "vm",
+      "infrastructure",
+      "devex"
+    ],
+    "summary": "Portable knowledge architecture: separate durable knowledge (~1MB) from ephemeral state (~500MB), symlink via install.sh, auto-sync via SessionEnd/UserPromptSubmit hooks, GitHub as durable remote",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "bug-006",
+    "tags": [
+      "claude-code",
+      "settings",
+      "hooks",
+      "install",
+      "config"
+    ],
+    "summary": "install.sh overwrote settings.json wiping custom hooks \u2014 fix: skip if exists, machine-specific configs should never be overwritten",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-044",
+    "tags": [
+      "claude-code",
+      "permissions",
+      "settings",
+      "session"
+    ],
+    "summary": "Claude Code permission changes (Bash allowlist) require session restart \u2014 tell user upfront, provide ! commands as workaround",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-045",
+    "tags": [
+      "vm",
+      "remote-build",
+      "ssh",
+      "infrastructure",
+      "devex",
+      "vm-run"
+    ],
+    "summary": "vm-run: generic sync-and-build from any local repo path. bash -c wrapper required. PreToolUse hook auto-intercepts build commands. Falls back to local on failure.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "bug-008",
+    "tags": [
+      "claude-code",
+      "permissions",
+      "ssh",
+      "bash",
+      "workaround"
+    ],
+    "summary": "Bash(ssh:*) pattern instantly denied in Claude Code despite being in allow list. Workaround: bash -c \"ssh vm '...'\" matches Bash(bash:*).",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "bug-009",
+    "tags": [
+      "ssh",
+      "config",
+      "lockout",
+      "vm",
+      "authentication"
+    ],
+    "summary": "SSH config lockout: adding hostname to publickey-only config before key deployed to VM. Fix: copy key first, then add config.",
+    "status": "active",
+    "outcome_score": 0
+  }
+]
+```
+
+## FEEDBACK MEMORIES (1 active rules)
+
+```json
+[
+  {
+    "id": "feedback-frontload-context",
+    "content": "---\nname: Front-load context to avoid wrong-approach friction\ndescription: User's #1 friction source (28 instances) \u2014 always provide specific service/file/tool constraints upfront rather than exploring broadly\ntype: feedback\n---\n\nWhen investigating or debugging, front-load the specific service, file, processor, or API tool in the prompt rather than exploring broadly first.\n\n**Why:** Across 32 sessions, 28 instances of wrong-approach friction came from Claude exploring the wrong component before "
+  }
+]
+```
+
+---
+
+Now evaluate this session. Return a single JSON object matching the schema in Step 3.

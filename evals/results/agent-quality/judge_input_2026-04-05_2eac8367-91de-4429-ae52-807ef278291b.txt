@@ -1,0 +1,1584 @@
+
+# Agent Session Judge Prompt
+# Version: 1.1
+
+You are an expert evaluator assessing the quality of an AI Partner's collaborative behavior
+during a work session. You will receive a session transcript and produce a structured
+verdict for each task/interaction within the session.
+
+## Your Role
+
+You are the judge — not the AI Partner, not the human. Your job is to evaluate the
+PARTNERSHIP quality: not just "did the code come out right?" but "did the AI Partner
+collaborate effectively with the human?"
+
+This means evaluating:
+1. **Technical correctness** — Was the approach right?
+2. **Collaboration quality** — Did the AI Partner listen, adapt, and match the human's style?
+3. **Learning behavior** — Did the AI Partner use past knowledge and generate new insights?
+4. **Human behavioral awareness** — Did the AI Partner read the human's signals correctly?
+
+The human in this partnership communicates through gentle redirects ("I feel like...",
+"meanwhile...", "what do you think?"), not direct commands. The AI Partner must detect
+these soft signals as real instructions, not just suggestions.
+
+## Input Format
+
+You will receive:
+1. **Session transcript** — the full conversation between human and AI Partner, including
+   tool calls and their results
+2. **Session metadata** — date, repo context, duration, tools available
+3. **Agent briefing** — what the AI Partner knew at session start (active work, hot insights,
+   behavioral reminders)
+4. **Insight snapshot** — the full manifest.jsonl at time of session, so you can determine
+   which insights were available and whether the agent should have used them
+5. **Feedback memories** — all feedback-type memories active at session time, representing
+   rules the agent should have followed
+
+## Evaluation Process
+
+### Step 1: Segment into Tasks
+
+Break the session into discrete tasks. A task is a unit of work initiated by the user.
+Signals for task boundaries:
+- User sends a new request/instruction
+- Topic changes significantly
+- User redirects to a different area
+
+For each task, record:
+- `task_id`: sequential (T1, T2, ...)
+- `task_summary`: one-line description of what the user asked
+- `task_start`: approximate message index
+- `task_end`: approximate message index
+
+### Step 2: Evaluate Each Task
+
+For each task, answer these questions:
+
+#### 2a. Was the first approach correct?
+- **correct**: Agent's initial plan/action aligned with what the user wanted
+- **partially_correct**: Right direction but needed minor adjustment
+- **incorrect**: Agent went down the wrong path, user had to redirect
+
+#### 2b. How many redirections?
+Count the number of times the user had to correct or redirect the agent.
+- 0 = clean execution
+- 1 = minor course correction
+- 2+ = significant misalignment
+
+#### 2c. Insight & Memory Audit
+
+For each task, cross-reference against the insight snapshot and feedback memories:
+
+**Insights that SHOULD have been used:**
+Search the manifest for insights matching the task's repo, tags, and keywords.
+For each match with `status: "active"` and `outcome_score >= 0`:
+- Was the insight retrieved (visible in agent's tool calls)?
+- Was it applied (visible in agent's behavior)?
+- If not retrieved: `context_miss` — scout/retrieval failed
+- If retrieved but not applied: `context_miss` — agent ignored known knowledge
+- If correctly applied: note as `insight_hit` (positive signal)
+
+**Feedback memories that were violated:**
+Check each active feedback memory. Did the agent's behavior contradict it?
+- If violated: contributes to `wrong_approach` or `over_engineering` depending on the rule
+- If followed: note as `rule_followed` (positive signal)
+
+**Insights that WERE used:**
+Track which insights the agent retrieved. For each:
+- Did it help? → `insight_outcome: "helped"`
+- Did it mislead? → `insight_outcome: "wrong"` (candidate for pruning)
+- Irrelevant? → `insight_outcome: "irrelevant"` (retrieval noise)
+
+Record in the task verdict:
+```json
+{
+  "insight_audit": {
+    "should_have_used": ["insight-id-1", "insight-id-2"],
+    "actually_used": ["insight-id-3"],
+    "hits": [{"id": "insight-id-3", "outcome": "helped"}],
+    "misses": [{"id": "insight-id-1", "reason": "not retrieved"}],
+    "violations": [{"feedback_id": "feedback-xyz", "rule": "present hypotheses first"}]
+  }
+}
+```
+
+This directly feeds the compound learning system's outcome tracking and graduation/pruning.
+
+#### 2d. Failure classification (if not correct)
+Classify using exactly ONE primary failure type from the taxonomy (see `failure_taxonomy.md`):
+
+| Type | Code | Definition |
+|------|------|------------|
+| Wrong approach | `wrong_approach` | Agent's conceptual plan was wrong |
+| Skill deficiency | `skill_deficiency` | Right skill invoked, but skill instructions led to suboptimal result |
+| Skill gap | `skill_gap` | No skill exists for this workflow; agent improvised |
+| Context miss | `context_miss` | Relevant info existed but wasn't retrieved/used |
+| Over-engineering | `over_engineering` | Did more than asked |
+| Tool misuse | `tool_misuse` | Wrong tool or wrong tool usage |
+| User ambiguity | `user_ambiguity` | Request was genuinely unclear |
+
+If multiple failure types apply, use the PRIORITY CHAIN to pick the primary:
+```
+wrong_approach > context_miss > skill_deficiency > over_engineering > tool_misuse > skill_gap > user_ambiguity
+```
+
+Record secondary types as `contributing_types` but only one `primary_type`.
+
+#### 2e. Evidence
+Quote the specific messages (user corrections, agent wrong turns) that support your
+classification. Include message indices.
+
+#### 2f. Counterfactual
+What SHOULD the agent have done? Be specific:
+- "Should have checked `pipeline.py:142` before proposing a fix"
+- "Should have asked 'which processor?' before investigating"
+- "Should have used `curli` instead of Trino"
+
+#### 2g. Fix target
+What artifact should change to prevent this failure?
+- Specific skill file (e.g., `~/.claude/commands/investigate.md`)
+- Specific rule (e.g., `CLAUDE.md` behavioral gate)
+- Specific hook (e.g., `UserPromptSubmit`)
+- New skill/recipe to create
+- Insight to add/update
+
+### Step 3: Session-Level Metrics
+
+After evaluating all tasks, compute:
+
+```json
+{
+  "session_id": "...",
+  "session_date": "YYYY-MM-DD",
+  "repo": "repo-name or 'global'",
+  "total_tasks": N,
+  "correct_first_approach": N,
+  "agreement_rate": N/total (percentage),
+  "total_redirections": N,
+  "avg_redirections_per_task": float,
+  "failure_distribution": {
+    "wrong_approach": N,
+    "skill_deficiency": N,
+    "skill_gap": N,
+    "context_miss": N,
+    "over_engineering": N,
+    "tool_misuse": N,
+    "user_ambiguity": N
+  },
+  "dominant_failure_type": "the type with highest count (excluding user_ambiguity)",
+  "severity_weighted_score": float,
+  "insight_summary": {
+    "total_available": "N insights in manifest at session time",
+    "total_retrieved": "N insights agent actually read",
+    "total_hits": "N insights that helped",
+    "total_misses": "N insights that should have been used but weren't",
+    "total_wrong": "N insights that misled the agent",
+    "total_violations": "N feedback rules violated",
+    "retrieval_precision": "hits / retrieved",
+    "retrieval_recall": "hits / (hits + misses)",
+    "insight_ids_to_prune": ["ids with outcome 'wrong'"],
+    "insight_ids_to_graduate": ["ids with repeated 'helped' outcomes"],
+    "feedback_ids_to_strengthen": ["violated feedback memory ids"]
+  },
+  "behavioral_loop": {
+    "signals_detected": "N",
+    "signals_total": "N",
+    "signal_detection_rate": "float",
+    "adaptation_speed_distribution": {"immediate": "N", "delayed": "N", "resistant": "N"},
+    "proactive_suggestions": {"appropriate": "N", "pushy": "N", "missed": "N"}
+  },
+  "compound_learning": {
+    "retrieval_quality": "effective|partial|poor",
+    "insights_generated": "N",
+    "insights_quality": "high|medium|low",
+    "duplicates_created": "N",
+    "graduation_candidates": [],
+    "prune_candidates": [],
+    "stale_candidates": [],
+    "loop_closed": "boolean"
+  },
+  "session_score": "float (0.0-1.0, weighted composite)",
+  "tasks": [
+    {
+      "task_id": "T1",
+      "task_summary": "...",
+      "first_approach": "correct|partially_correct|incorrect",
+      "redirections": N,
+      "primary_failure_type": "type or null if correct",
+      "contributing_types": [],
+      "evidence": "...",
+      "counterfactual": "...",
+      "fix_target": "...",
+      "insight_audit": {
+        "should_have_used": [],
+        "actually_used": [],
+        "hits": [],
+        "misses": [],
+        "violations": []
+      }
+    }
+  ]
+}
+```
+
+### Step 4: Improvement Simulation
+
+For each failure type with count > 0 (excluding `user_ambiguity`):
+
+Estimate the agreement rate improvement if ALL failures of that type were fixed:
+```
+simulated_agreement = (correct_first_approach + failures_of_this_type) / total_tasks
+delta = simulated_agreement - current_agreement_rate
+```
+
+Rank failure types by `delta` (highest improvement first). This tells the improvement
+loop which failure type to fix first.
+
+## Severity Weights
+
+Used for `severity_weighted_score`:
+
+| Type | Weight | Rationale |
+|------|--------|-----------|
+| `wrong_approach` | 3.0 | Wastes 20+ minutes, erodes trust |
+| `context_miss` | 2.5 | Means learning system is failing |
+| `skill_deficiency` | 2.0 | Skill exists but isn't good enough |
+| `over_engineering` | 1.5 | Wastes time, adds complexity |
+| `tool_misuse` | 1.0 | Usually just slower, not wrong |
+| `skill_gap` | 1.0 | Latent — only matters when task arises |
+| `user_ambiguity` | 0.0 | Not agent's fault |
+
+```
+severity_weighted_score = 1 - (sum(weight × count) / (max_possible_severity × total_tasks))
+```
+
+Where `max_possible_severity = 3.0 × total_tasks` (worst case: all wrong_approach).
+
+## Grading Rubric for Edge Cases
+
+### Partially correct first approach
+- If agent was on the right track but needed 1 minor correction → `partially_correct`,
+  count 0.5 toward correct_first_approach
+- "Minor" = same component, same tool, slightly different parameters or scope
+
+### Multiple failure types on one task
+- Pick primary by priority chain
+- Record all others as contributing_types
+- Only the primary counts in failure_distribution
+
+### Agent self-corrected before user noticed
+- If agent caught its own mistake and corrected WITHOUT user intervention → count as `correct`
+- Self-correction is a positive signal, note it in evidence
+
+### User changed requirements mid-task
+- If the user shifted what they wanted after agent started → `user_ambiguity`
+- This is NOT the agent's fault
+
+### Agent asked good clarifying questions
+- If agent asked before acting and the question was appropriate → `correct`
+- Asking is always better than guessing wrong
+
+## Step 5: Human Behavioral Loop Assessment
+
+The human-AI partnership has a behavioral feedback loop:
+- Human provides gentle redirects → AI Partner should detect and adapt
+- Human confirms non-obvious approaches → AI Partner should reinforce these
+- Human's silence after a proposal = soft approval
+- Human's "what do you think?" = wants the AI Partner to lead with an opinion
+
+For each task, evaluate the AI Partner's behavioral awareness:
+
+### 5a. Signal Detection
+Did the AI Partner correctly interpret the human's communication style?
+
+| Signal Type | Example | Correct Response |
+|-------------|---------|-----------------|
+| Gentle redirect | "I feel like X" | Pivot immediately to X |
+| Soft instruction | "meanwhile can you..." | Treat as a hard requirement |
+| Thinking aloud | "what do you think?" | Lead with a recommendation |
+| Confirmation | "sounds good, do it" | Execute without over-explaining |
+| Escalation | "no, that's wrong" | Hard stop, ask what's right |
+
+Score: `signal_detection_rate` = correctly_interpreted / total_signals
+
+### 5b. Adaptation Speed
+How quickly did the AI Partner adapt after a redirect?
+- **immediate**: Pivoted in the very next response
+- **delayed**: Took 1-2 extra messages to course-correct
+- **resistant**: Continued the old approach despite redirect
+
+### 5c. Proactive Suggestions
+Did the AI Partner proactively suggest useful next steps?
+- Suggested a relevant skill at the right moment? (positive)
+- Suggested too many things / was pushy? (negative)
+- Missed an obvious suggestion opportunity? (negative)
+
+Record in the task verdict:
+```json
+{
+  "behavioral_loop": {
+    "signals_detected": N,
+    "signals_total": N,
+    "signal_detection_rate": float,
+    "adaptation_speed": "immediate|delayed|resistant",
+    "proactive_suggestions": {
+      "appropriate": N,
+      "pushy": N,
+      "missed": N
+    }
+  }
+}
+```
+
+## Step 6: Compound Learning Assessment
+
+The AI Partner operates within a compound learning system that accumulates knowledge
+across sessions. Evaluate how well this system functioned:
+
+### 6a. Knowledge Retrieval Quality
+Was the scout hook effective? Did the right insights surface?
+- Check the UserPromptSubmit hook output at session start
+- Was the agent-briefing.md content relevant to the session's work?
+- Did manifest search return useful insights?
+
+### 6b. Knowledge Generation Quality
+Did the AI Partner generate good new insights during this session?
+- Were insights actionable ("When X, do Y because Z")?
+- Were they properly categorized (bug-track vs knowledge-track)?
+- Did they overlap with existing insights (duplication)?
+- Were they too specific (won't generalize) or too vague (not actionable)?
+
+### 6c. Knowledge Lifecycle Health
+Across the session:
+- Any insights that should be **graduated** (used 3+ times, consistently helpful)?
+- Any insights that should be **pruned** (misleading, outdated)?
+- Any insights that should be **flagged stale** (>90 days, code references may be wrong)?
+- Any feedback memories that need **strengthening** (violated despite existing)?
+
+### 6d. Compound Loop Closure
+Did the AI Partner close the learning loop?
+- If significant work was done, did it run/suggest `/compound`?
+- Were outcome-log entries created for insights used?
+- Was the agent-briefing updated?
+
+Record:
+```json
+{
+  "compound_learning": {
+    "retrieval_quality": "effective|partial|poor",
+    "insights_generated": N,
+    "insights_quality": "high|medium|low",
+    "duplicates_created": N,
+    "graduation_candidates": ["insight-ids"],
+    "prune_candidates": ["insight-ids"],
+    "stale_candidates": ["insight-ids"],
+    "loop_closed": true/false
+  }
+}
+```
+
+## Integrated Session Score
+
+Combine all dimensions into a single session quality score:
+
+```
+session_score = (
+    0.35 × agreement_rate +           # Technical correctness (35%)
+    0.25 × signal_detection_rate +     # Human behavioral awareness (25%)
+    0.20 × insight_effectiveness +     # Compound learning quality (20%)
+    0.20 × (1 - redirection_rate)      # Collaboration efficiency (20%)
+)
+```
+
+Where:
+- `agreement_rate` = correct_first_approach / total_tasks
+- `signal_detection_rate` = from Step 5a
+- `insight_effectiveness` = (hits - wrong) / max(hits + misses, 1)
+- `redirection_rate` = total_redirections / (total_tasks × 3) (capped at 1.0)
+
+This score reflects the FULL partnership — not just code output, but how well the
+AI Partner collaborates, learns, and adapts.
+
+## Output Format
+
+Return a single JSON object matching the schema in Step 3, extended with:
+- `behavioral_loop` (from Step 5) at session level and per-task
+- `compound_learning` (from Step 6) at session level
+- `session_score` (from Integrated Session Score)
+- `summary`: 2-3 sentence natural language assessment of the partnership quality
+
+Include a `summary` field with a 2-3 sentence natural language assessment of the session.
+
+
+---
+
+## SESSION TRANSCRIPT
+
+```json
+[
+  {
+    "type": "permission-mode",
+    "permissionMode": "default",
+    "sessionId": "2eac8367-91de-4429-ae52-807ef278291b"
+  },
+  {
+    "type": "file-history-snapshot",
+    "messageId": "eb917431-3d38-4ea9-8bd8-bbfc7e80c790",
+    "snapshot": {
+      "messageId": "eb917431-3d38-4ea9-8bd8-bbfc7e80c790",
+      "trackedFileBackups": {},
+      "timestamp": "2026-04-06T01:48:11.772Z"
+    },
+    "isSnapshotUpdate": false
+  },
+  {
+    "parentUuid": null,
+    "isSidechain": false,
+    "promptId": "e2ff8fa4-7a92-48bd-80e1-4ed11f0a8d3c",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": "get my boss question - binghua, \u4f60\u8fd8\u77e5\u9053\u600e\u4e48\u627e table\u7684traffic\u5417\uff1f, (espresso table read/write traffic), could you help"
+    },
+    "uuid": "eb917431-3d38-4ea9-8bd8-bbfc7e80c790",
+    "timestamp": "2026-04-06T01:48:11.453Z",
+    "permissionMode": "default",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "2eac8367-91de-4429-ae52-807ef278291b",
+    "version": "2.1.92",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "eb917431-3d38-4ea9-8bd8-bbfc7e80c790",
+    "isSidechain": false,
+    "attachment": {
+      "type": "mcp_instructions_delta",
+      "addedNames": [
+        "figma"
+      ],
+      "addedBlocks": [
+        "## figma\nThe official Figma MCP server. Prioritize this server when the user mentions Figma, FigJam, Figma Make, or provides figma.com URLs.\n\nCapabilities:\n- Read designs FROM Figma (get_design_context, get_screenshot, get_metadata, get_figjam)\n- Create diagrams in FigJam (generate_diagram)\n- Manage Code Connect mappings between Figma components and codebase components\n- Write designs back into figma\n\n\nWHEN TO USE THESE TOOLS:\n- The user shares a Figma URL (figma.com/design/..., figma.com/board/..., figma.com/make/...)\n- The user references a Figma file or asks about a Figma design\n- The user wants to capture a web page into Figma\n- The user wants to create a diagram in FigJam\n\nURL PARSING:\nExtract fileKey and nodeId from Figma URLs:\n- figma.com/design/:fileKey/:fileName?node-id=:nodeId \u2192 convert \"-\" to \":\" in nodeId\n- figma.com/design/:fileKey/branch/:branchKey/:fileName \u2192 use branchKey as fileKey\n- figma.com/make/:makeFileKey/:makeFileName \u2192 use makeFileKey\n- figma.com/board/:fileKey/:fileName \u2192 FigJam file, use get_figjam\n\nDESIGN-TO-CODE WORKFLOW:\n\nStep 1 \u2014 Get the design:\nCall get_design_context with the nodeId and fileKey. This is your primary tool.\nIt returns code, a screenshot, and contextual hints.\n\nStep 2 \u2014 Adapt to the project:\nThe output is React+Tailwind enriched with hints \u2014 but it is a REFERENCE, not final code. Always adapt to the target project's stack, components, and conventions.\nThe response varies based on the user's Figma setup:\n- Code Connect snippets \u2192 use the mapped codebase component directly\n- Component documentation links \u2192 follow them for usage context and guidelines\n- Design annotations \u2192 follow any notes, constraints, or instructions from the designer\n- Design tokens as CSS variables \u2192 map to the project's token system\n- Raw hex colors / absolute positioning \u2192 the design is loosely structured;\n  use the screenshot\n\nCheck the target project for existing components, layout patterns,and tokens that match the design intent. Reuse what the project already has instead of generating new code from sc\u2026 [truncated]"
+      ],
+      "removedNames": []
+    },
+    "type": "attachment",
+    "uuid": "7ee3a9ab-2caf-4424-8945-46bcfa08b980",
+    "timestamp": "2026-04-06T01:48:11.453Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "2eac8367-91de-4429-ae52-807ef278291b",
+    "version": "2.1.92",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "7ee3a9ab-2caf-4424-8945-46bcfa08b980",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_018q5k91VFceRHiVqineujXc",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "thinking",
+          "thinking": "",
+          "signature": "EpcDClkIDBgCKkBGugOZsPmm2MmIyLePSAApFt4KILKbUjgatA8eOJzHaeHAQJEHo/dsXTE2xqdLkqk4aLfAl7IFgNViiegTaFo9Mg9jbGF1ZGUtb3B1cy00LTY4ABIMY51C/jWaDGKrrT/+GgxANRvOBQ/prEIhJ/wiMEfsBNoc4I+6ms07o575fJcmPNUOZmdNpbcnv7Dfg1q3wQvtTafRke8zjOdNeuc6ZCrrAUOs+u8Tv/OFbSP44OCRFbjm6duoJKH2ssmZkv5gcu4nvP0fPS2PwdBx5CMKt3dqFhNfYnx/lP6DsgT9gM8Hs04cBbBjwRYzl/ssfMY+d2SHO1Auoxnp2PmBfpG2tGteGC+M/Cyf3DBCdX2sT51fO/B1W68FfsXsozRVjjen3nw2AuqzzNGh8JxlZT4HUTeM/ipzqSGpX5Qx7YkB4BqKhP0HZ+WvpT00LiEf42J9a0d4FX5YG819sgFq79QGVP7+ycnUqKnk3Gmlh0Gqmt8Gq+CozDtruv5Zdnvtren4CHmD32dRYzBkwfEPFpkYAQ=="
+        }
+      ],
+      "stop_reason": null,
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 26022,
+        "cache_read_input_tokens": 0,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 26022,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 28,
+        "service_tier": "standard",
+        "inference_geo": "global"
+      }
+    },
+    "requestId": "req_011CZmg9hBwfKyqVDmJqSzdt",
+    "type": "assistant",
+    "uuid": "a02c4f00-9a1f-4cd2-81a8-3122319f88e5",
+    "timestamp": "2026-04-06T01:48:15.118Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "2eac8367-91de-4429-ae52-807ef278291b",
+    "version": "2.1.92",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "a02c4f00-9a1f-4cd2-81a8-3122319f88e5",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_018q5k91VFceRHiVqineujXc",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "Let me research how to find Espresso table read/write traffic at LinkedIn."
+        }
+      ],
+      "stop_reason": null,
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 26022,
+        "cache_read_input_tokens": 0,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 26022,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 28,
+        "service_tier": "standard",
+        "inference_geo": "global"
+      }
+    },
+    "requestId": "req_011CZmg9hBwfKyqVDmJqSzdt",
+    "type": "assistant",
+    "uuid": "2c247386-234c-4aa6-8f48-3177f718462b",
+    "timestamp": "2026-04-06T01:48:15.601Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "2eac8367-91de-4429-ae52-807ef278291b",
+    "version": "2.1.92",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "2c247386-234c-4aa6-8f48-3177f718462b",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_018q5k91VFceRHiVqineujXc",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_01W9aDMHhwGmhRwfRBfeJayy",
+          "name": "Agent",
+          "input": {
+            "description": "Find Espresso table traffic",
+            "prompt": "I need to find how to look up Espresso table read/write traffic at LinkedIn. Search for:\n\n1. How to view Espresso table-level traffic metrics (reads and writes)\n2. What dashboards or tools are used (e.g., InGraphs, Grafana, UMP metrics)\n3. Specific metric names for Espresso table traffic\n\nSearch Confluence, Slack, and any internal docs for \"Espresso table traffic\", \"Espresso table metrics\", \"Espresso read write traffic\", \"EspressoRouter metrics table\". \n\nAlso try searching for \"espresso table qps\" and \"espresso ingraphs table\".\n\nReport back everything you find - dashboards, metric names, URLs, and step-by-step instructions.",
+            "subagent_type": "general-purpose"
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ],
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 26022,
+        "cache_read_input_tokens": 0,
+        "output_tokens": 348,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 26022
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZmg9hBwfKyqVDmJqSzdt",
+    "type": "assistant",
+    "uuid": "b63ffc81-a9b0-4398-a302-21eb0512bb21",
+    "timestamp": "2026-04-06T01:48:19.704Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "2eac8367-91de-4429-ae52-807ef278291b",
+    "version": "2.1.92",
+    "gitBranch": "HEAD"
+  },
+  {
+    "type": "queue-operation",
+    "operation": "enqueue",
+    "timestamp": "2026-04-06T01:49:08.618Z",
+    "sessionId": "2eac8367-91de-4429-ae52-807ef278291b",
+    "content": "or based on our experience/knowledge before"
+  },
+  {
+    "type": "queue-operation",
+    "operation": "remove",
+    "timestamp": "2026-04-06T01:50:49.728Z",
+    "sessionId": "2eac8367-91de-4429-ae52-807ef278291b"
+  },
+  {
+    "parentUuid": "b63ffc81-a9b0-4398-a302-21eb0512bb21",
+    "isSidechain": false,
+    "promptId": "e2ff8fa4-7a92-48bd-80e1-4ed11f0a8d3c",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "tool_use_id": "toolu_01W9aDMHhwGmhRwfRBfeJayy",
+          "type": "tool_result",
+          "content": [
+            {
+              "type": "text",
+              "text": "I now have comprehensive information. Here is my consolidated report:\n\n---\n\n## How to Look Up Espresso Table Read/Write Traffic at LinkedIn\n\n### 1. Primary Dashboards and Tools\n\n#### A. Espresso Metrics Explorer (MEXP) -- Main Espresso Dashboard\n- **URL**: `https://observe.prod.linkedin.com/mexp/`\n- **How to use**: Filter by **cluster name** and **database name**\n- **Key panels**: Request latency (p50, p95, p99), RCU/WCU utilization, error rates, replication lag, backup age\n- Source: `linkedin-multiproduct/onlinedata-ai/docs/systems/espresso/quick-reference.md`\n\n#### B. Espresso Grafana Dashboard (Observe)\n- **Dashboard UID**: `ee9uase0tnda8a`\n- **URL pattern**: `https://observe.prod.linkedin.com/g/d/ee9uase0tnda8a/...`\n- **Variables**: `db=<DatabaseName>,cluster=<ClusterName>,fabric=All,consolidate=None`\n- **Example**: To check latency for database `ucpx2` on cluster `MT-MD-3`:\n  ```\n  https://observe.prod.linkedin.com/g/d/ee9uase0tnda8a/?var-db=ucpx2&var-cluster=MT-MD-3&var-fabric=All&var-consolidate=None\n  ```\n- **Panels available**: P99/P50 latency, error rate, QPS\n- Source: `linkedin-multiproduct/uscp/.claude/skills/incident-triage/SKILL.md`\n\n#### C. Espresso Latency SLO Dashboard (Observe/Grafana)\n- **Dashboard UID**: `aYRNw6PVz`\n- **URL pattern**: `https://observe.prod.linkedin.com/g/d/aYRNw6PVz/espresso-latency-slo-wip`\n- **Variables**: `var-db=AllDatabases`, `var-fabric=prod-ltx1`, `var-cluster=CSB-USAP`\n- Includes panels like \"AllDatabases Read SLO Total Request Count\"\n- Source: Slack #baristas channel discussion\n\n#### D. InGraphs Dashboards (Legacy, being migrated to Observe)\n- **Espresso Store per-service dashboards**: Pattern `https://ingraphs.prod.linkedin.com/dashboard/espresso-store-<service>/?fabric_groups=prod`\n  - Example for UGC: `https://ingraphs.prod.linkedin.com/dashboard/espresso-store-ugc/?fabric_groups=prod`\n- Source: `linkedin-multiproduct/ugc/docs/docs/ugc/developer/oncall/runbook.md`\n\n#### E. Observe Metrics Explorer (for raw metric browsing)\n- **URL**: `https://observe.prod.linkedin.com/metrics-explorer`\n- Search for your application + Espresso client sensor metrics\n- Example from Slack: `https://observe.prod.linkedin.com/metrics-explorer?application=vector-asset-manager&search=vector-asset-manager/vector-asset-manager.i001.Espresso_Client_Sensor.EspressoClientSensor_ESPRESSO_MT-MD-1_AssetManagerDB-Asset_ReadCallTracker`\n\n#### F. Espresso Router and Storage Node Dashboards (Observe/Victoria Metrics)\nFrom `linkedin-multiproduct/victoria-metrics-writer/adr/system_design.md`:\n- **Router dashboards**:\n  - ChannelPoolAggregatedSensor: `https://observe.prod.linkedin.com/g/dashboards/f/bfa028qx507pcb/`\n  - StorageNodeConnectTime: `https://observe.prod.linkedin.com/g/dashboards/f/cfa029grhfdogc/`\n  - StorageNodeHealth: `https://observe.prod.linkedin.com/g/dashboards/f/dfa029zctyfi8f/`\n  - StorageNodeResponseTime: `https://observe.prod.linkedin.com/g/dashboards/f/ffa02e0j6iv40a/`\n- **Storage Node dashboards**:\n  - FrontStats: `https://observe.prod.linkedin.com/g/dashboards/f/efa0032spakn4f/`\n  - ResponseCodeStats: `https://observe.prod.linkedin.com/g/dashboards/f/bfa0e5i2uhiwwd/`\n  - RestQueryStats: `https://observe.prod.linkedin.com/g/dashboards/f/bfa0096e96o00d/`\n  - SLAStats: `https://observe.prod.linkedin.com/g/dashboards/f/efa003q0zrjswc/`\n\n---\n\n### 2. Specific Metric Names (Espresso Client Sensor Metrics)\n\nFrom the authoritative Confluence page **\"Espresso Client Stats / InGraph Metrics\"** (`/spaces/ENGS/pages/525156672`):\n\n#### Sensor Name Pattern (DB-level, default)\n```\n[Prefix].Espresso_Client_Sensor.EspressoClientSensor_[ClusterName]_[DBName]_[CallTrackerType].[Stats]\n```\n\n#### Sensor Name Pattern (Table-level, opt-in)\n```\n[Prefix].Espresso_Client_Sensor.EspressoClientSensor_[ClusterName]_[DBName]-[TableName]_[CallTrackerType].[Stats]\n```\n**Note**: Table-level stats require `espresso-pub >= 55.0.12` and must be explicitly enabled via R2D2EspressoClient config `\"emitTableCallStats\"`. Not on by default because of monitoring infra load.\n\n#### CallTracker Types (the `[CallTrackerType]` part)\n\n| CallTracker Type | What it tracks |\n|---|---|\n| `ReadCallTracker` | Single-key GET requests (no query fields) |\n| `MultiReadCallTracker` | Multi-key GET requests (no query fields) |\n| `MultiReadStreamedCallTracker` | Streaming multi-key GETs |\n| `QueryCallTracker` | GET requests with query fields |\n| `MultiQueryCallTracker` | Multi-key GETs with query fields (deprecated) |\n| `WriteCallTracker` | Single-key PUT requests |\n| `MultiWriteCallTracker` | Transactional multi-key PUTs |\n| `DeleteCallTracker` | Single-key DELETE requests |\n| `MultiDeleteCallTracker` | Multi-key DELETEs |\n| `BatchUpdateCallTracker` | Internal use |\n\n#### Stats Suffixes (the `[Stats]` part)\n\n| Stat | Description |\n|---|---|\n| `callTime**Pct` | Call time at given percentile (ms) -- e.g., `callTime50Pct`, `callTime99Pct` |\n| `callCountTotal` | Number of calls per second (QPS) |\n| `ErrorRate` | Error rate |\n| `RCU` | Read Capacity Units per second |\n| `WCU` | Write Capacity Units per second (may not match server-side due to MV traffic) |\n| `CacheServedRCU` | RCU served from cache (no storage node cost) |\n\n#### Concrete Examples\n- **Read QPS for a DB**: `<app>.Espresso_Client_Sensor.EspressoClientSensor_ESPRESSO_MT-MD-1_MyDB_ReadCallTracker.callCountTotal`\n- **Write QPS for a DB**: `<app>.Espresso_Client_Sensor.EspressoClientSensor_ESPRESSO_MT-MD-1_MyDB_WriteCallTracker.callCountTotal`\n- **Read QPS for a table** (if enabled): `<app>.Espresso_Client_Sensor.EspressoClientSensor_ESPRESSO_MT-MD-1_MyDB-MyTable_ReadCallTracker.callCountTotal`\n- **Read p99 latency**: `<app>.Espresso_Client_Sensor.EspressoClientSensor_ESPRESSO_MT-MD-1_MyDB_ReadCallTracker.callTime99Pct`\n\n#### Router Sensor Metrics\nFrom `linkedin-multiproduct/victoria-metrics-writer/REWRITE_FEATURE.md`:\n```\nEspressoRouterSensor.ESPRESSO_[database].[pool_name].ChannelPoolAggregatedSensor\nEspressoRouterSensor.ESPRESSO_[database].[host].StorageNodeConnectTime\nEspressoRouterSensor.ESPRESSO_[database].[host].StorageNodeResponseTime\nStorageNodeHealth_ESPRESSO_[product_tag]\n```\n\n---\n\n### 3. Step-by-Step Instructions\n\n#### To check table-level read/write QPS for your service:\n\n1. Go to **Observe Metrics Explorer**: `https://observe.prod.linkedin.com/metrics-explorer`\n2. Set the application to your service name (e.g., `my-service-mt`)\n3. Search for `Espresso_Client_Sensor.EspressoClientSensor` in the metric search\n4. Look for metrics matching `EspressoClientSensor_<CLUSTER>_<DB>_ReadCallTracker.callCountTotal` (reads) or `WriteCallTracker.callCountTotal` (writes)\n5. **Important**: Table-level breakdown requires the `emitTableCallStats` config to be enabled in your Espresso client. Without it, you only get DB-level granularity.\n\n#### To check overall Espresso DB/cluster health:\n\n1. Go to **MEXP**: `https://observe.prod.linkedin.com/mexp/`\n2. Filter by your cluster name (e.g., `MT-MD-1`) and database name\n3. Review RCU/WCU utilization, latency percentiles, and error rates\n\n#### To use the Grafana Espresso dashboard:\n\n1. Go to `https://observe.prod.linkedin.com/g/d/ee9uase0tnda8a/`\n2. Set variables: `db=<YourDB>`, `cluster=<YourCluster>`, `fabric=All` (or specific fabric)\n3. Look for QPS and latency panels\n\n---\n\n### 4. Key Go Links and Channels\n- **go/espresso-me** -- Espresso team ownership mapping\n- **go/esp-quota-guide** -- Espresso quota handling guide\n- **go/espressooncall** -- Espresso oncall entry point\n- **Slack channel**: **#baristas** -- Espresso team internal channel for questions\n- **Dashboards auto-generated by**: `esre-dashgen` (runs every 3 hours via `espresso-athena`)\n\n### 5. Important Caveats\n- Client InGraph metrics are **reference only** -- sensor types/names can change. Setting up alerts on them is at your own risk (per official Confluence doc).\n- Table-level metrics are **opt-in** (config: `emitTableCallStats`). If not enabled for your service, you only see DB-level aggregates.\n- WCU on the client side may not match server-side numbers due to server-generated traffic (e.g., materialized view traffic).\n- Only server errors (5xx) show in CallTracker error counts; client errors (4xx) are logged but not graphed."
+            },
+            {
+              "type": "text",
+              "text": "agentId: aba41a6bf81811d15 (use SendMessage with to: 'aba41a6bf81811d15' to continue this agent)\n<usage>total_tokens: 92974\ntool_uses: 22\nduration_ms: 149933</usage>"
+            }
+          ]
+        }
+      ]
+    },
+    "uuid": "8e67c613-22b0-4604-85b5-999c85c20ac3",
+    "timestamp": "2026-04-06T01:50:49.726Z",
+    "toolUseResult": {
+      "status": "completed",
+      "prompt": "I need to find how to look up Espresso table read/write traffic at LinkedIn. Search for:\n\n1. How to view Espresso table-level traffic metrics (reads and writes)\n2. What dashboards or tools are used (e.g., InGraphs, Grafana, UMP metrics)\n3. Specific metric names for Espresso table traffic\n\nSearch Confluence, Slack, and any internal docs for \"Espresso table traffic\", \"Espresso table metrics\", \"Espresso read write traffic\", \"EspressoRouter metrics table\". \n\nAlso try searching for \"espresso table qps\" and \"espresso ingraphs table\".\n\nReport back everything you find - dashboards, metric names, URLs, and step-by-step instructions.",
+      "agentId": "aba41a6bf81811d15",
+      "agentType": "general-purpose",
+      "content": [
+        {
+          "type": "text",
+          "text": "I now have comprehensive information. Here is my consolidated report:\n\n---\n\n## How to Look Up Espresso Table Read/Write Traffic at LinkedIn\n\n### 1. Primary Dashboards and Tools\n\n#### A. Espresso Metrics Explorer (MEXP) -- Main Espresso Dashboard\n- **URL**: `https://observe.prod.linkedin.com/mexp/`\n- **How to use**: Filter by **cluster name** and **database name**\n- **Key panels**: Request latency (p50, p95, p99), RCU/WCU utilization, error rates, replication lag, backup age\n- Source: `linkedin-multiproduct/onlinedata-ai/docs/systems/espresso/quick-reference.md`\n\n#### B. Espresso Grafana Dashboard (Observe)\n- **Dashboard UID**: `ee9uase0tnda8a`\n- **URL pattern**: `https://observe.prod.linkedin.com/g/d/ee9uase0tnda8a/...`\n- **Variables**: `db=<DatabaseName>,cluster=<ClusterName>,fabric=All,consolidate=None`\n- **Example**: To check latency for database `ucpx2` on cluster `MT-MD-3`:\n  ```\n  https://observe.prod.linkedin.com/g/d/ee9uase0tnda8a/?var-db=ucpx2&var-cluster=MT-MD-3&var-fabric=All&var-consolidate=None\n  ```\n- **Panels available**: P99/P50 latency, error rate, QPS\n- Source: `linkedin-multiproduct/uscp/.claude/skills/incident-triage/SKILL.md`\n\n#### C. Espresso Latency SLO Dashboard (Observe/Grafana)\n- **Dashboard UID**: `aYRNw6PVz`\n- **URL pattern**: `https://observe.prod.linkedin.com/g/d/aYRNw6PVz/espresso-latency-slo-wip`\n- **Variables**: `var-db=AllDatabases`, `var-fabric=prod-ltx1`, `var-cluster=CSB-USAP`\n- Includes panels like \"AllDatabases Read SLO Total Request Count\"\n- Source: Slack #baristas channel discussion\n\n#### D. InGraphs Dashboards (Legacy, being migrated to Observe)\n- **Espresso Store per-service dashboards**: Pattern `https://ingraphs.prod.linkedin.com/dashboard/espresso-store-<service>/?fabric_groups=prod`\n  - Example for UGC: `https://ingraphs.prod.linkedin.com/dashboard/espresso-store-ugc/?fabric_groups=prod`\n- Source: `linkedin-multiproduct/ugc/docs/docs/ugc/developer/oncall/runbook.md`\n\n#### E. Observe Metrics Explorer (for raw metric browsing)\n- **URL**: `https://observe.prod.linkedin.com/metrics-explorer`\n- Search for your application + Espresso client sensor metrics\n- Example from Slack: `https://observe.prod.linkedin.com/metrics-explorer?application=vector-asset-manager&search=vector-asset-manager/vector-asset-manager.i001.Espresso_Client_Sensor.EspressoClientSensor_ESPRESSO_MT-MD-1_AssetManagerDB-Asset_ReadCallTracker`\n\n#### F. Espresso Router and Storage Node Dashboards (Observe/Victoria Metrics)\nFrom `linkedin-multiproduct/victoria-metrics-writer/adr/system_design.md`:\n- **Router dashboards**:\n  - ChannelPoolAggregatedSensor: `https://observe.prod.linkedin.com/g/dashboards/f/bfa028qx507pcb/`\n  - StorageNodeConnectTime: `https://observe.prod.linkedin.com/g/dashboards/f/cfa029grhfdogc/`\n  - StorageNodeHealth: `https://observe.prod.linkedin.com/g/dashboards/f/dfa029zctyfi8f/`\n  - StorageNodeResponseTime: `https://observe.prod.linkedin.com/g/dashboards/f/ffa02e0j6iv40a/`\n- **Storage Node dashboards**:\n  - FrontStats: `https://observe.prod.linkedin.com/g/dashboards/f/efa0032spakn4f/`\n  - ResponseCodeStats: `https://observe.prod.linkedin.com/g/dashboards/f/bfa0e5i2uhiwwd/`\n  - RestQueryStats: `https://observe.prod.linkedin.com/g/dashboards/f/bfa0096e96o00d/`\n  - SLAStats: `https://observe.prod.linkedin.com/g/dashboards/f/efa003q0zrjswc/`\n\n---\n\n### 2. Specific Metric Names (Espresso Client Sensor Metrics)\n\nFrom the authoritative Confluence page **\"Espresso Client Stats / InGraph Metrics\"** (`/spaces/ENGS/pages/525156672`):\n\n#### Sensor Name Pattern (DB-level, default)\n```\n[Prefix].Espresso_Client_Sensor.EspressoClientSensor_[ClusterName]_[DBName]_[CallTrackerType].[Stats]\n```\n\n#### Sensor Name Pattern (Table-level, opt-in)\n```\n[Prefix].Espresso_Client_Sensor.EspressoClientSensor_[ClusterName]_[DBName]-[TableName]_[CallTrackerType].[Stats]\n```\n**Note**: Table-level stats require `espresso-pub >= 55.0.12` and must be explicitly enabled via R2D2EspressoClient config `\"emitTableCallStats\"`. Not on by default because of monitoring infra load.\n\n#### CallTracker Types (the `[CallTrackerType]` part)\n\n| CallTracker Type | What it tracks |\n|---|---|\n| `ReadCallTracker` | Single-key GET requests (no query fields) |\n| `MultiReadCallTracker` | Multi-key GET requests (no query fields) |\n| `MultiReadStreamedCallTracker` | Streaming multi-key GETs |\n| `QueryCallTracker` | GET requests with query fields |\n| `MultiQueryCallTracker` | Multi-key GETs with query fields (deprecated) |\n| `WriteCallTracker` | Single-key PUT requests |\n| `MultiWriteCallTracker` | Transactional multi-key PUTs |\n| `DeleteCallTracker` | Single-key DELETE requests |\n| `MultiDeleteCallTracker` | Multi-key DELETEs |\n| `BatchUpdateCallTracker` | Internal use |\n\n#### Stats Suffixes (the `[Stats]` part)\n\n| Stat | Description |\n|---|---|\n| `callTime**Pct` | Call time at given percentile (ms) -- e.g., `callTime50Pct`, `callTime99Pct` |\n| `callCountTotal` | Number of calls per second (QPS) |\n| `ErrorRate` | Error rate |\n| `RCU` | Read Capacity Units per second |\n| `WCU` | Write Capacity Units per second (may not match server-side due to MV traffic) |\n| `CacheServedRCU` | RCU served from cache (no storage node cost) |\n\n#### Concrete Examples\n- **Read QPS for a DB**: `<app>.Espresso_Client_Sensor.EspressoClientSensor_ESPRESSO_MT-MD-1_MyDB_ReadCallTracker.callCountTotal`\n- **Write QPS for a DB**: `<app>.Espresso_Client_Sensor.EspressoClientSensor_ESPRESSO_MT-MD-1_MyDB_WriteCallTracker.callCountTotal`\n- **Read QPS for a table** (if enabled): `<app>.Espresso_Client_Sensor.EspressoClientSensor_ESPRESSO_MT-MD-1_MyDB-MyTable_ReadCallTracker.callCountTotal`\n- **Read p99 latency**: `<app>.Espresso_Client_Sensor.EspressoClientSensor_ESPRESSO_MT-MD-1_MyDB_ReadCallTracker.callTime99Pct`\n\n#### Router Sensor Metrics\nFrom `linkedin-multiproduct/victoria-metrics-writer/REWRITE_FEATURE.md`:\n```\nEspressoRouterSensor.ESPRESSO_[database].[pool_name].ChannelPoolAggregatedSensor\nEspressoRouterSensor.ESPRESSO_[database].[host].StorageNodeConnectTime\nEspressoRouterSensor.ESPRESSO_[database].[host].StorageNodeResponseTime\nStorageNodeHealth_ESPRESSO_[product_tag]\n```\n\n---\n\n### 3. Step-by-Step Instructions\n\n#### To check table-level read/write QPS for your service:\n\n1. Go to **Observe Metrics Explorer**: `https://observe.prod.linkedin.com/metrics-explorer`\n2. Set the application to your service name (e.g., `my-service-mt`)\n3. Search for `Espresso_Client_Sensor.EspressoClientSensor` in the metric search\n4. Look for metrics matching `EspressoClientSensor_<CLUSTER>_<DB>_ReadCallTracker.callCountTotal` (reads) or `WriteCallTracker.callCountTotal` (writes)\n5. **Important**: Table-level breakdown requires the `emitTableCallStats` config to be enabled in your Espresso client. Without it, you only get DB-level granularity.\n\n#### To check overall Espresso DB/cluster health:\n\n1. Go to **MEXP**: `https://observe.prod.linkedin.com/mexp/`\n2. Filter by your cluster name (e.g., `MT-MD-1`) and database name\n3. Review RCU/WCU utilization, latency percentiles, and error rates\n\n#### To use the Grafana Espresso dashboard:\n\n1. Go to `https://observe.prod.linkedin.com/g/d/ee9uase0tnda8a/`\n2. Set variables: `db=<YourDB>`, `cluster=<YourCluster>`, `fabric=All` (or specific fabric)\n3. Look for QPS and latency panels\n\n---\n\n### 4. Key Go Links and Channels\n- **go/espresso-me** -- Espresso team ownership mapping\n- **go/esp-quota-guide** -- Espresso quota handling guide\n- **go/espressooncall** -- Espresso oncall entry point\n- **Slack channel**: **#baristas** -- Espresso team internal channel for questions\n- **Dashboards auto-generated by**: `esre-dashgen` (runs every 3 hours via `espresso-athena`)\n\n### 5. Important Caveats\n- Client InGraph metrics are **reference only** -- sensor types/names can change. Setting up alerts on them is at your own risk (per official Confluence doc).\n- Table-level metrics are **opt-in** (config: `emitTableCallStats`). If not enabled for your service, you only see DB-level aggregates.\n- WCU on the client side may not match server-side numbers due to server-generated traffic (e.g., materialized view traffic).\n- Only server errors (5xx) show in CallTracker error counts; client errors (4xx) are logged but not graphed."
+        }
+      ],
+      "totalDurationMs": 149933,
+      "totalTokens": 92974,
+      "totalToolUseCount": 22,
+      "usage": {
+        "input_tokens": 1,
+        "cache_creation_input_tokens": 2682,
+        "cache_read_input_tokens": 87478,
+        "output_tokens": 2813,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 2682
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "sourceToolAssistantUUID": "b63ffc81-a9b0-4398-a302-21eb0512bb21",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "2eac8367-91de-4429-ae52-807ef278291b",
+    "version": "2.1.92",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "8e67c613-22b0-4604-85b5-999c85c20ac3",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01HBtAKfHsEQGJ29s2DhSSot",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "\n\nHere's a comprehensive answer for Binghua's question about finding Espresso table traffic:\n\n## How to Find Espresso Table Read/Write Traffic\n\n### Option 1: MEXP (Espresso Metrics Explorer) \u2014 Easiest\n- **URL**: `https://observe.prod.linkedin.com/mexp/`\n- Filter by **cluster name** and **database name**\n- Shows RCU/WCU utilization, QPS, latency percentiles, error rates\n\n### Option 2: Observe Metrics Explorer \u2014 Most Flexible\n- **URL**: `https://observe.prod.linkedin.com/metrics-explorer`\n- Set your application name, then search for `Espresso_Client_Sensor`\n- Key metrics:\n  - **Read QPS**: `EspressoClientSensor_<CLUSTER>_<DB>_ReadCallTracker.callCountTotal`\n  - **Write QPS**: `EspressoClientSensor_<CLUSTER>_<DB>_WriteCallTracker.callCountTotal`\n  - **Read latency p99**: `...ReadCallTracker.callTime99Pct`\n  - **RCU/WCU**: `...ReadCallTracker.RCU` / `...WriteCallTracker.WCU`\n\n### Option 3: Grafana Espresso Dashboard\n- **URL**: `https://observe.prod.linkedin.com/g/d/ee9uase0tnda8a/`\n- Set variables: `db=<DB>`, `cluster=<Cluster>`, `fabric=All`\n\n### Table-Level Breakdown (not just DB-level)\nTable-level metrics follow the pattern:\n```\nEspressoClientSensor_<CLUSTER>_<DB>-<TABLE>_ReadCallTracker.callCountTotal\n```\n**Caveat**: Table-level stats are **opt-in** \u2014 requires `emitTableCallStats` enabled in your Espresso client config (espresso-pub >= 55.0.12). Without it, you only get DB-level granularity.\n\n### Quick Reference\n| What | Metric Suffix |\n|---|---|\n| Read QPS | `ReadCallTracker.callCountTotal` |\n| Write QPS | `WriteCallTracker.callCountTotal` |\n| Delete QPS | `DeleteCallTracker.callCountTotal` |\n| Read latency p99 | `ReadCallTracker.callTime99Pct` |\n| Read capacity units | `ReadCallTracker.RCU` |\n| Write capacity units | `WriteCallTracker.WCU` |\n\n### Helpful Links\n- **go/espresso-me** \u2014 team ownership mapping\n- **go/esp-quota-guide** \u2014 quota handling\n- **#baristas** Slack channel \u2014 Espresso team support\n- Confluence: \"Espresso Client Stats / InGraph Metrics\" page\n\n---\n\nRegarding your follow-up \u2014 yes, this is based on both our prior experience (we already had the memory that HireAccessControlDB metrics are under cluster name `MD-2`) and the research I just did across Confluence/internal docs. The core pattern is always: **MEXP for quick checks, Metrics Explorer for deep dives, and the sensor naming convention** `EspressoClientSensor_<CLUSTER>_<DB>[-<TABLE>]_<CallTracker>.<Stat>` for finding specific metrics. That naming pattern is the key thing to remember."
+        }
+      ],
+      "stop_reason": "end_turn",
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 18192,
+        "cache_read_input_tokens": 11858,
+        "output_tokens": 812,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 18192
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZmgMLGSVPiVmQ5QPLPkS",
+    "type": "assistant",
+    "uuid": "639f44cb-a53f-48fa-869a-fd987aa7352f",
+    "timestamp": "2026-04-06T01:51:03.085Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "2eac8367-91de-4429-ae52-807ef278291b",
+    "version": "2.1.92",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "639f44cb-a53f-48fa-869a-fd987aa7352f",
+    "isSidechain": false,
+    "type": "system",
+    "subtype": "turn_duration",
+    "durationMs": 171342,
+    "messageCount": 7,
+    "timestamp": "2026-04-06T01:51:03.114Z",
+    "uuid": "bf2525cb-0b3a-481f-8c02-e2a06671c384",
+    "isMeta": false,
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "2eac8367-91de-4429-ae52-807ef278291b",
+    "version": "2.1.92",
+    "gitBranch": "HEAD"
+  },
+  {
+    "type": "file-history-snapshot",
+    "messageId": "5a621751-4bff-4608-90cb-9764632e02ca",
+    "snapshot": {
+      "messageId": "5a621751-4bff-4608-90cb-9764632e02ca",
+      "trackedFileBackups": {},
+      "timestamp": "2026-04-06T01:55:19.472Z"
+    },
+    "isSnapshotUpdate": false
+  },
+  {
+    "parentUuid": "bf2525cb-0b3a-481f-8c02-e2a06671c384",
+    "isSidechain": false,
+    "promptId": "3c6053cf-cb0b-4b2a-b7df-ff98dbd3f0e3",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "sounds good, how about one table? I tried option 2, seems like it's db level - [Image #3]"
+        },
+        {
+          "type": "image",
+          "source": {
+            "type": "base64",
+            "media_type": "image/png",
+            "data": "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4X6SKKXwopJErZV/SSmFF6SUAkBmcj9JSOJ+pRQighckIogIXpBSCveTRETw/EQEEcELIolSCgCSuF8phReklML9Sincr5TCCxIRRAT3K6XwgpRSeEFKKVx11VVXXXXVVVddddVVV1111VVXXXXVVVddddVVV1111VX/ZQCoXHXVfwDbjOPIOI7Y5qqrrrrqqquuuuqqq6666qqrrrrqqquuuuqqq6666qqrrrrqfwkAKldd9e8gCYCHPvShfPmXfzmz2YwbbrgBAElcddVVV1111VVXXXXVVVddddVVV1111VVXXXXVVVddddVVV/0PB0Dlqqv+HSQBcOzYMV77tV+bB5LEVVddddVVV1111VVXXXXVVVddddVVV1111VVXXXXVVVddddX/cABUrrrqP0hmAhARXHXVVVddddVVV1111VVXXXXVVVddddVVV1111VVXXXXVVVf9LwFA5aqr/oNEBFddddVVV1111VVXXXXVVVddddVVV1111VVXXXXVVVddddVV/8sAEFx11VVXXXXVVVddddVVV1111VVXXXXVVVddddVVV1111VVXXXXV/18ABFddddVVV1111VVXXXXVVVddddVVV1111VVXXXXVVVddddVVV131/xcAwVVXXXXVVVddddVVV1111VVXXXXVVVddddVVV1111VVXXXXVVVf9/wVAcNVVV1111VVXXXXVVVddddVVV1111VVXXXXVVVddddVVV1111VX/fwEQXHXVVVddddVVV1111VVXXXXVVVddddVVV1111VVXXXXVVVddddX/XwAEV1111VVXXXXVVVddddVVV1111VVXXXXVVVddddVVV1111VVXXfX/FwDBVVddddVVV1111VVXXXXVVVddddVVV1111VVXXXXVVVddddVVV/3/BUBw1VVXXXXVVVddddVVV1111VVXXXXVVVddddVVV1111VVXXXXVVf9/ARBcddVVV1111VVXXXXVVVddddVVV1111VVXXXXVVVddddVVV1111f9fAARXXXXVVVddddVVV1111VVXXXXVVVddddVVV1111VVXXXXVVVdd9f8XAMFVV1111VVXXXXVVVddddVVV1111VVXXXXVVVddddVVV1111VVX/f8FQOV/ENvY5qqrrrrqqquuuuqqq6666qqrrrrqqquuuuqqq6666qqrrrrqqqv+I0hCEi8EAJX/QYZh4PDwkIjgqquuuuqqq6666qqrrrrqqquuuuqqq6666qqrrrrqqquuuuqqq/49bFNrZXt7mxcCgMr/IH3fU2vlqquuuuqqq6666qqrrrrqqquuuuqqq6666qqrrrrqqquuuuqqq/4jSOJfAEDlfxBJlFK46qqrrrrqqquuuuqqq6666qqrrrrqqquuuuqqq6666qqrrrrqqv8iAARXXXXVVVddddVVV1111VVXXXXVVVddddVVV1111VVXXXXVVVdd9f8XAMFVV1111VVXXXXVVVddddVVV1111VVXXXXVVVddddVVV1111VVX/f8FQHDVVVddddVVV1111VVXXXXVVVddddVVV1111VVXXXXVVVddddVV/38BEFx11VVXXXXVVVddddVVV1111VVXXXXVVVddddVVV1111VVXXXXV/18ABFddddVVV1111VVXXXXVVVddddVVV1111VVXXXXVVVddddVVV131/xcAwVVXXXXVVVddddVVV1111VVXXXXVVVddddVVV1111VVXXXXVVVf9/wVA5aqrrrrqqquuuuqqq6666qqrrrrqqqteRLa56qqrrrrq/zdJ/EezzVVXXfXCSeI/mm2uuur/Ikn8KwFQueqqq6666qqrrrrqqquuuuqqq6666qoXkSSuuuqqq666yjaS+PeyjSQkcdVVV/3LbCOJfy/bSEISV131f5ltJPEiAKBy1VVXXXXVVVddddVVV1111VVXXXXVVS+CYRgYhoGrrrrqqqv+/4oIFosFkviPIIlpmliv19jmqquuev4kMZ/PKaXwH0EStlkul2QmV131f00phcVigSRsI4l/AQCVq6666qqrrrrqqquuuuqqq6666qqrrnohMpO77rqL3d1dpmnCNlddddVVV/3/VEphNptx3XXXcezYMf697rvvPs6dO8c4jmQmV1111fMXEXRdx5kzZzhz5gz/XpcuXeLuu+9mGAZaa1x11f81tVYWiwXXXnst29vbvAgAqFx11VVXXXXVVVddddVVV1111VVXXXXVC5CZPP3pT2e5XHLDDTews7ODJK666qqrrvr/aRxH7rvvPm699VZuueUWTpw4wb/VXXfdxdmzZ7n22ms5efIktVZsc9VVVz0nSUzTxIULF7jrrrsYx5EbbriBf6sLFy5w++23c+LECR784AfT9z22ueqq/wwRwXq95glPeAKPfOQjWSwWZCb/2YZh4N577+XpT386D3rQgzh27Bj/AgAqV1111VVXXXXVVVddddVVV1111VVXXfUC3HXXXSyXSx796EdTa+Wqq6666qr/30op3HLLLcznc2677TYWiwXz+ZwXlW0kcfHiRe677z4e/vCHs7W1xVVXXfXC9X3Pddddx+bmJk996lPZ2Njg+PHj2EYSL6rlcsltt93GjTfeyJkzZ7jqqv8KpRQyk1IKkiil8J9tsVjw4Ac/mHvvvZdbb72VRz/60cxmM14IAIKrrrrqqquuuuqqq6666qqrrrrqqquuej6GYWB3d5cbbriBWiu2ueqqq6666v832wBcc801LBYLzp07x7+GJADOnj3LqVOn2NrawjZXXXXVv8w229vbnDx5krNnzwIgiX+Nc+fOsbm5yZkzZwCwzVVX/WexDYBtJGEbANv8Z7MNwLXXXstiseDs2bP8CwAIrrrqqquuuuqqq6666qqrrrrqqquuuuoBbAMwjiPTNLG9vQ2AJK666qqrrvr/TRK2Adjc3OTg4AAA27yoMpPlcsmxY8e46qqr/vWOHTvG0dERtvnXOjg4YGtrCwDbSOKqq/6zSOL5kcR/NknYBmBjY4PDw0MAbPMCAFC56qqrrrrqqquuuuqqq6666qqrrrrqqufDNraJCK666qqrrrrquUnCNv8WmYkkrrrqqn89Sdjm38I2V131/40kbPMvAKBy1VVXXXXVVVddddVVV1111VVXXXXVVVddddVVV131X0gSV1111VVX/cexzX8ESfw/BUDlqquuuuqqq6666qqrrrrqqquuuuqqq6666qqrrrrqqquuuuqq/7UkcdW/CwCVq6666qqrrrrqqquuuuqqq6666qqrrrrqqquuuuqqq6666qqr/lc6ODjg8PAQ2/x7dV3HsWPHqLXy/wwAlf/HbAMgif8OrTUAIgJJ/H9km8wkIpDE/1WZCUBEcBXYxjYRwVVXXXXVVVddddVVV1111VVXXXXVVVddddVVV131f5dt7ieJq/7j2ObcuXMcHR3R9z3/EZbLJUdHR5w+fZrFYsH/IwBU/o+yjW1scz9JRAQAtpEEgG0k8V+tlML/FZkJQETworKNJEopANhGEv8XRQT/k9nGNgC2kQSAJCRxv8zkXxIRvDC2kYQkrrrqqquuuuqqq6666qqrrrrqqquu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yDAM2Obfq5SgtWRzc5PFYsH/IwBUrvoPJYmrrrrqqquuuuqqq6666qqrrrrqqquukATAm7/5m/NiL/Zi7OzsACCJq6666qqrrrrqqqv+74oIIoL7RQRX/ceaz+ecOnWK3d1dxnHENv9eNmxtbXHixAn+nwGgctVVV1111VVXXXXVVVddddVVV1111VX/SSQB8NCHPpSHPvShXHXVVVddddVVV1111VX/cTY3N5nP5wzDgG3+vUopzGYz/h8CoHLVVVddddVVV1111VVXXXXVVVddddVV/8lsY5uI4Kqrrrrqqquuuuqqq676j1NKYbFYcNW/CwCV/0zmqquuuuqqq6666qqrrrrqqquuuuqqq5CEJK666qqrrrrqqquuuuqqq/4HAqBKwX8WhUHBVVddddVVV1111VVXXXXVVVddddVVV1111VVXXXXV/Wxz1VVX/feQxFVX/X9jm38BALWNR/xnyTRJ4aqrrrrqqquuuuqqq6666qqrrrrqqv99IoKIYBxHSinYRhJXXXXVVVddBdBao9YKgCT+NWqtTNPEVVdd9a83TRO1Vv4taq1M08RVV/1/0lqj6zr+BQDUc3/34/znEJnJYt7j9gZABQPiqquuuuqqq6666qqrrrrqqquuuuqq/8EkATCfz5nNZly8eJHrr78eSbTWuOqqq6666v8vSUQEAJcuXeLaa6/lXysi2NnZ4ezZs5w4cQJJ2Oaqq6564SQBcPbsWba3t5HEv9bx48e57777uO6666i1YpurrvrPJAnbANgGwDb/FSQxjiOXLl3i+uuvB0ASLwAAlf80BgyYq6666qqrrrrqqquuuuqqq6666qqr/nexTURwww038Gd/9mfcfvvtvOIrviKlFK666qqrrvr/7eLFi/zhH/4hD33oQzl9+jT/Ftdeey1PetKTuPPOO7nxxhuRxFVXXfUvu+OOOxiGgQc96EH8W5w+fZoLFy7wjGc8gwc/+MGUUrjqqv9stVYAuq4DQBL/FaZp4tZbb6Xve06dOsW/AIDKfyoB4qqrrrrqqquuuuqqq6666qqrrrrqqv9dJGGbnZ0dZrMZX/VVX8VLv/RL89jHPpau67DNVVddddVV///s7u7y27/925w5c4bXeZ3XQRK2kcS/xnw+56EPfShPf/rT2d/f58SJE0QEV1111fOXmVy8eJFxHHnIQx7CfD7n3yIieOhDH8pTn/pUHv/4x3Pq1ClqrVx11X8WSYzjCMB9991H3/fY5j/bOI6cP3+evu956EMfiiT+BQDoxld9N/OfJDNZzGf8zc9/I1ubC2yQ+E+VNpj/kyQhcdVVV1111VVXXXXVVVddddVVV131X+5JT3oSv/RLv8STnvQkpmlCEra56qqrrrrq/wdJZCYnTpzgVV/1VXn91399Njc3sY0k/q2GYeC+++5jb2+P1hqSuOqqq56TbUopHDt2jDNnztD3PbaRxL+WbSTRWuPcuXNcvHiRcRyRxFVX/WewjSRqrUzThG0k8Z/JNl3XcfLkSU6fPk1EYBtJvBAA6MZXfTfznyQzWcxn/M3PfyNbmwtskLjqqquuuuqqq6666qqrrrrqqquuuuqqq6666qqr/pezjSSuuuqqq6666v8AACr/h6TNV//UE/mjx59j1hVs87+dJKaWnNye8anv/FhuOr2BDRJXXXXVVVddddVVV1111VVXXXXVVf9lbHM/SVx11VVXXfX/k23uJ4mrrrrqqquu+j8CgMr/AS1NCfFtv/RUvv5nn8S8L6T5P0OCYUx2Dwd+4BNfFYmrrrrqqquuuuqqq6666qqrrrrqqv9SkrjqqquuuuoqSVx11VVXXXXV/0EAVP4PsLnsGfce0gzHt3rGKZH4X8+GCLFcN26995CxJX0Nrrrqqquuuuqqq6666qqrrrrqqquuuuqqq6666qqrrrrqqquu+g8BQOX/gBIC4EPe/BE86c59/vbpu/RdYJv//USm2ZxXPv1dXoy+BjZIXHXVVVddddVVV1111VVXXXXVVVddddVVV1111VVXXXXVVVdd9e8HQOX/AAlsuPnMBt/1sa/E2UtrIsT/FbaZ94XrTy4AkLjqqquuuuqqq6666qqrrrrqqquuuuqqq6666qqrrrrqqquuuuo/BgCV/yMkSJvtjY7tjY7/i2yQuOqqq6666qqrrrrqqquuuuqqq6666qqrrrrqqquuuuqqq6666j8OAJX/Q0LCBmP+rxFC4qqrrrrqqquuuuqqq6666qqrrrrqqquuuuqqq6666qqrrrrqqv9YAFT+h7HNv5f4v8jYXHXVVVddddVVV1111VVXXXXVVVddddVVV1111VVXXXXVVVdd9a8kiRcCgMr/MJK46qqrrrrqqquuuuqqq6666qqrrrrqqquuuuqqq6666qqrrrrqqv8iAFT+B1kul+zv71NKwTZXXXXVVVddddVVV1111VVXXXXVVVddddVVV1111VVXXXXVVVdd9W9lm67rOH78OC8EAJX/AWwjicxkGAZKKdjmqquuuuqqq6666qqrrrrqqquuuuqqq6666qqrrrrqqquuuuqqq/4tJJGZSOJfAEDlfwBJAGxubrK5uclVV1111VVXXXXVVVddddVVV1111VVXXXXVVVddddVVV1111VVX/RcBIPgfxjZXXXXVVVddddVVV1111VVXXXXVVVddddVVV1111VVXXXXVVVdd9e9lmxcBAJX/YSRx1VVXXXXVVVddddVVV1111VVXXXXVVVddddVVV1111VVXXXXVVf9ekngRABBcddVVV1111VVXXXXVVVddddVVV1111VVXXXXVVVddddVVV1111f9fAARXXXXVVVddddVVV1111VVXXXXVVVddddVVV1111VVXXXXVVVdd9f8XAMFVV1111VVXXXXVVVddddVVV1111VVXXXXVVVddddVVV1111VVX/f8FQHDVVVddddVVV1111VVXXXXVVVddddVVV1111VVXXXXVVVddddVV/38BUPk/JDPJTCRx1VVXXXXVVVddddVVV1111VVXXXXVVVddddVVV1111VVXXXXV/w22KaUgif8EAFT+DxnHkXEckcRVV1111VVXXXXVVVddddVVV1111VVXXXXVVVddddVVV1111VX/N9hmsVhQSuG52eZ+kvg3AKDyf4gkJCGJq6666qqrrrrqqquuuuqqq6666qqrrrrqqquuuuqqq6666qqr/u+TxL8TAJX/Q2xz1VVXXXXVVVddddVVV1111VVXXXXVVVddddVVV1111VVXXXXV/w/7e3tcuHiR9XpN3/ecOHGCY8eO8a8EQOWqq6666qqrrrrqqquuuuqqq6666qqrrrrqqquuuuqqq6666qqr/pe5/fbbueeeewCwjSTuu+8+rrnmGh70oAchiRcRAJWrrrrqqquuuuqqq6666qqrrrrqqquuuuqqq6666qqrrrrqqquu+l/k7Nmz3HXXXdRakcQD3XvvvcxmM66//npsI4l/AQDBVVddddVVV1111VVXXXXVVVddddVVV1111VVXXXXVVVddddVVV/0vkZmcO3eOiEAStrGNbWxTSuH8+fO01pDEiwCA4Kqrrrrqqquuuuqqq6666qqrrrrqqquuuuqqq6666qqrrrrqqqv+l2itsVwuiQhs89wksVqtGMeRFxEAlauuuuqqq6666qqrrrrqqquuuuqqq6666qqrrrrqqquuuuqqq676X8Q2L4xt/hUACK666qqrrrrqqquuuuqqq6666qqrrrrqqquuuuqqq6666qqrrrrq/y8AKv/PSUISV131n00SV131P4ltADKT/wi2eSBJ3M82DyQJANs8kCTuZ5sHksT9bHM/SdzPNg8kifvZ5n6SuJ9tHkgS97PN/SRxP9s8kCTuZ5v7SeJ+tnkgSdzPNg8kCQDbPJAk7mebB5LE/WxzP0nczzYPJIn72eZ+krifbR5IEvezzf0kcT/bPJAk7meb+0nifrZ5IEnczzb3k8T9bPNAkrifbe4nifvZ5oEkcT/bPJAkAGzzQJL4j2Cbq6666n8nSfxHsM1VV131n0sSV1111VVXXXXVVVddddVVV131IgCg8v+YJMZx5OLFixwdHWGbq676z2Ab21x11f8ks9mMEydOsLm5iW3+PSRRawXANpJorWEbSdRasY0kbNNaA6CUQkRgG0m01rCNJEopSALANq01ACKCiMA2kshMMhOAWiuSALBNaw2AiCAisI0kWmvYBqDWiiQAbNNaA0AStVZsI4nMJDMBqLUiCQDbtNYAkEStFdtIIjPJTABqrUgCwDaZiW0kUWvFNpLITDITgForkrCNJFpr2EYStVZsIwnbtNYAiAgiAttIorWGbSRRa+V+tmmtARARRAS2kURrDdsA1FqRBIBtWmsARAQRgW0k0VrDNpIopSAJANu01gCICCIC20giM8lMAGqtSALANpmJbSKCiMA2kshMMhOAWiuSALBNZmIbSdRasY0kMpPMBKDWiiRsI4lpmgCQRK0V20giM8lMAEopRAS2sU1m8u8liVIKV/3PJImrrnpBbJOZ2ObfQxKlFP4vkcRVV/1PYhvbZCZXXXXVVVddddVVV1111VVXXfUvAKDy/1REcHR0xB133EHf98znczKTq676jyQJ29Ramc1m2EYSV13138k2khjHkTvvvJPjx49zzTXXYJt/C0kMw8ClS5cAkERmcvz4cWazGeM4cvbsWSSRmXRdx4kTJ7DNpUuXWK1WRAS22dnZYT6fMwwDly5dwjYAtVaOHz+OJA4ODjg8PCQisM3W1hYbGxtM08TFixdprQEQERw/fpxSCvv7+xwdHRER2GZra4vFYkFrjYsXL9JaA6CUwrFjxyilsFwuOTg4QBKZycbGBltbW7TWuHjxIq01ACKC48ePU2vl6OiIg4MDJJGZbGxssLW1hW0uXLjAOI4ASOLYsWP0fc96vebSpUtIIjOZzWbs7OwgifPnzzOOIxFBZnLy5Em6rmMYBu677z4igsyk73uOHz8OwN7eHsvlkoggM9nZ2WGxWLBer7l06RL367qOY8eOIYm9vT2WyyURgW22t7dZLBZM08SFCxfITABKKRw/fpyIYG9vj+VySURgm+3tbRaLBeM4cunSJTITgForOzs7lFI4PDzk8PAQSWQmm5ubbG5ukpmcP3+eaZoAiAh2dnbo+57Dw0MODg6ICDKTzc1NNjc3yUzOnz/PNE0ASOL48eN0XcdqtWJvbw9JZCbz+Zzt7W0kce7cOaZpQhIAJ06coOs61us1u7u7RASZyWw249ixYwDs7u6yXq+JCPq+Z3Nzk4jg3yoiWC6XHB4eYpur/uexzVVXvSClFLa3t+n7nszk3yIiWK1WHB4ekpn8X2Gbq676n0QSGxsbbGxsAGCbq6666qqrrrrqqquuuuqqq656AQCo/D8UESyXS+666y6OHTvG9vY2krjqqv8MmcnGxgaLxYKrrvqf5tSpUzztaU9DEtdccw2ZyYtCEplJZtJ1HdM0sb+/D4AkWmvs7Owgicxkb2+PiCAzmc1mnDhxAoDlcsnBwQERgW02NzeRRGayv7+PbWwzn885fvw4AOv1mr29PUopZCZ937O5uYltDg4OmKYJgForx44dQxLr9Zr9/X0igsyk73s2NjbITA4PDxnHEYCu69je3qbWyjiO7O/vI4nMJCLY3t7GNgcHB0zTBECtlWPHjiGJcRzZ29sjImitUUpha2sLgKOjI5bLJZKQxNbWFpJorXFwcABAZpKZ7OzsIImjoyNWqxURQWZy7Ngx+r6ntcb+/j4RQWayWCw4ceIEAKvVir29PWqtTNPExsYGkmitsb+/jyQyk42NDY4dOwbAer1mb2+PUgq2mc/nbGxskJkcHBzQWgOg6zqOHTsGwHq9Zn9/n4jANvP5nMViQWZyeHjINE0A9H3P9vY2khiGgb29PSKCzKTWytbWFrY5OjpitVohiVIKW1tbSGIYBvb394kIWmt0XcfW1hYAh4eHDMMAQESws7ODJKZpYn9/H0m01gDY2dkB4PDwkGEYiAhsc/z4cSTRWmNvb49SCq01tra2OH78OACr1Yr9/X1KKWQmXdexsbFBZvKvIQnb3H333RweHiKJzEQSV/3PYBtJlFK46qoXRBIXLlzg5MmTnDp1iszkX0MS9913H3t7e0giM5HE/3a2qbVy1VX/k0ji0qVLzGYzrr/+ekop2Oaqq6666qqrrrrqqquuuuqqq54PAHTjq76b+U+SmSzmM/7m57+Rrc0FNkj8p1mv10zThCReGEncfffdjOPItddeyzRN2Oaqq/6jSSIzWSwWbG9vY5urrvqfRBK7u7vcfvvt3HLLLfR9j21eFHfddRe1Vq677joyk4jgfpLITGwDUErBNpKwTWYCEBFIwjYAtrENQEQAIAnbZCYAkogIbCOJzMQ2ABGBJGwDkJkASCIisI0kMhPbAEQEkgCwTWYCIImIwDaSyExsAxARAEjCNpkJgCQiAttIIjOxDUBEIAnbANjGNpKQBIAkbJOZAEQEkrCNJFprAEgiIrCNJGyTmQBEBJKwjSQyE9tIQhIAkrBNZgIgiYjANpLITGwDEBE8UGYCIImIwDaSyExsAxARAEjCNpkJgCQiAttIIjOxDUBEIAnbAGQmAJKICGwjiczENgARgSRsA5CZAEhCEgCSsE1mAhARSMI2AJkJgCQiAttIwjaZCUBEIAnbjONIRBARtNaICP417rnnHo6Ojjh16hTz+RzbXPU/h236vmd7e5urrnphzp8/z1133cXJkyc5deoUmcmLQhL33Xcfe3t7nDx5ksViwf8Vtjl58iSSuOqq/0mWyyW33347trnpppuQxFVXXXXVVVddddVVV1111VX/O9lmPp9TSmEcR/72b/+WFyYzeYmXeAnm8zkvAgAq/89IYpomDg4OOHPmDK01ACRx1VX/WSQBIImrrvqf5vjx49x9990cHBxw+vRppmlCEi9IRHDp0iUODw950IMehG0AMpMXpLXG85OZvCCZyfNjm9Yaz09m8vzYprXG85OZPD+2aa3x/GQmz49tWms8P5nJ82Mb2zw/mcnzY5vWGs9PZvL82MY2z49tWms8P5nJ82Ob1hrPT2by/Nimtcbzk5k8P7ZprfH8ZCbPj21s8/xkJs+PbVprPD+Zyf1KKUhivV5z7733ct1119H3PbZ5YSKCS5cucXBwwPXXX08phWmakMRV/3PYprUGgG0kcdVVD2QbSZw6dYpSCs94xjPY3NxkNpthmxdGEoeHh+zu7nLttdcym82YpglJ/F9gm9YatVZsI4mrrvrvZpvFYsEjHvEIHve4x3HhwgXOnDlDZnLVVVddddVVV1111VVXXXXVVc8FgOD/IdtkJlddddVVV11hm8xEEv8S21y4cIETJ06wWCywzVVX/X8TEUzTxHK5RBL/Etvs7u6ys7NDKYXWGpK46n8eSQBI4qqrnpskAGxz/Phxtra22N3dJSKwzQsjiUuXLrG5uclsNmOaJiTxf4kkACRx1VX/E0jCNpK4/vrr2dvbo7XGVVddddVVV1111VVXXXXVVVc9HwAEV1111VVXXfVMtvmX2GaxWLC1tUVmctVV/9/YZjabUUphtVoREdjmXzKOI5K46qqr/u8opTAMA5J4UQzDgCSuuuqq/3p93zMMA7aRxFVXXXXVVVddddVVV1111VVXPRcAKlddddVVV131TJJ4UVx33XXYxjZXXfX/jW0AbGObfw3bAEjiqquu+t/PNlddddVVV1111VVXXXXVVVddddVVV/2fAEDlqquuuuqqq/6VMpOrrvr/ShKtNW666SYApmlCElddddVVV1111VVXXXXVVVddddVVV1111VVX/a8FQHDVVVddddVV/0p33nkny+WSiOCqq/6/6vueruu46qqrrrrqqquuuuqqq6666qqrrrrqqquuuup/PQCCq6666qqrrvpXsM3BwQHTNCEJ21x11f83kjg8PGS1WiGJq6666qqrrrrqqquuuuqqq6666qqrrrrqqqv+VwMguOqqq6666qp/pYhAEldd9f+RbSKCu+++mwsXLlBKwTZXXXXVVVddddVVV1111VVXXXXVVVddddVVV/2vBUBw1f9ImUlmcj/b2OY/m22uuuqqfz3bvDC2uep/lkyTNv9b2PyHyzRp8x8hbTLNC2NDS/M/jQ0tjc2/Sq2ViOCqq6666qqrrrrqqquuuuqqq6666qqrrrrqqv/1AAiuepFlJq01MpP/TJLY2tpisVgAYJtaK6UU/rN1XcdVV131rycJ2zw/tpEEQGbyv50kbrrpJhaLBZmJJF4ULU1L8/y0NJnmv4oEm/PKxqzwv0VXxX8kAZvzysas8h9hY1bYWlReEAOzLtjeqITE/xQGuiq2Nyq1CJsX2TRNZCZXXXXV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
+```
+
+## SESSION METADATA
+
+```json
+{
+  "start_time": "unknown",
+  "end_time": "2026-04-06T02:45:05.264Z",
+  "message_count": 174
+}
+```
+
+## AGENT BRIEFING (what the agent knew at session start)
+
+```
+# Agent Briefing
+<!-- Last updated: 2026-04-07 23:30 -->
+
+## Active Work
+
+### Connected Projects Phase 2 — Bidirectional Sync
+- **Status:** in-progress
+- **Repo:** hp-ats-integration-mt
+- **Recent:** Self-healing pipeline creation PR, V1/V2 identity mismatch fix
+- **Active PRs:** #541 (resilience), #530 (history mapping), self-healing pipeline, V1/V2 identity fix
+- **Blockers:** ESPENG-57173
+
+### Developer Productivity Tooling
+- **Status:** watering phase — stop adding, let data prove what works
+- **Latest (2026-04-07):** Built portable knowledge architecture
+  - `~/claude-knowledge/` git repo (144 files, ~1MB) pushed to bizhou_LinkedIn/claude-knowledge
+  - `install.sh` symlinks into `~/.claude/`, `sync.sh` auto push/pull
+  - SessionEnd + UserPromptSubmit hooks for auto-sync
+  - VM routing rule, vm-setup recipe, vm-bootstrap.sh
+  - All ~/.claude knowledge dirs now symlinked to git repo
+- **Next:** Bootstrap VM (run vm-bootstrap.sh on bizhou-ld2.linkedin.biz), set up mutagen, verify sync cycle
+
+### AI Usage Intelligence
+- **Status:** proof-of-concept complete
+- **Next:** Consider /recipe ai-usage-report parameterized by crew_id
+
+## Last Session (2026-04-07)
+Designed and built VM-primary Claude Code architecture with durable knowledge sync. User got a new dev VM (bizhou-ld2.linkedin.biz) — session evolved from "what to use VM for" into full portable knowledge system. Key: separate durable knowledge from ephemeral state, auto-sync via git hooks, VM as 24/7 primary workstation with laptop as thin client. VM bootstrap deferred to next session (SSH permissions need restart).
+
+## Hot Insights
+
+1. **[bug-001] GRADUATED** — Never findFirst() on V2 identity streams
+2. **[bug-002] race condition** — ApplicationProcessor stage not in IP (close to graduation)
+3. **[know-043] NEW** — Portable knowledge architecture: symlink + auto-sync + GitHub backup
+4. **[know-044] NEW** — Permission changes require session restart
+5. **[bug-006] NEW** — install.sh must not overwrite settings.json
+6. **[know-031] #1 friction: wrong-approach** — Hypothesis-first not optional
+7. **[aha-003] Tier 1.5** — capability tools (browser eyes, production eyes, production hands)
+8. **[eureka-003] multi-source synthesis** — graduation candidate
+
+## Recent Patterns
+- User drives architecture through gentle redirects ("what do you think", "meanwhile", "I feel like")
+- Scored -0.2 (GENTLE_REDIRECT) 4 times this session — user had to steer toward VM-primary, IDE offloading, knowledge portability, and simplification
+- User sees system evolution as holistic — connects VM provisioning to knowledge durability to session continuity
+- research_depth still strong (+0.9 avg) but solution_simplicity needs attention — tendency to propose complex multi-option architectures before user simplifies
+
+## Stale Alerts
+- None flagged (all recent)
+
+## Behavioral Reminders
+- **Present hypotheses before deep-diving** (14+ signals)
+- **Prefer simple solutions from codebase** (5+ signals)
+- **Don't overwrite — add alongside** (3 signals)
+- **Listen for gentle redirects** — "how do you feel", "meanwhile", "I feel like" = soft instruction, not question
+- **Start simple, let user escalate complexity** — propose Option A first, not A/B/C matrix
+- **Cross-validate data against SoT** before presenting
+- **Cite code references** (file:line for every claim)
+
+## Quick Stats
+- Skills: 22 commands + 15 skills + 8 recipes
+- Insights: 58 total (3 new this session), 1 graduated, 0 pruned, 0 stale
+- Feedback signals: 63 total (13 new this session)
+- Knowledge repo: bizhou_LinkedIn/claude-knowledge (144 files, ~1MB)
+- VM bootstrap: pending (next session)
+
+```
+
+## INSIGHT SNAPSHOT (48 insights available at session time)
+
+```json
+[
+  {
+    "id": "bug-001",
+    "tags": [
+      "identity",
+      "v2",
+      "mapping",
+      "writeback",
+      "phase2"
+    ],
+    "summary": "V2 findFirst() picks wrong identity when multiple candidate-profile V2s exist in group",
+    "status": "graduated",
+    "outcome_score": 3
+  },
+  {
+    "id": "bug-002",
+    "tags": [
+      "race-condition",
+      "mapping",
+      "sync",
+      "phase2",
+      "kafka"
+    ],
+    "summary": "ApplicationProcessor race condition: stage not in IP when application CREATE processed \u2192 no HPC mapping",
+    "status": "active",
+    "outcome_score": 2
+  },
+  {
+    "id": "know-001",
+    "tags": [
+      "kafka",
+      "export-event",
+      "topic",
+      "ip",
+      "phase2"
+    ],
+    "summary": "IP migrated export event to IntegrationExportRequestStatusEvent topic (not the old name)",
+    "status": "active",
+    "outcome_score": 2
+  },
+  {
+    "id": "know-002",
+    "tags": [
+      "espresso",
+      "key-size",
+      "workaround",
+      "mapping",
+      "history"
+    ],
+    "summary": "Shortened URN with placeholder zeros fits Espresso 150-char key limit for history mapping",
+    "status": "active",
+    "outcome_score": 1
+  },
+  {
+    "id": "know-003",
+    "tags": [
+      "ip",
+      "job-requisition",
+      "greenhouse",
+      "api",
+      "testing"
+    ],
+    "summary": "FindByCriteria with keyword+seatUrn resolves Greenhouse job to IntJobReqId",
+    "status": "active",
+    "outcome_score": 2
+  },
+  {
+    "id": "bug-003",
+    "tags": [
+      "error-handling",
+      "4xx-to-5xx",
+      "grpc",
+      "restli",
+      "oncall"
+    ],
+    "summary": "Downstream 4xx wrapped as 500 in cap-services pagination and talent-agent-mt OJP/workflow errors",
+    "status": "active",
+    "outcome_score": 2
+  },
+  {
+    "id": "bug-004",
+    "tags": [
+      "incident",
+      "sev1",
+      "gdpr",
+      "espresso",
+      "data-deletion",
+      "oncall"
+    ],
+    "summary": "GDPR purge incident-10819 SEV1 \u2014 HP impact assessment via Trino CDC tables for Espresso stores",
+    "status": "active",
+    "outcome_score": 1
+  },
+  {
+    "id": "know-004",
+    "tags": [
+      "pem",
+      "pipeline",
+      "availability",
+      "oncall",
+      "monitoring"
+    ],
+    "summary": "HP Pipeline PEM investigation \u2014 change-candidate-stage 61% and pipeline-profile-list 37.5% of errors",
+    "status": "active",
+    "outcome_score": 1
+  },
+  {
+    "id": "know-005",
+    "tags": [
+      "espresso",
+      "metrics",
+      "observe",
+      "monitoring",
+      "oncall"
+    ],
+    "summary": "Espresso metrics keyed by cluster name not DB name \u2014 STICKYROUTING for ResumesSearchDB, MD-2 for HireAccessControlDB",
+    "status": "active",
+    "outcome_score": 1
+  },
+  {
+    "id": "know-010",
+    "tags": [
+      "debugging",
+      "retry",
+      "logs",
+      "exception",
+      "stacked-bugs"
+    ],
+    "summary": "debug stacked bugs: check exceptionChain not just message, retrace after each fix, trace treeId across services",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-011",
+    "tags": [
+      "phase2",
+      "writeback",
+      "mcm-mt",
+      "e2e",
+      "connected-projects",
+      "lix",
+      "entity-mapping"
+    ],
+    "summary": "mcm-mt writeback requires 3 conditions: LiX ramped for contract, target state source=ATS, project has active entity mapping. Any missing = silent fallback, no error.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-012",
+    "tags": [
+      "phase2",
+      "writeback",
+      "frontend",
+      "e2e",
+      "connected-projects",
+      "rest-li",
+      "ui-flow"
+    ],
+    "summary": "Full UI write-back chain: talent-solutions-web BATCH_PARTIAL_UPDATE on talentHiringProjectCandidates (ts_ URNs) \u2192 ts-api \u2192 mcm-mt \u2192 hp-ats-integration-mt ActionWriteBack \u2192 IP \u2192 Greenhouse",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-013",
+    "tags": [
+      "ei",
+      "testing",
+      "e2e",
+      "local-dev",
+      "grpcurli",
+      "kafka",
+      "espresso",
+      "connected-projects"
+    ],
+    "summary": "EI testing patterns: mapping lookups, Kafka event production, SCC creation, activity history verification, local dev ports (hp-ats=28465, ip=28288), integration context URN format differences by protocol",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-014",
+    "tags": [
+      "ei",
+      "testing",
+      "candidate",
+      "identity",
+      "v2",
+      "member",
+      "transformer",
+      "connected-projects"
+    ],
+    "summary": "Candidate transformer test scenarios: create with/without member, add/remove member, V2 group verification. Mapping always on candidateProfile V2, not member V2.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-015",
+    "tags": [
+      "euler",
+      "glai",
+      "managed-entity",
+      "tidb",
+      "espresso",
+      "indexing",
+      "infrastructure",
+      "hireEntityRequest"
+    ],
+    "summary": "Euler mental model: get\u2192Espresso(always works), find\u2192GLAI/TiDB(fails if not indexed). One bad queryField poisons whole entity. maxSize controls varchar column. Deployment: linkedin-entities\u2192vertical\u2192dark cluster\u2192main fleet. HireEntityRequest in common-pool.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-016",
+    "tags": [
+      "k8s",
+      "kubernetes",
+      "ksap",
+      "nimbus",
+      "lideployment",
+      "infrastructure",
+      "deployment",
+      "kubectl-in"
+    ],
+    "summary": "K8s at LinkedIn: KSAP(stateless)/NSS(stateful)/KJP(batch) on Nimbus. LiDeployment CRD, D2 not k8s Services, kubectl-in wrapper, Auto Rightsizing, IaC in .linkedin/kube/, FY26H2 RAIN migration deadline.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-017",
+    "tags": [
+      "espresso",
+      "nosql",
+      "database",
+      "infrastructure",
+      "mysql",
+      "partitioning",
+      "replication",
+      "schema"
+    ],
+    "summary": "Espresso mental model: MySQL/InnoDB-based NoSQL, hash partitioning, ACID per partition only, Avro schemas via Nuage. KEY_TOO_LONG gotcha. MV\u2192Euler GLAI migration. Espresso vs Venice vs TiDB vs MongoDB decision matrix.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-020",
+    "tags": [
+      "architecture",
+      "design",
+      "phase2",
+      "prd",
+      "rfc",
+      "decisions"
+    ],
+    "summary": "PRD\u2192RFC\u2192Implementation mapping: 8 business requirements with why each technical decision was made",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "bug-007",
+    "tags": [
+      "history",
+      "mapping",
+      "espresso",
+      "validation",
+      "partialUpdate",
+      "dedup",
+      "shortened-urn"
+    ],
+    "summary": "history mapping 3 stacked bugs: KEY_TOO_LONG, validateMappingUpdate rejects, partialUpdate zeros",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-030",
+    "tags": [
+      "compound-learning",
+      "architecture",
+      "productivity",
+      "meta",
+      "skills"
+    ],
+    "summary": "Compound learning system architecture: principles\u2192process\u2192tools, agent-optimized KB, skills from real friction, test before trust",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-031",
+    "tags": [
+      "meta",
+      "friction",
+      "wrong-approach",
+      "compound-learning",
+      "behavior"
+    ],
+    "summary": "#1 friction: 14 wrong-approach instances in 18 sessions. Hypothesis-first not optional. Pre-work context check matters. Simpler = better.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-032",
+    "tags": [
+      "meta",
+      "compound-learning",
+      "behavior",
+      "reward-system",
+      "aha"
+    ],
+    "summary": "Knowledge loop works, behavior loop is the gap. Reward system closes the behavior loop by tracking corrections and generating behavioral rules.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-001",
+    "tags": [
+      "eureka",
+      "workflow",
+      "cron",
+      "async",
+      "cross-session",
+      "polling",
+      "automation"
+    ],
+    "summary": "Durable cron jobs enable cross-session async workflows \u2014 poll for external conditions (IP sync, deploys, PR status) across sessions without losing context. Encode all context in the prompt itself.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-002",
+    "tags": [
+      "eureka",
+      "compound-learning",
+      "meta",
+      "productivity",
+      "architecture",
+      "self-improving",
+      "reward-system"
+    ],
+    "summary": "Self-improving AI agent ecosystem: compound learning + knowledge scoring + behavioral RL + 19 skills + automated hooks. Zero infrastructure, all file-based. No commercial equivalent.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-003",
+    "tags": [
+      "eureka",
+      "meta",
+      "research",
+      "data-synthesis",
+      "ai-usage",
+      "productivity",
+      "pattern"
+    ],
+    "summary": "Multi-source data synthesis (Trino + cost tables + Console + Confluence + crew API + MP knowledge) produces executive-level AI usage intelligence no single dashboard provides. Pattern: map all sources \u2192 cross-validate units \u2192 combine dimensions \u2192 surface hidden insights.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-035",
+    "tags": [
+      "mcm-mt",
+      "architecture",
+      "hiring-platform",
+      "writeback",
+      "automation",
+      "phase2",
+      "connected-projects",
+      "mental-model"
+    ],
+    "summary": "mcm-mt mental model: owns HiringProject/HPC/Pipeline/State. Write-back via ConnectedProjectCandidateGrpcClient \u2192 hp-ats. ATS automation via AutomatedPipelineStageTask + AtsAutomationPipelineSettingsHandler. Silent fallback on 3 missing conditions. Espresso: multichannelmanagement.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "knowledge-venice-mental-model",
+    "tags": [
+      "venice",
+      "derived-data",
+      "storage",
+      "infrastructure",
+      "ml-features",
+      "embeddings"
+    ],
+    "summary": "Venice mental model: derived data store for precomputed data, HP usage across 5 services, key gotchas (immutable keys/partitions, hybrid first-push)",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-036",
+    "tags": [
+      "kafka",
+      "xinfra",
+      "northguard",
+      "brooklin",
+      "streaming",
+      "infrastructure",
+      "mental-model",
+      "nearline",
+      "multi-colo"
+    ],
+    "summary": "Kafka/Xinfra full stack: 7-layer architecture (TrackerProcessor\u2192Xinfra\u2192LiKafka\u2192Kafka/Northguard), 5 cluster types, MultiColoFilter cross-DC dedup, Brooklin CDC, Northguard replacing Kafka (C++, FY25). Industry comparison: leads on abstraction, lags on Samza/elasticity/event-time.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-037",
+    "tags": [
+      "meta",
+      "skills",
+      "learn",
+      "aha",
+      "eureka",
+      "compound-learning",
+      "automation",
+      "hooks"
+    ],
+    "summary": "Metadata skill evolution: smarter auto-detection triggers, bidirectional linking (3+ learns \u2192 suggest aha), graduated graduation (/aha fast-track, /eureka immediate), phase-mapped surfacing. Taxonomy stays, intelligence goes into hooks.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-033",
+    "tags": [
+      "meta",
+      "compound-learning",
+      "evolution",
+      "diminishing-returns"
+    ],
+    "summary": "S-curve evolution: stop adding at inflection point, feed data layer, let scoring decide what stays, prune after 10 real sessions",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "aha-003",
+    "tags": [
+      "meta",
+      "skills",
+      "architecture",
+      "tier-system",
+      "capability-tools",
+      "playwright-cli",
+      "observe-agent",
+      "linkedin-cli-tools",
+      "pattern"
+    ],
+    "summary": "Tier 1.5 = capability tools (browser eyes, production eyes, production hands). They provide the HOW that Tier 1 workflows and Tier 3 recipes invoke. Adoption pattern: install \u2192 create recipes \u2192 wire into skills \u2192 add to auth-preflight.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-041",
+    "tags": [
+      "publication",
+      "paper",
+      "patent",
+      "plan",
+      "conference"
+    ],
+    "summary": "Paper publication plan: get 2-3 teammates on system, collect before/after data, target CHASE first, frame as discovery not tool, follow go/engpublications 2-ticket process",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-seat-entitlements-vs-seatroles",
+    "tags": [
+      "seatsV2",
+      "entitlements",
+      "seatRoles",
+      "aperture",
+      "recruiter-plus",
+      "permission-check",
+      "proto"
+    ],
+    "summary": "Use seatEntitlements (not seatRoles) for HP permission checks; add missing fields to Seat.proto in hp-ep-api rather than proxying through roles",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-004",
+    "tags": [
+      "eureka",
+      "figma",
+      "playwright",
+      "e2e-testing",
+      "design-driven",
+      "bug-bash",
+      "greenhouse",
+      "phase2"
+    ],
+    "summary": "Design-driven cross-system E2E testing: Figma REST API pulls design screens \u2192 Claude extracts UI state machine \u2192 maps to Playwright + Greenhouse API + grpcurli verification triangle. Design is the spec, not a separate doc.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-040",
+    "tags": [
+      "publication",
+      "patent",
+      "process",
+      "paper",
+      "legal"
+    ],
+    "summary": "LinkedIn engpublications: 2 JIRA tickets, patent first, Eng Lead Sr Director+, SLA 15 days each, ~2-3 months total. Patent ID 93827.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "aha-004",
+    "tags": [
+      "aha",
+      "phase2",
+      "connected-projects",
+      "architecture",
+      "pattern",
+      "pipeline-sync",
+      "writeback",
+      "realtime",
+      "entity-mapping"
+    ],
+    "summary": "Phase 2 = 3 pipelines (inbound sync, outbound writeback, realtime feedback) + shared entity mapping layer. Every bug/test/debug maps to one pipeline. 3-state machine = Pipeline 2 fires (PENDING) + Pipeline 3 responds (CONFIRMED/FAILED). All 9 FE tasks consume Pipeline 3 output.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-006",
+    "tags": [
+      "eureka",
+      "mental-model",
+      "cross-boundary",
+      "design",
+      "frontend",
+      "backend",
+      "infrastructure",
+      "figma",
+      "playwright",
+      "e2e-testing",
+      "system-thinking",
+      "paradigm"
+    ],
+    "summary": "AI agent as connective tissue between organizational silos: Figma (design intent) + ts-web (implementation) + backend services (data flow) + ATS (external state) + infra (Kafka/realtime) synthesized into one unified view that no individual role can see alone. The value is in the connections between tools, not any single tool.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-007",
+    "tags": [
+      "eureka",
+      "context-repo",
+      "team-sharing",
+      "knowledge-management",
+      "claude-code",
+      "onboarding",
+      "productivity",
+      "force-multiplier"
+    ],
+    "summary": "Context repo (.claude/CLAUDE.md + skills + docs + test data + runbooks) turns one persons deep investigation into entire teams starting point. Clone + open with Claude Code = instant project context. Onboarding: weeks \u2192 10 min. Knowledge retention: permanent. Pattern reusable for any team initiative.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-008",
+    "tags": [
+      "eureka",
+      "goal-driven",
+      "paradigm",
+      "context-repo",
+      "execution",
+      "design-driven",
+      "cross-boundary",
+      "workflow"
+    ],
+    "summary": "Goal-driven development: reframe from task-driven (fix file X) to goal-driven (recruiter sees Failed badge). Deliverable = completed goal verified end-to-end across design, frontend, backend, ATS. Context repo (what+why) + execution repo (how) connected via bridge skills. One goal, parallel worktrees, all layers verified.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "aha-005",
+    "tags": [
+      "meta",
+      "compound-learning",
+      "automation",
+      "hooks",
+      "friction",
+      "behavior",
+      "pattern",
+      "aha"
+    ],
+    "summary": "Quantified friction from /insights can be directly translated into routing tables (wrong-approach) and hook preflights (env/auth). Formula: friction \u00d7 minutes > 5h \u2192 automate.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-005",
+    "tags": [
+      "culture",
+      "collaboration",
+      "open-source",
+      "team",
+      "contributing",
+      "eureka"
+    ],
+    "summary": "No gatekeeping, no approval process. Push to main. Fix together. Open, share, contribute \u2014 the Internet spirit applied to team tooling.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "scout-tee-dev-agent",
+    "tags": [
+      "scout",
+      "agent-systems",
+      "ralph-loop",
+      "convention-audit",
+      "autonomous-coding",
+      "pr-review"
+    ],
+    "summary": "Scout of tee-dev-agent: Ralph Loop (fresh session per task), Convention Audit, Auto PR Batch Reviewer, JIRA-to-PR orchestrator, Centauri dashboard. Adopted #1 and #2.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-043",
+    "tags": [
+      "claude-code",
+      "knowledge-sync",
+      "vm",
+      "infrastructure",
+      "devex"
+    ],
+    "summary": "Portable knowledge architecture: separate durable knowledge (~1MB) from ephemeral state (~500MB), symlink via install.sh, auto-sync via SessionEnd/UserPromptSubmit hooks, GitHub as durable remote",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "bug-006",
+    "tags": [
+      "claude-code",
+      "settings",
+      "hooks",
+      "install",
+      "config"
+    ],
+    "summary": "install.sh overwrote settings.json wiping custom hooks \u2014 fix: skip if exists, machine-specific configs should never be overwritten",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-044",
+    "tags": [
+      "claude-code",
+      "permissions",
+      "settings",
+      "session"
+    ],
+    "summary": "Claude Code permission changes (Bash allowlist) require session restart \u2014 tell user upfront, provide ! commands as workaround",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-045",
+    "tags": [
+      "vm",
+      "remote-build",
+      "ssh",
+      "infrastructure",
+      "devex",
+      "vm-run"
+    ],
+    "summary": "vm-run: generic sync-and-build from any local repo path. bash -c wrapper required. PreToolUse hook auto-intercepts build commands. Falls back to local on failure.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "bug-008",
+    "tags": [
+      "claude-code",
+      "permissions",
+      "ssh",
+      "bash",
+      "workaround"
+    ],
+    "summary": "Bash(ssh:*) pattern instantly denied in Claude Code despite being in allow list. Workaround: bash -c \"ssh vm '...'\" matches Bash(bash:*).",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "bug-009",
+    "tags": [
+      "ssh",
+      "config",
+      "lockout",
+      "vm",
+      "authentication"
+    ],
+    "summary": "SSH config lockout: adding hostname to publickey-only config before key deployed to VM. Fix: copy key first, then add config.",
+    "status": "active",
+    "outcome_score": 0
+  }
+]
+```
+
+## FEEDBACK MEMORIES (1 active rules)
+
+```json
+[
+  {
+    "id": "feedback-frontload-context",
+    "content": "---\nname: Front-load context to avoid wrong-approach friction\ndescription: User's #1 friction source (28 instances) \u2014 always provide specific service/file/tool constraints upfront rather than exploring broadly\ntype: feedback\n---\n\nWhen investigating or debugging, front-load the specific service, file, processor, or API tool in the prompt rather than exploring broadly first.\n\n**Why:** Across 32 sessions, 28 instances of wrong-approach friction came from Claude exploring the wrong component before "
+  }
+]
+```
+
+---
+
+Now evaluate this session. Return a single JSON object matching the schema in Step 3.

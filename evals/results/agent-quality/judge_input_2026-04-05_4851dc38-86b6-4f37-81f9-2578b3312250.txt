@@ -1,0 +1,1884 @@
+
+# Agent Session Judge Prompt
+# Version: 1.1
+
+You are an expert evaluator assessing the quality of an AI Partner's collaborative behavior
+during a work session. You will receive a session transcript and produce a structured
+verdict for each task/interaction within the session.
+
+## Your Role
+
+You are the judge — not the AI Partner, not the human. Your job is to evaluate the
+PARTNERSHIP quality: not just "did the code come out right?" but "did the AI Partner
+collaborate effectively with the human?"
+
+This means evaluating:
+1. **Technical correctness** — Was the approach right?
+2. **Collaboration quality** — Did the AI Partner listen, adapt, and match the human's style?
+3. **Learning behavior** — Did the AI Partner use past knowledge and generate new insights?
+4. **Human behavioral awareness** — Did the AI Partner read the human's signals correctly?
+
+The human in this partnership communicates through gentle redirects ("I feel like...",
+"meanwhile...", "what do you think?"), not direct commands. The AI Partner must detect
+these soft signals as real instructions, not just suggestions.
+
+## Input Format
+
+You will receive:
+1. **Session transcript** — the full conversation between human and AI Partner, including
+   tool calls and their results
+2. **Session metadata** — date, repo context, duration, tools available
+3. **Agent briefing** — what the AI Partner knew at session start (active work, hot insights,
+   behavioral reminders)
+4. **Insight snapshot** — the full manifest.jsonl at time of session, so you can determine
+   which insights were available and whether the agent should have used them
+5. **Feedback memories** — all feedback-type memories active at session time, representing
+   rules the agent should have followed
+
+## Evaluation Process
+
+### Step 1: Segment into Tasks
+
+Break the session into discrete tasks. A task is a unit of work initiated by the user.
+Signals for task boundaries:
+- User sends a new request/instruction
+- Topic changes significantly
+- User redirects to a different area
+
+For each task, record:
+- `task_id`: sequential (T1, T2, ...)
+- `task_summary`: one-line description of what the user asked
+- `task_start`: approximate message index
+- `task_end`: approximate message index
+
+### Step 2: Evaluate Each Task
+
+For each task, answer these questions:
+
+#### 2a. Was the first approach correct?
+- **correct**: Agent's initial plan/action aligned with what the user wanted
+- **partially_correct**: Right direction but needed minor adjustment
+- **incorrect**: Agent went down the wrong path, user had to redirect
+
+#### 2b. How many redirections?
+Count the number of times the user had to correct or redirect the agent.
+- 0 = clean execution
+- 1 = minor course correction
+- 2+ = significant misalignment
+
+#### 2c. Insight & Memory Audit
+
+For each task, cross-reference against the insight snapshot and feedback memories:
+
+**Insights that SHOULD have been used:**
+Search the manifest for insights matching the task's repo, tags, and keywords.
+For each match with `status: "active"` and `outcome_score >= 0`:
+- Was the insight retrieved (visible in agent's tool calls)?
+- Was it applied (visible in agent's behavior)?
+- If not retrieved: `context_miss` — scout/retrieval failed
+- If retrieved but not applied: `context_miss` — agent ignored known knowledge
+- If correctly applied: note as `insight_hit` (positive signal)
+
+**Feedback memories that were violated:**
+Check each active feedback memory. Did the agent's behavior contradict it?
+- If violated: contributes to `wrong_approach` or `over_engineering` depending on the rule
+- If followed: note as `rule_followed` (positive signal)
+
+**Insights that WERE used:**
+Track which insights the agent retrieved. For each:
+- Did it help? → `insight_outcome: "helped"`
+- Did it mislead? → `insight_outcome: "wrong"` (candidate for pruning)
+- Irrelevant? → `insight_outcome: "irrelevant"` (retrieval noise)
+
+Record in the task verdict:
+```json
+{
+  "insight_audit": {
+    "should_have_used": ["insight-id-1", "insight-id-2"],
+    "actually_used": ["insight-id-3"],
+    "hits": [{"id": "insight-id-3", "outcome": "helped"}],
+    "misses": [{"id": "insight-id-1", "reason": "not retrieved"}],
+    "violations": [{"feedback_id": "feedback-xyz", "rule": "present hypotheses first"}]
+  }
+}
+```
+
+This directly feeds the compound learning system's outcome tracking and graduation/pruning.
+
+#### 2d. Failure classification (if not correct)
+Classify using exactly ONE primary failure type from the taxonomy (see `failure_taxonomy.md`):
+
+| Type | Code | Definition |
+|------|------|------------|
+| Wrong approach | `wrong_approach` | Agent's conceptual plan was wrong |
+| Skill deficiency | `skill_deficiency` | Right skill invoked, but skill instructions led to suboptimal result |
+| Skill gap | `skill_gap` | No skill exists for this workflow; agent improvised |
+| Context miss | `context_miss` | Relevant info existed but wasn't retrieved/used |
+| Over-engineering | `over_engineering` | Did more than asked |
+| Tool misuse | `tool_misuse` | Wrong tool or wrong tool usage |
+| User ambiguity | `user_ambiguity` | Request was genuinely unclear |
+
+If multiple failure types apply, use the PRIORITY CHAIN to pick the primary:
+```
+wrong_approach > context_miss > skill_deficiency > over_engineering > tool_misuse > skill_gap > user_ambiguity
+```
+
+Record secondary types as `contributing_types` but only one `primary_type`.
+
+#### 2e. Evidence
+Quote the specific messages (user corrections, agent wrong turns) that support your
+classification. Include message indices.
+
+#### 2f. Counterfactual
+What SHOULD the agent have done? Be specific:
+- "Should have checked `pipeline.py:142` before proposing a fix"
+- "Should have asked 'which processor?' before investigating"
+- "Should have used `curli` instead of Trino"
+
+#### 2g. Fix target
+What artifact should change to prevent this failure?
+- Specific skill file (e.g., `~/.claude/commands/investigate.md`)
+- Specific rule (e.g., `CLAUDE.md` behavioral gate)
+- Specific hook (e.g., `UserPromptSubmit`)
+- New skill/recipe to create
+- Insight to add/update
+
+### Step 3: Session-Level Metrics
+
+After evaluating all tasks, compute:
+
+```json
+{
+  "session_id": "...",
+  "session_date": "YYYY-MM-DD",
+  "repo": "repo-name or 'global'",
+  "total_tasks": N,
+  "correct_first_approach": N,
+  "agreement_rate": N/total (percentage),
+  "total_redirections": N,
+  "avg_redirections_per_task": float,
+  "failure_distribution": {
+    "wrong_approach": N,
+    "skill_deficiency": N,
+    "skill_gap": N,
+    "context_miss": N,
+    "over_engineering": N,
+    "tool_misuse": N,
+    "user_ambiguity": N
+  },
+  "dominant_failure_type": "the type with highest count (excluding user_ambiguity)",
+  "severity_weighted_score": float,
+  "insight_summary": {
+    "total_available": "N insights in manifest at session time",
+    "total_retrieved": "N insights agent actually read",
+    "total_hits": "N insights that helped",
+    "total_misses": "N insights that should have been used but weren't",
+    "total_wrong": "N insights that misled the agent",
+    "total_violations": "N feedback rules violated",
+    "retrieval_precision": "hits / retrieved",
+    "retrieval_recall": "hits / (hits + misses)",
+    "insight_ids_to_prune": ["ids with outcome 'wrong'"],
+    "insight_ids_to_graduate": ["ids with repeated 'helped' outcomes"],
+    "feedback_ids_to_strengthen": ["violated feedback memory ids"]
+  },
+  "behavioral_loop": {
+    "signals_detected": "N",
+    "signals_total": "N",
+    "signal_detection_rate": "float",
+    "adaptation_speed_distribution": {"immediate": "N", "delayed": "N", "resistant": "N"},
+    "proactive_suggestions": {"appropriate": "N", "pushy": "N", "missed": "N"}
+  },
+  "compound_learning": {
+    "retrieval_quality": "effective|partial|poor",
+    "insights_generated": "N",
+    "insights_quality": "high|medium|low",
+    "duplicates_created": "N",
+    "graduation_candidates": [],
+    "prune_candidates": [],
+    "stale_candidates": [],
+    "loop_closed": "boolean"
+  },
+  "session_score": "float (0.0-1.0, weighted composite)",
+  "tasks": [
+    {
+      "task_id": "T1",
+      "task_summary": "...",
+      "first_approach": "correct|partially_correct|incorrect",
+      "redirections": N,
+      "primary_failure_type": "type or null if correct",
+      "contributing_types": [],
+      "evidence": "...",
+      "counterfactual": "...",
+      "fix_target": "...",
+      "insight_audit": {
+        "should_have_used": [],
+        "actually_used": [],
+        "hits": [],
+        "misses": [],
+        "violations": []
+      }
+    }
+  ]
+}
+```
+
+### Step 4: Improvement Simulation
+
+For each failure type with count > 0 (excluding `user_ambiguity`):
+
+Estimate the agreement rate improvement if ALL failures of that type were fixed:
+```
+simulated_agreement = (correct_first_approach + failures_of_this_type) / total_tasks
+delta = simulated_agreement - current_agreement_rate
+```
+
+Rank failure types by `delta` (highest improvement first). This tells the improvement
+loop which failure type to fix first.
+
+## Severity Weights
+
+Used for `severity_weighted_score`:
+
+| Type | Weight | Rationale |
+|------|--------|-----------|
+| `wrong_approach` | 3.0 | Wastes 20+ minutes, erodes trust |
+| `context_miss` | 2.5 | Means learning system is failing |
+| `skill_deficiency` | 2.0 | Skill exists but isn't good enough |
+| `over_engineering` | 1.5 | Wastes time, adds complexity |
+| `tool_misuse` | 1.0 | Usually just slower, not wrong |
+| `skill_gap` | 1.0 | Latent — only matters when task arises |
+| `user_ambiguity` | 0.0 | Not agent's fault |
+
+```
+severity_weighted_score = 1 - (sum(weight × count) / (max_possible_severity × total_tasks))
+```
+
+Where `max_possible_severity = 3.0 × total_tasks` (worst case: all wrong_approach).
+
+## Grading Rubric for Edge Cases
+
+### Partially correct first approach
+- If agent was on the right track but needed 1 minor correction → `partially_correct`,
+  count 0.5 toward correct_first_approach
+- "Minor" = same component, same tool, slightly different parameters or scope
+
+### Multiple failure types on one task
+- Pick primary by priority chain
+- Record all others as contributing_types
+- Only the primary counts in failure_distribution
+
+### Agent self-corrected before user noticed
+- If agent caught its own mistake and corrected WITHOUT user intervention → count as `correct`
+- Self-correction is a positive signal, note it in evidence
+
+### User changed requirements mid-task
+- If the user shifted what they wanted after agent started → `user_ambiguity`
+- This is NOT the agent's fault
+
+### Agent asked good clarifying questions
+- If agent asked before acting and the question was appropriate → `correct`
+- Asking is always better than guessing wrong
+
+## Step 5: Human Behavioral Loop Assessment
+
+The human-AI partnership has a behavioral feedback loop:
+- Human provides gentle redirects → AI Partner should detect and adapt
+- Human confirms non-obvious approaches → AI Partner should reinforce these
+- Human's silence after a proposal = soft approval
+- Human's "what do you think?" = wants the AI Partner to lead with an opinion
+
+For each task, evaluate the AI Partner's behavioral awareness:
+
+### 5a. Signal Detection
+Did the AI Partner correctly interpret the human's communication style?
+
+| Signal Type | Example | Correct Response |
+|-------------|---------|-----------------|
+| Gentle redirect | "I feel like X" | Pivot immediately to X |
+| Soft instruction | "meanwhile can you..." | Treat as a hard requirement |
+| Thinking aloud | "what do you think?" | Lead with a recommendation |
+| Confirmation | "sounds good, do it" | Execute without over-explaining |
+| Escalation | "no, that's wrong" | Hard stop, ask what's right |
+
+Score: `signal_detection_rate` = correctly_interpreted / total_signals
+
+### 5b. Adaptation Speed
+How quickly did the AI Partner adapt after a redirect?
+- **immediate**: Pivoted in the very next response
+- **delayed**: Took 1-2 extra messages to course-correct
+- **resistant**: Continued the old approach despite redirect
+
+### 5c. Proactive Suggestions
+Did the AI Partner proactively suggest useful next steps?
+- Suggested a relevant skill at the right moment? (positive)
+- Suggested too many things / was pushy? (negative)
+- Missed an obvious suggestion opportunity? (negative)
+
+Record in the task verdict:
+```json
+{
+  "behavioral_loop": {
+    "signals_detected": N,
+    "signals_total": N,
+    "signal_detection_rate": float,
+    "adaptation_speed": "immediate|delayed|resistant",
+    "proactive_suggestions": {
+      "appropriate": N,
+      "pushy": N,
+      "missed": N
+    }
+  }
+}
+```
+
+## Step 6: Compound Learning Assessment
+
+The AI Partner operates within a compound learning system that accumulates knowledge
+across sessions. Evaluate how well this system functioned:
+
+### 6a. Knowledge Retrieval Quality
+Was the scout hook effective? Did the right insights surface?
+- Check the UserPromptSubmit hook output at session start
+- Was the agent-briefing.md content relevant to the session's work?
+- Did manifest search return useful insights?
+
+### 6b. Knowledge Generation Quality
+Did the AI Partner generate good new insights during this session?
+- Were insights actionable ("When X, do Y because Z")?
+- Were they properly categorized (bug-track vs knowledge-track)?
+- Did they overlap with existing insights (duplication)?
+- Were they too specific (won't generalize) or too vague (not actionable)?
+
+### 6c. Knowledge Lifecycle Health
+Across the session:
+- Any insights that should be **graduated** (used 3+ times, consistently helpful)?
+- Any insights that should be **pruned** (misleading, outdated)?
+- Any insights that should be **flagged stale** (>90 days, code references may be wrong)?
+- Any feedback memories that need **strengthening** (violated despite existing)?
+
+### 6d. Compound Loop Closure
+Did the AI Partner close the learning loop?
+- If significant work was done, did it run/suggest `/compound`?
+- Were outcome-log entries created for insights used?
+- Was the agent-briefing updated?
+
+Record:
+```json
+{
+  "compound_learning": {
+    "retrieval_quality": "effective|partial|poor",
+    "insights_generated": N,
+    "insights_quality": "high|medium|low",
+    "duplicates_created": N,
+    "graduation_candidates": ["insight-ids"],
+    "prune_candidates": ["insight-ids"],
+    "stale_candidates": ["insight-ids"],
+    "loop_closed": true/false
+  }
+}
+```
+
+## Integrated Session Score
+
+Combine all dimensions into a single session quality score:
+
+```
+session_score = (
+    0.35 × agreement_rate +           # Technical correctness (35%)
+    0.25 × signal_detection_rate +     # Human behavioral awareness (25%)
+    0.20 × insight_effectiveness +     # Compound learning quality (20%)
+    0.20 × (1 - redirection_rate)      # Collaboration efficiency (20%)
+)
+```
+
+Where:
+- `agreement_rate` = correct_first_approach / total_tasks
+- `signal_detection_rate` = from Step 5a
+- `insight_effectiveness` = (hits - wrong) / max(hits + misses, 1)
+- `redirection_rate` = total_redirections / (total_tasks × 3) (capped at 1.0)
+
+This score reflects the FULL partnership — not just code output, but how well the
+AI Partner collaborates, learns, and adapts.
+
+## Output Format
+
+Return a single JSON object matching the schema in Step 3, extended with:
+- `behavioral_loop` (from Step 5) at session level and per-task
+- `compound_learning` (from Step 6) at session level
+- `session_score` (from Integrated Session Score)
+- `summary`: 2-3 sentence natural language assessment of the partnership quality
+
+Include a `summary` field with a 2-3 sentence natural language assessment of the session.
+
+
+---
+
+## SESSION TRANSCRIPT
+
+```json
+[
+  {
+    "type": "file-history-snapshot",
+    "messageId": "5255afe4-4011-44e5-b4ff-b9dfe0c18577",
+    "snapshot": {
+      "messageId": "5255afe4-4011-44e5-b4ff-b9dfe0c18577",
+      "trackedFileBackups": {},
+      "timestamp": "2026-03-31T04:33:38.074Z"
+    },
+    "isSnapshotUpdate": false
+  },
+  {
+    "parentUuid": null,
+    "isSidechain": false,
+    "promptId": "cb0a9a32-6101-41de-966c-527af518d854",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": "can you evaluate this doc - /Users/bizhou/Downloads/SDEInsidersGuideMay2019.pdf , and see what can be applied in global level to improve productivity. E.g If you want to understand business logic, check the code things"
+    },
+    "uuid": "5255afe4-4011-44e5-b4ff-b9dfe0c18577",
+    "timestamp": "2026-03-31T04:33:37.973Z",
+    "permissionMode": "default",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "4851dc38-86b6-4f37-81f9-2578b3312250",
+    "version": "2.1.88",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "5255afe4-4011-44e5-b4ff-b9dfe0c18577",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_016L7Kix9UMYyC74HMj4gmrV",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "thinking",
+          "thinking": "",
+          "signature": "Eq0CClkIDBgCKkA8C7sj8igYY09fcpMQpTErX/+AAuHBuHR90Mx7d5SWn5CV5MpzUMRC8Qq+l8Q3zXIEdWmQwTUfui+71cXcDttuMg9jbGF1ZGUtb3B1cy00LTY4ABIM8z/gnTRt/8qgpBDYGgzYVvW+1jUQ8PwebPwiMJRXAmNjCaMYcykv8jGcsK8wsCZf4pVOk88BL+499P0r/rvGsCTl8z/IDFsZ91kN6CqBAaQTsHVP0B0qdmqrZ2aPoo82MQ8udWY8VJ8K0EsNlfT7d66FMGsUepmvLPD0V6bzrua0V5+3zbhLwy5hMI3Luoj9HmAEVyZpX6PcO213Wy9pY/Hm6IyFRhP5atD3WNTWd8D80gdiYTVEr72aYYEXyV3C1Q0FE9XzilW2IWawPEVV3BgB"
+        }
+      ],
+      "stop_reason": null,
+      "stop_sequence": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 7509,
+        "cache_read_input_tokens": 11859,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 7509,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 22,
+        "service_tier": "standard",
+        "inference_geo": "global"
+      }
+    },
+    "requestId": "req_011CZaXuu5wkA1rLf7f3XSBA",
+    "type": "assistant",
+    "uuid": "ff3204e9-c96f-4dce-96f0-ac1b7975ed7c",
+    "timestamp": "2026-03-31T04:33:40.812Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "4851dc38-86b6-4f37-81f9-2578b3312250",
+    "version": "2.1.88",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "ff3204e9-c96f-4dce-96f0-ac1b7975ed7c",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_016L7Kix9UMYyC74HMj4gmrV",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_01Y1C5pU6KVSM2s51iPwxyws",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/bizhou/Downloads/SDEInsidersGuideMay2019.pdf",
+            "pages": "1-20"
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ],
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 7509,
+        "cache_read_input_tokens": 11859,
+        "output_tokens": 129,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 7509
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZaXuu5wkA1rLf7f3XSBA",
+    "type": "assistant",
+    "uuid": "3673fedd-b912-4e5b-ad88-997a4f8132eb",
+    "timestamp": "2026-03-31T04:33:41.583Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "4851dc38-86b6-4f37-81f9-2578b3312250",
+    "version": "2.1.88",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "3673fedd-b912-4e5b-ad88-997a4f8132eb",
+    "isSidechain": false,
+    "promptId": "cb0a9a32-6101-41de-966c-527af518d854",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "content": "pdftoppm is not installed. Install poppler-utils (e.g. `brew install poppler` or `apt-get install poppler-utils`) to enable PDF page rendering.",
+          "is_error": true,
+          "tool_use_id": "toolu_01Y1C5pU6KVSM2s51iPwxyws"
+        }
+      ]
+    },
+    "uuid": "75eefce3-1ce4-46d1-8094-85415169b7f0",
+    "timestamp": "2026-03-31T04:33:41.703Z",
+    "toolUseResult": "Error: pdftoppm is not installed. Install poppler-utils (e.g. `brew install poppler` or `apt-get install poppler-utils`) to enable PDF page rendering.",
+    "sourceToolAssistantUUID": "3673fedd-b912-4e5b-ad88-997a4f8132eb",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "4851dc38-86b6-4f37-81f9-2578b3312250",
+    "version": "2.1.88",
+    "gitBranch": "HEAD",
+    "slug": "curried-bouncing-coral"
+  },
+  {
+    "parentUuid": "75eefce3-1ce4-46d1-8094-85415169b7f0",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01Fo2WsWHKE8q9Ng1LhQgWpA",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_014LrcixJoyDBhgg4X5NV29R",
+          "name": "Bash",
+          "input": {
+            "command": "brew install poppler 2>&1 | tail -5",
+            "timeout": 120000
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ],
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "usage": {
+        "input_tokens": 1,
+        "cache_creation_input_tokens": 190,
+        "cache_read_input_tokens": 19368,
+        "output_tokens": 82,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 190
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZaXvASgBzKxtM7So7z6R",
+    "type": "assistant",
+    "uuid": "e9d342fe-33b5-4792-a839-a27739e122ab",
+    "timestamp": "2026-03-31T04:33:45.376Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "4851dc38-86b6-4f37-81f9-2578b3312250",
+    "version": "2.1.88",
+    "gitBranch": "HEAD",
+    "slug": "curried-bouncing-coral"
+  },
+  {
+    "parentUuid": "e9d342fe-33b5-4792-a839-a27739e122ab",
+    "isSidechain": false,
+    "promptId": "cb0a9a32-6101-41de-966c-527af518d854",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "tool_use_id": "toolu_014LrcixJoyDBhgg4X5NV29R",
+          "type": "tool_result",
+          "content": "Command running in background with ID: bcuz5be52. Output is being written to: /private/tmp/claude-503/-Users-bizhou/4851dc38-86b6-4f37-81f9-2578b3312250/tasks/bcuz5be52.output",
+          "is_error": false
+        }
+      ]
+    },
+    "uuid": "c36088a3-d136-4ad5-a9b0-738098892520",
+    "timestamp": "2026-03-31T04:35:45.833Z",
+    "toolUseResult": {
+      "stdout": "",
+      "stderr": "",
+      "interrupted": false,
+      "isImage": false,
+      "noOutputExpected": false,
+      "backgroundTaskId": "bcuz5be52",
+      "assistantAutoBackgrounded": false
+    },
+    "sourceToolAssistantUUID": "e9d342fe-33b5-4792-a839-a27739e122ab",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "4851dc38-86b6-4f37-81f9-2578b3312250",
+    "version": "2.1.88",
+    "gitBranch": "HEAD",
+    "slug": "curried-bouncing-coral"
+  },
+  {
+    "parentUuid": "c36088a3-d136-4ad5-a9b0-738098892520",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01RMcAMGt5cR67YmTeLD81Nt",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_01Vca8ZTJKBVY41Xcxr8kM3T",
+          "name": "Bash",
+          "input": {
+            "command": "python3 -c \"\nimport subprocess\nresult = subprocess.run(['pdfinfo', '/Users/bizhou/Downloads/SDEInsidersGuideMay2019.pdf'], capture_output=True, text=True)\nprint(result.stdout)\nprint(result.stderr)\n\" 2>&1 || echo \"pdfinfo not available yet\""
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ],
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "usage": {
+        "input_tokens": 1,
+        "cache_creation_input_tokens": 160,
+        "cache_read_input_tokens": 19558,
+        "output_tokens": 134,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 160
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZaY5KCn3i59DXxL6JV2i",
+    "type": "assistant",
+    "uuid": "fb8eb61c-a1ca-484f-896e-06d8c5687268",
+    "timestamp": "2026-03-31T04:35:48.870Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "4851dc38-86b6-4f37-81f9-2578b3312250",
+    "version": "2.1.88",
+    "gitBranch": "HEAD",
+    "slug": "curried-bouncing-coral"
+  },
+  {
+    "parentUuid": "fb8eb61c-a1ca-484f-896e-06d8c5687268",
+    "isSidechain": false,
+    "promptId": "cb0a9a32-6101-41de-966c-527af518d854",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "tool_use_id": "toolu_01Vca8ZTJKBVY41Xcxr8kM3T",
+          "type": "tool_result",
+          "content": "Traceback (most recent call last):\n  File \"<string>\", line 3, in <module>\n  File \"/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/subprocess.py\", line 548, in run\n    with Popen(*popenargs, **kwargs) as process:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/subprocess.py\", line 1026, in __init__\n    self._execute_child(args, executable, preexec_fn, close_fds,\n  File \"/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/subprocess.py\", line 1955, in _execute_child\n    raise child_exception_type(errno_num, err_msg, err_filename)\nFileNotFoundError: [Errno 2] No such file or directory: 'pdfinfo'\npdfinfo not available yet",
+          "is_error": false
+        }
+      ]
+    },
+    "uuid": "ee4db3ca-13e0-46d6-9f9d-e18879c201e8",
+    "timestamp": "2026-03-31T04:35:49.242Z",
+    "toolUseResult": {
+      "stdout": "Traceback (most recent call last):\n  File \"<string>\", line 3, in <module>\n  File \"/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/subprocess.py\", line 548, in run\n    with Popen(*popenargs, **kwargs) as process:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/subprocess.py\", line 1026, in __init__\n    self._execute_child(args, executable, preexec_fn, close_fds,\n  File \"/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/subprocess.py\", line 1955, in _execute_child\n    raise child_exception_type(errno_num, err_msg, err_filename)\nFileNotFoundError: [Errno 2] No such file or directory: 'pdfinfo'\npdfinfo not available yet",
+      "stderr": "",
+      "interrupted": false,
+      "isImage": false,
+      "noOutputExpected": false
+    },
+    "sourceToolAssistantUUID": "fb8eb61c-a1ca-484f-896e-06d8c5687268",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "4851dc38-86b6-4f37-81f9-2578b3312250",
+    "version": "2.1.88",
+    "gitBranch": "HEAD",
+    "slug": "curried-bouncing-coral"
+  },
+  {
+    "parentUuid": "ee4db3ca-13e0-46d6-9f9d-e18879c201e8",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01YUdFXR2K3UrcEtrc2cNxUY",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_01Ux8gNew68tJ3u2iUsKTR9F",
+          "name": "Bash",
+          "input": {
+            "command": "python3 -c \"\nimport PyPDF2\nreader = PyPDF2.PdfReader('/Users/bizhou/Downloads/SDEInsidersGuideMay2019.pdf')\nprint(f'Pages: {len(reader.pages)}')\nfor i in range(min(10, len(reader.pages))):\n    text = reader.pages[i].extract_text()\n    print(f'--- Page {i+1} ---')\n    print(text[:2000] if text else '(no text)')\n\" 2>&1"
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ],
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "usage": {
+        "input_tokens": 1,
+        "cache_creation_input_tokens": 387,
+        "cache_read_input_tokens": 19718,
+        "output_tokens": 180,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 387
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZaY5ZaUBioZFGYGYEDvz",
+    "type": "assistant",
+    "uuid": "f3b18931-f7b1-4c33-be2f-8b24407cdc3c",
+    "timestamp": "2026-03-31T04:35:52.545Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "4851dc38-86b6-4f37-81f9-2578b3312250",
+    "version": "2.1.88",
+    "gitBranch": "HEAD",
+    "slug": "curried-bouncing-coral"
+  },
+  {
+    "parentUuid": "f3b18931-f7b1-4c33-be2f-8b24407cdc3c",
+    "isSidechain": false,
+    "promptId": "cb0a9a32-6101-41de-966c-527af518d854",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "content": "Exit code 1\nTraceback (most recent call last):\n  File \"<string>\", line 2, in <module>\nModuleNotFoundError: No module named 'PyPDF2'",
+          "is_error": true,
+          "tool_use_id": "toolu_01Ux8gNew68tJ3u2iUsKTR9F"
+        }
+      ]
+    },
+    "uuid": "eb6a2a05-ec12-4bb8-ba90-fce1c67fceef",
+    "timestamp": "2026-03-31T04:35:52.680Z",
+    "toolUseResult": "Error: Exit code 1\nTraceback (most recent call last):\n  File \"<string>\", line 2, in <module>\nModuleNotFoundError: No module named 'PyPDF2'",
+    "sourceToolAssistantUUID": "f3b18931-f7b1-4c33-be2f-8b24407cdc3c",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "4851dc38-86b6-4f37-81f9-2578b3312250",
+    "version": "2.1.88",
+    "gitBranch": "HEAD",
+    "slug": "curried-bouncing-coral"
+  },
+  {
+    "parentUuid": "eb6a2a05-ec12-4bb8-ba90-fce1c67fceef",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01VXhxnnE9DnReDqTHuKyUAm",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_013bojowtqWhKKV4ds2RGdfT",
+          "name": "Bash",
+          "input": {
+            "command": "pip3 install PyPDF2 2>&1 | tail -3"
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ],
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "usage": {
+        "input_tokens": 1,
+        "cache_creation_input_tokens": 246,
+        "cache_read_input_tokens": 20105,
+        "output_tokens": 68,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 246
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZaY5pHkNrXAdbhRGoZV4",
+    "type": "assistant",
+    "uuid": "ba29837c-0063-458a-a053-dbda06f502bc",
+    "timestamp": "2026-03-31T04:35:55.411Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "4851dc38-86b6-4f37-81f9-2578b3312250",
+    "version": "2.1.88",
+    "gitBranch": "HEAD",
+    "slug": "curried-bouncing-coral"
+  },
+  {
+    "parentUuid": "ba29837c-0063-458a-a053-dbda06f502bc",
+    "isSidechain": false,
+    "promptId": "cb0a9a32-6101-41de-966c-527af518d854",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "tool_use_id": "toolu_013bojowtqWhKKV4ds2RGdfT",
+          "type": "tool_result",
+          "content": "[notice] A new release of pip is available: 24.0 -> 26.0.1\n[notice] To update, run: pip3 install --upgrade pip",
+          "is_error": false
+        }
+      ]
+    },
+    "uuid": "430c42e1-12b8-4298-ad16-64b8bdb63124",
+    "timestamp": "2026-03-31T04:36:00.962Z",
+    "toolUseResult": {
+      "stdout": "[notice] A new release of pip is available: 24.0 -> 26.0.1\n[notice] To update, run: pip3 install --upgrade pip",
+      "stderr": "",
+      "interrupted": false,
+      "isImage": false,
+      "noOutputExpected": false
+    },
+    "sourceToolAssistantUUID": "ba29837c-0063-458a-a053-dbda06f502bc",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "4851dc38-86b6-4f37-81f9-2578b3312250",
+    "version": "2.1.88",
+    "gitBranch": "HEAD",
+    "slug": "curried-bouncing-coral"
+  },
+  {
+    "parentUuid": "430c42e1-12b8-4298-ad16-64b8bdb63124",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01LiHrvQuaq1bXCww36geFdW",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_014zjTTZjJzZicNw2muM8xN8",
+          "name": "Bash",
+          "input": {
+            "command": "python3 -c \"\nimport PyPDF2\nreader = PyPDF2.PdfReader('/Users/bizhou/Downloads/SDEInsidersGuideMay2019.pdf')\nprint(f'Total pages: {len(reader.pages)}')\nfor i in range(min(15, len(reader.pages))):\n    text = reader.pages[i].extract_text()\n    print(f'--- Page {i+1} ---')\n    print(text[:3000] if text else '(no text)')\n\" 2>&1",
+            "timeout": 30000
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ],
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "usage": {
+        "input_tokens": 1,
+        "cache_creation_input_tokens": 118,
+        "cache_read_input_tokens": 20351,
+        "output_tokens": 199,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 118
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZaY6RfF9TnoMJWnzFg4Y",
+    "type": "assistant",
+    "uuid": "67ddb187-03dc-4f66-8fe2-6609fa5c521c",
+    "timestamp": "2026-03-31T04:36:04.213Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "4851dc38-86b6-4f37-81f9-2578b3312250",
+    "version": "2.1.88",
+    "gitBranch": "HEAD",
+    "slug": "curried-bouncing-coral"
+  },
+  {
+    "parentUuid": "67ddb187-03dc-4f66-8fe2-6609fa5c521c",
+    "isSidechain": false,
+    "promptId": "cb0a9a32-6101-41de-966c-527af518d854",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "tool_use_id": "toolu_014zjTTZjJzZicNw2muM8xN8",
+          "type": "tool_result",
+          "content": "<persisted-output>\nOutput too large (35.2KB). Full output saved to: /Users/bizhou/.claude/projects/-Users-bizhou/4851dc38-86b6-4f37-81f9-2578b3312250/tool-results/bgf2xojgr.txt\n\nPreview (first 2KB):\nTotal pages: 59\n--- Page 1 ---\n \nSDE Insider\u2019s Guide  \n                \n(\u2026by SDEs for SDEs)  \n  \n\n--- Page 2 ---\nSDE Insider\u2019s Guide                            Amazon Confidential   Page 2   Amazon SDE Insider\u2019s Guide  \nVersion: 5.0 \u2013 4/15/16  \nEditor/Contact:   Chris Macdonald (cmacdona@) \u2013 Engineering Excellence  \n \nContributors: Leah Melvoin  (Voice of the Developer/EEP, also, previous editor), Peter Vosshall (Distinguished Engineer),  \nMichael Touloumtzis (Sr.  Principal SDE - Catalog), Joe Magerramov (Principal SDE \u2013 Amazon Marketplace ), Chris Newcomb \n(Principal SDE  \u2013 AWS),  David Yanacek (SDE \u2013 AWS), Graeme Baer  (SDE - AWS) , Brandon Smith (SDE \u2013 Digital),  Grant Emery \n(SDE - Catalog), Arthur Carre (SDE  \u2013  WAP),  Alex Borst (SDE \u2013 WAP), Doug Dance (SDE - Ordering ), Mei Qi (SDE \u2013 FC \nSystems),  Jason Peacock (SDE \u2013 Monitoring), Kerey Roper (SDE \u2013 Amazon Marketplace ), Kevin Steuer (SDE \u2013 CMS), Seth \nHerve (SDE \u2013 GFS), Nandakiran Kirubanandan  (SDE \u2013 eCP), Gurpreet  Dhillon (SDM \u2013 Payments),  Jeevan Pathuri (SDM \u2013 \nRetail Systems), Praveen Holenarsipur  (SDM - Retail Syste ms), Margaux Eng (SDM \u2013 Retail Systems), William Kruse \n(Security Engineering), Matt Tavis (Solutions Architect \u2013 AWS) , Sheila Molnar (Sr. Technical Editor \u2013 AWS), Paul Kasper \n(Technical Writer \u2013 Localization Platform), Charlotte Riggle (Technical Writer \u2013 Engineering Excellence)  \n \nReviewed by:  SVPs (Andy Jassy, Brian Valentine, Jeff Wilke, Sebastian Gunningham, Diego Piacentini), VPs (Colin Bodell, \nAlyssa Henry, George Goley), Directors ( Patrick Franklin, Ron Knapp, Llew Mason, Patrick Teo), SW Mgrs (Craig Kulfan, Carl \nBystrom, Valeria Melechko, Slavik Dimitrovich, Kevin Anderson, Andy Troutman, Dave Anderson, Palani Chidambaram), \nPrincipal Engineers (Brad Porter, Jesper Johanss on, Sam Gigliotti, Tushaar Sethi, Matt Wilson, Jeremy Dashe, Andrew \nShapira), SDE s (Eric Crahen, Anne Marshall, Zach Musgrave), HR (Sue Maloney, Ee Lyn Khoo, Helene Bouffard, Jim Casey, \n...\n</persisted-output>",
+          "is_error": false
+        }
+      ]
+    },
+    "uuid": "03f7a9b2-15a6-4ee8-bff6-e5dfab5f44ca",
+    "timestamp": "2026-03-31T04:36:04.693Z",
+    "toolUseResult": {
+      "stdout": "Total pages: 59\n--- Page 1 ---\n \nSDE Insider\u2019s Guide  \n                \n(\u2026by SDEs for SDEs)  \n  \n\n--- Page 2 ---\nSDE Insider\u2019s Guide                            Amazon Confidential   Page 2   Amazon SDE Insider\u2019s Guide  \nVersion: 5.0 \u2013 4/15/16  \nEditor/Contact:   Chris Macdonald (cmacdona@) \u2013 Engineering Excellence  \n \nContributors: Leah Melvoin  (Voice of the Developer/EEP, also, previous editor), Peter Vosshall (Distinguished Engineer),  \nMichael Touloumtzis (Sr.  Principal SDE - Catalog), Joe Magerramov (Principal SDE \u2013 Amazon Marketplace ), Chris Newcomb \n(Principal SDE  \u2013 AWS),  David Yanacek (SDE \u2013 AWS), Graeme Baer  (SDE - AWS) , Brandon Smith (SDE \u2013 Digital),  Grant Emery \n(SDE - Catalog), Arthur Carre (SDE  \u2013  WAP),  Alex Borst (SDE \u2013 WAP), Doug Dance (SDE - Ordering ), Mei Qi (SDE \u2013 FC \nSystems),  Jason Peacock (SDE \u2013 Monitoring), Kerey Roper (SDE \u2013 Amazon Marketplace ), Kevin Steuer (SDE \u2013 CMS), Seth \nHerve (SDE \u2013 GFS), Nandakiran Kirubanandan  (SDE \u2013 eCP), Gurpreet  Dhillon (SDM \u2013 Payments),  Jeevan Pathuri (SDM \u2013 \nRetail Systems), Praveen Holenarsipur  (SDM - Retail Syste ms), Margaux Eng (SDM \u2013 Retail Systems), William Kruse \n(Security Engineering), Matt Tavis (Solutions Architect \u2013 AWS) , Sheila Molnar (Sr. Technical Editor \u2013 AWS), Paul Kasper \n(Technical Writer \u2013 Localization Platform), Charlotte Riggle (Technical Writer \u2013 Engineering Excellence)  \n \nReviewed by:  SVPs (Andy Jassy, Brian Valentine, Jeff Wilke, Sebastian Gunningham, Diego Piacentini), VPs (Colin Bodell, \nAlyssa Henry, George Goley), Directors ( Patrick Franklin, Ron Knapp, Llew Mason, Patrick Teo), SW Mgrs (Craig Kulfan, Carl \nBystrom, Valeria Melechko, Slavik Dimitrovich, Kevin Anderson, Andy Troutman, Dave Anderson, Palani Chidambaram), \nPrincipal Engineers (Brad Porter, Jesper Johanss on, Sam Gigliotti, Tushaar Sethi, Matt Wilson, Jeremy Dashe, Andrew \nShapira), SDE s (Eric Crahen, Anne Marshall, Zach Musgrave), HR (Sue Maloney, Ee Lyn Khoo, Helene Bouffard, Jim Casey, \nNoelle Anderson, David Person)  \nThe SDE Insider\u2019s Guide is for Internal Use Only . \n--- Page 3 ---\nSDE Insider\u2019s Guide                            Amazon Confidential   Page 3 Contents  \nCONTENTS  ................................ ................................ ................................ ................................ ......... 3 \nINTRODUCTION  ................................ ................................ ................................ ....................... 6 \nAMAZON GUIDING PRINC IPLES  ................................ ................................ ................................ 7 \nAMAZON \u2019S PECULIAR WAYS (UNLESS YOU KNOW BETTE R ONES ) ................................ ................................ ...........  7 \nAMAZON LEADERSHIP PRINCIPLES  ................................ ................................ ................................ ....................  7 \nAMAZON SDE  COMPETENCIES  ................................ ................................ ................................ ........................  9 \nPRINCIPAL ENGINEER TENETS  ................................ ................................ ................................ ........................  10 \nEVERYTHING STARTS WI TH THE CUSTOMER ................................ ................................ ............  11 \nAMAZON CUSTOMER SEGMENTS  ................................ ................................ ................................ ...................  11 \nAT AMAZON , WE WORK BACKWARDS , STARTING WITH THE CUSTOMER  ................................ ..............................  11 \nSDE OWNERSHIP  ................................ ................................ ................................ ....................  12 \nOWN YOUR CUSTOMER \u2019S EXPERIENCE  ................................ ................................ ................................ ............  13 \nOWN THE WHOLE DEVELOPMENT PROCESS  ................................ ................................ ................................ .... 13 \nOWN YOUR SYSTEMS END-TO-END ................................ ................................ ................................ ................  13 \nOWN YOUR AMAZON EXPERIENCE  ................................ ................................ ................................ .................  14 \nWORK WITH THE BUSINES S IN MIND  ................................ ................................ ......................  15 \nOUR VIRTUOUS CYCLE ................................ ................................ ................................ ................................ . 15 \nWHAT IS OP1?  ................................ ................................ ................................ ................................ ...........  16 \nUNDERSTANDING AMAZON FRUGALITY  ................................ ................................ ................................ ...........  16 \nLEARN FROM AMAZON\u2019S ARCHITECTURAL EVOLUT ION ................................ ...........................  18 \nDESIGN HORIZONTALLY SCALABLE SYSTEMS  ..........\n--- Page 4 ---\nSDE Insider\u2019s Guide                            Amazon Confidential   Page 4 BIAS FO R ACTION: RELEASE EA RLY AND OFTEN  ................................ ................................ .......  23 \nGET GOOD AT ESTIMATI NG ................................ ................................ ................................ .... 24 \nAGILE ESTIMATING  ................................ ................................ ................................ ................................ ...... 25 \nTIPS FOR COMMUNICATING ESTIMATES  ................................ ................................ ................................ ..........  26 \nWHEN ESTIMATES CLASH WITH BUSINESS NEEDS ................................ ................................ .............................  26 \nWHAT DOES IT MEAN TO  \u201cDRIVE QUALITY\u201d?  ................................ ................................ ..........  27 \nENSURE THEIR SOFTWARE  DOES THE RIGHT THING  FOR THE CUSTOMER ................................ ................................ . 28 \nENSURE THEIR SOFTWARE  IS CORRECT  ................................ ................................ ................................ .............  28 \nENSURE THEIR SOFTWARE  IS MAINTAINABLE  ................................ ................................ ................................ .... 29 \nBALANCING QUALITY WI TH DELIVERING RESULT S AND INNOVATION  ................................ ...... 30 \nOPERATIONAL EXCELLEN CE ................................ ................................ ................................ .... 30 \nHOW TO PREPARE FOR YOUR FIRST ONCALL  ................................ ................................ ................................ .... 32 \nTHE AMAZON COE  (CORRECTION OF ERRORS ) PROCESS  ................................ ................................ ...................  33 \nHOW TO INFLUENCE CHA NGE  ................................ ................................ ................................ . 33 \nLEVERAGE OUR DATA-DRIVEN CULTURE  ................................ ................................ ................................ ..........  34 \nMAKE YOUR CASE ................................ ................................ ................................ ................................ .......  35 \nCOMMUNICATION (THE A MAZON WAY)  ................................ ................................ .................  36 \nTHE IMPORTANCE OF CONFIDENTIALITY  ................................ ................................ ................................ ..........  36 \nAMAZON CONFIDENTIAL ITY POLICY  ................................ ................................ ................................ ................  36 \nTIPS FOR EFFECTIVE MEETINGS  ................................ ................................ ................................ ......................  36 \nTIPS FOR EFFECTIVE EMAILS  ................................ ................................ ........................\n--- Page 5 ---\nSDE Insider\u2019s Guide                            Amazon Confidential   Page 5 GET A MENTOR  ................................ ................................ ................................ ................................ ..........  47 \nGENERAL HELP ................................ ................................ ................................ ................................ ...........  47 \nPARTICIPATE IN THE A MAZON HIRING PROCESS  ................................ ................................ ..... 48 \nOUR HIRING BAR ................................ ................................ ................................ ................................ ........  48 \nTHE INTERVIEW PROCESS ................................ ................................ ................................ ..............................  48 \nWORKING WITH RECRUITERS  ................................ ................................ ................................ ........................  51 \nAPPENDIX A: AMAZON A NNUAL CALENDAR  ................................ ................................ .....................  52 \nAPPENDIX B: VIDEOS T O WATCH (WHEN YOU HA VE TIME)  ................................ ................................  53 \nAPPENDIX C: POLICIES  (ALL SDES ABSOLUTELY  NEED TO BE AWARE OF)  ................................ ............  54 \nAPPENDIX D: AMAZON T ECHNICAL TALK SERIES  ................................ ................................ ...............  55 \nAPPENDIX E: AMAZON A CRONYMS  ................................ ................................ ................................ .. 56 \n \n\n--- Page 6 ---\nSDE Insider\u2019s Guide                            Amazon Confidential   Page 6 Introduction  \n \nThe \u201c SDE Insider\u2019s Guide\u201d details many  expectations  for Amazon  software development engineers  \n(SDEs) that might be d ifferent than other companies.  It contains g uidance on what we value in \ntechnology  and in our culture , as well as how to be effective  at Amazon .  But first, one thing must be \nstated:  \n \nSDEs at Amazon wear many hats .   \n \nAs an  SDE at Amazon, n ot only are you expected to deliver exceptional solutions, you are also expected \nto own your  systems end -to-end.  This means understanding the business, gathering requirements, \nbeing  a voice for your  customer, designing and collaborating with other teams, coding and revi ewing the \ncode of others, testing and driving system quality, protecting Amazon and our customers, documenting \nyour systems, measuring their  performance and  focus ing on operational excellence .   \n \nThis level of ownership might be new to you.  But that\u2019 s what makes being an SDE at Amazon unique .  \nYou get to influence the direction of our technology.  It doesn\u2019t matter what level you are, y ou will work \nwith the business.  You r work will directly improve  the customer experience .  Over time, you will gain  a \nunique knowledge of both business and technology  that gives  you a special insight  that leads to \ninnovation.   \nThink long -term when designing new solutions .  Take the opportunity to build the highest quality \nsoftware that you can so that our customers have  the best experience .   Understand why systems were \nbuilt the way they are before changing them.   If documentation doesn\u2019t exist, look to the code.   \nRemember, all SDEs live with the design and quality d ecisions made by former owners , so do your best \nto leave a great legacy for the next owner .  \n\n--- Page 7 ---\nSDE Insider\u2019s Guide                            Amazon Confidential   Page 7 Amazon Guiding Principles  \nAmazon has several guiding principles that drive and reflect our culture.  These principles are the \nbackbone of our company.  They influence everything from hiring and employee developme nt to the \nway we develop our business and technology solutions.   \nAmazon\u2019s Peculiar Ways (Unless you know better ones)  \nSome of what folks learn at other companies or in school \u2013 including \u201cconventional wisdom\u201d \u2013 may not \nalways apply at Amazon .  We have \u201cpe culiarities\u201d that consistently show up in the way we build our \nproducts and features .  Below is a list of principles that capture the somewhat eccentric ways in which \nwe operate when we are at our best .  Not only do they help guide us in our mission to be  Earth\u2019s Most \nCustomer -Centric Company , they give us the freedom to think a little differently .   \n \nAt Amazon we:  \n \n\u2022 Earn trust with our customers by making precise, high -bar promises and then keeping them .   \n\u2022 Are willing to make long -term investments \u2013 sometim es at the expense of short -term gains .   \n\u2022 Share the good and the bad to help customers make informed buying decisions .   \n\u2022 Work to avoid the bland personality that customers typically associate with big \nhomogeneous, corporate borgs .   \n\u2022 Take credit for the impressive things we do in a way that is subtle and sophisticated .   \n\u2022 Endeavor to speak to our customers in a tone that is neither boastful nor boring .   \n\u2022 Use specificity whenever possible and sensible .   \n\u2022 Prefer to title features factually with a degree of p recision .   \n\u2022 Don't make content look like an advertisement .   \n \nBy applying our peculiar ways across the company , we make sure we always put the customer first  \n(even if our team\u2019s influence on the website or on other Amazon products is indirect) .   \nAmazon Le adership Principles  \nAll Amazonians (in any role) are expected to demonstrate and embody our Leadership Principles \nthrough their behavior every day.   It\u2019s important to note that these aren\u2019t just empty words.  They were \nwritten by the S -Team1 and truly do represent the DNA of our company.  \n \nCustomer Obsession - Leaders start with the customer and work backwards .  They work vigorously to \nearn and keep customer trust .  Although leaders pay attention to competitors, they obsess  over \ncustomers .  \n                                                           \n1 The S -Team refers to Jeff Bezos and his direct reports.  See: https://connect.amazon.com/people/jeff    \n\n--- Page 8 ---\nSDE Insider\u2019s Guide                            Amazon Confidential   Page 8 Ownership - Leaders are owners .  They think long term and don\u2019t sacrifice long -term value for short -\nterm results .  They act on behalf of the entire company, beyond just their own team .  They never say \n\u201cthat\u2019s not my job .\u201d  \n \nInvent and Simplify - Leaders expe ct and require innovation and invention from their teams and always \nfind ways to simplify .  They are externally aware, look for new ideas from everywhere, and are not \nlimited by \u201cnot invented here .\u201d  As we do new things, we accept that we may be misunderst ood for long \nperiods of time .   \n \nAre Right, A Lot - Leaders are right  a lot .  They have strong judgment and good instincts .  They seek \ndiverse perspectives and work to disconfirm their beliefs.  \n \nLearn and Be Curious  - Leaders are never done learning and always seek to improve themselves. They \nare curious about new possibilities and act to explore them.  \n \nHire and Develop the Best - Leaders raise the performance bar with every hire and promotion. They \nrecognize exceptional talent, and willingly move them th roughout the organization. Leaders develop \nleaders and take seriously their role in coaching others. We work on behalf of our people to invent \nmechanisms for development like Career Choice.  \n \nInsist on the Highest Standards - Leaders have relentlessly high standards - many people may think \nthese standards are unreasonably high .  Leaders are continually raising the bar and drive their teams to \ndeliver high quality products, services , and processes .  Leaders ensure that defects do not get sent down \nthe line an d that problems are fixed so they stay fixed .   \n \nThink Big - Thinking small is a self -fulfilling prophecy .  Leaders create and communicate a bold direction \nthat inspires results .  They think differently and look around corners for ways to serve customers .   \n \nBias for Action - Speed matters in business .  Many decisions and actions are reversible and do not need \nextensive study .  We value calculated risk taking .  \n \nFrugality - Accomplish more with less.  Constraints breed resourcefulness, self -sufficiency and i nvention. \nThere are no extra points for growing headcount, budget size or fixed expense.  \n \nEarn Trust  - Leaders listen attentively, speak candidly, and treat others respectfully.   They are vocally \nself-critical,  even when doing so is awkward or embarrassing . Leaders do not believe their or their \nteam's body odor smells of perfume.  They  benchmark themselves and their teams against the best.   \n \nDive Deep - Leaders operate at all levels, stay connected to the details, audit frequently, and are \nskeptical when  metrics and anecdote differ. No task is beneath them.   \n \nHave Backbone; Disagree and Commit - Leaders are obligated to respectfully challenge decisions when \nthey disagree, even when doing so is uncomfortable or exhausting .  Leaders have conviction and are \n--- Page 9 ---\nSDE Insider\u2019s Guide                            Amazon Confidential   Page 9 tenacious .  They do not compromise for the sake of social cohesion .  Once a decision is determined, they \ncommit wholly .   \n \nDeliver Results - Leaders focus on the key inputs for their business and deliver them with the right \nquality and in a timely fash ion.  Despite setbacks, they rise to the occasion and never settle .   \nAmazon SDE Competencies  \nAmazon has a specific set of functional competencies that apply to all SDEs, regardless of level .   \n \nDrive Quality  - SDEs assume responsibility for quality; have relentlessly high standards and write good \ncode in order for the product/service to work right the first time; own problems found with their own \ncode; get design and code reviewed ; clearly document code and rigorously review other developers\u2019 \ncode; and test code thoroughly.   \n \nHave Excellent Functional Skills - SDEs are excellent problem solvers, analytical thinkers and possess \nexcellent job -relevant technical skills (e . g., design, development, building schedules, coding, etc .); \nunderstand performance and operational issues; are flexible, adaptable, and able to multi -task; have \nknowledge of software and continue to develop an extensive software development toolbox.   \n \nDeliver Results - SDEs own and drive tasks to completion; work efficiently to meet deadlin es - including \nsetting and meeting milestones; and prioritize competing tech projects to deliver the right results.  \nDespite setbacks, they rise to the occasion, maintain focus , and never settle.   \n \nInnovate & Simplify - SDEs are resourceful and discover ways to innovate and invent while also finding \nthe simplest solution (wield Occam\u2019s razor effectively); do not needlessly complicate; and continually \nthink outside the box to address problems creatively.   \n \nHave Operationa l & Customer Focus - SDEs focus on making things better for customers by quickly and \nthoroughly resolving defects; always research and seek the root cause to solve problems; understand \nthe business context and impact of their work and consider scaling issu es; provide excellent on-call \ncustomer support; and are advocates for customers - both internal and external.   \n \nCommunicate Clearly  - SDEs keep teammates informed of issues that affect the team by clearly and \ndirectly communicating ( through writing and speech ), and they escalate issues and concerns promptly \nand appropriately.   \n \nExercise Judgment  - SDEs have strong judgment, clarity of thought , and good instincts that inform their \nsoftware development decisions; garner respect and are able to drive conse nsus and influence others by \nbeing right a lot; are smart about working on the right stuff and working through applicable tradeoffs.   \n \nDemonstrate Engagement & Teamwork  - SDEs have a high level of ownership for their work and \nprofessional development; are  proactive and demonstrate a positive, can -do attitude; are respected \n--- Page 10 ---\nSDE Insider\u2019s Guide                            Amazon Confidential   Page 10 members of the team; work across organizations effectively; mentor other engineers; learn from others \nand from their own mistakes.   \n \nPrincipal Engineer Tenets  \nThe following tenets repre sent the guiding values and expectations of Principal Engineers at Amazon but \nare recommended for all SDEs. Watch a video about these tenets . \nExemplary Practitioner  \u2013 Princi pal Engineers are hands -on and lead by example. We deliver artifacts \nthat set the standard for engineering excellence, from designs to algorithms to implementations. Only \nby being close to the details can we earn the respect needed to be effective technica l leaders.  \nTechnically Fearless  \u2013 Amazon\u2019s startup culture does not admit the luxury of conservatism. Principal \nEngineers tackle intrinsically hard problems, venturing beyond comfortable approaches when necessary. \nWe acquire expertise as needed, pioneer new spaces, and inspire others as  to what\u2019s possible.  \nBalanced and Pragmatic  \u2013 Principal Engineers are pragmatic problem solvers. We apply judgment and \nexperience to balance trade -offs between competing interests. We simplify processes and technologies \nwhile advocating a long -term view.  \nIlluminate and Clarify  \u2013 Principal Engineers bring clarity to complexity and demonstrate smart ways to \nsimplify. We frame each problem in its customer and business context and boil it down to its essence. \nWe probe assumptions, illuminate pitfalls, and fos ter shared understanding. We accelerate progress by \ndriving crisp and timely decisions.  \nFlexible in Approach  \u2013 Principal Engineers adapt our approach to meet the needs of the team, project, \nand product. We solicit differing views and are willing to change  our minds as we learn more. We \nrecognize there are often many viable solutions, and that sometimes the best solution is to solve a \ndifferent problem, or to not solve the problem at all.  \nRespect What Came Before  \u2013 Principal Engineers are grateful to our p redecessors. We appreciate the \nvalue of working systems and the lessons they embody. We understand that many problems are not \nessentially new.  \nLearn, Educate, and Advocate  \u2013 Principal Engineers are constantly learning. We seek technical \nknowledge and educ ate the entire organization about trends, technologies, and approaches. We \ncombine vision and discretion to drive fruitful and even game -changing technology choices.  \nHave Resounding Impact  \u2013 \u201cDeliver Results\u201d is a low bar for a Principal Engineer. Without  seeking the \nspotlight, Principal Engineers make a lasting impact that echoes through the technology, the product, \nand the company. We amplify our impact by aligning teams toward coherent architectural strategies.  \n--- Page 11 ---\nSDE Insider\u2019s Guide                            Amazon Confidential   Page 11 Everything Starts with the Customer  \nCusto mer-obsession is at the core of everything we do at Amazon .  Every decision we make must  always  \nconsider our customers and their needs .  \nAmazon Customer Segments  \nAmazon has three distinct customer segments :  \nCustomers .  Our customers are the people who shop on any of the Amazon websites world -wide \n(including subsidiary websites2).  Customers are anyone who owns a Kindle or looks up a movie on \nIMDb.  Customers are you, your family, your friends\u2026everyone .   \nSellers .  Sellers run the gamut from one -time -only sellers to massive corporations that sell on the \nAmazon website, another Amazon -run website, or even their own web store.   If sellers are part of our \nFulfillment by Amazon (FBA) program, they are also able to sell on EBay or Yahoo and other sites that \nare not Amazon -run.  \nDevelopers .  Various organizations have developer customers.  Some support developers who work for \nAmazon and its subsidiaries (i.e., Builder Tools, Website Platform, Monitoring, etc.); others are \nexternally facing, supporting businesse s, governments and non -profits (i.e., Amazon Web Services \n(AWS), Seller Services, Amazon Payments, Associates, etc.)  \nAt Amazon, We Work Backwards, Starting with the Customer  \nBeing Earth\u2019s most customer -centric company means we prioritize what is most impor tant to the \ncustomer; eliminating as waste all activities that the customer would not find value in.  To help us do \nthis, we work backwards  from the customer  \u2013 that is, we start with the customer and what they want \nand let that define and gui de our efforts .   \n\u201cWorking Backwards \u201d is a project methodology in use across Amazon.  The process aligns  well with \nScrum and other agile methods  because they share the same goal:  \n \nTo deliver the most important features to the customer FIRST.    \n \nWorking backwards begins at the point when teams  are deciding  on a new feature3.  They describe  - in a \nsimple way - what the feature  does and why it exists in a \u201cpress release .\u201d  The process of writing  the \npress release forces the team to think through all of the benefits they want to deliver to their customers , \nbefore building  anything,  ensuring that what they  are planning to release is compelling to their \ncustomers\u2026that the feature is something that really matters to them .   \n \n                                                           \n2 (i.e., AbeBooks.com, Shopbop.com, Zappos.com, etc.)  \n3 Note: The Working Backwards process is used for all types of new software and business proposals.  \n\n--- Page 12 ---\nSDE Insider\u2019s Guide                            Amazon Confidential   Page 12 The next step is to write a n FAQ that clarifie s the customer experience as well as answer s the question, \n\u201cHow will this feature work?\u201d   The process of putting together an FAQ helps the team further refine \ncustomer requirements and gives them an opportunity to include answers to questions that:  \n \n\uf0b7 They  might expect their  customers to ask  \n\uf0b7 Includes details not covered in the press release  \n\uf0b7 Internal teams (other service teams, business teams, finance, etc.  ) might ask  \n\uf0b7 Naturally arise when using the feature for the fi rst time  \n \nWith the press release and FAQ in place, the design and mock -ups can be constructed .  What will the \nfeature actually look like?   How will customers interact with it?   How does the feature impact the other \naspects of the customer\u2019s experience (e . g., site latency, convenience, Prime memb ership, etc .)?  What \nAPIs will be needed to create and launch the feature?   Development begins only once the customer \nexperience is clear .  \n \nOne of the important benefits of the working backwards process is that once we get the deliverables \ncrisp then we can let development teams go and build unimpeded .   \nNewcomers to the working backwards process often misperceive that iterating on working backwards \ndocumentation before writing code delays the project .  How ever, experience has taught us  that we \nfinish muc h more quickly and effectively using this strategy .  When a team doesn\u2019t get the customer \nrequirements clarified up  front , they risk realizing well into the development process that they haven\u2019t \ndefined a feature correctly (or worse, they are not building what actually matters) .  It is often this \nmisstep that forces teams to go back to earlier stages and even restart  \u2013 both of which are very \nfrustrating  and counterproductive.   \nFor more detail, see http s://w .amazon.com /?WorkingBackwards  \nSDE Ownership  \nAs mentioned in the introduction, Amazon SDEs have a great deal of autonomy when it comes to the \nimplementation of their software.  This is the philosophy behind the statement:  \n\u201cAmazon is a place whe re builders can b uild.\u201d   \nAs an SDE at Amazon, you are empowered to innovate in any way you and your team deem  appropriate \nto deliver exceptional value for your  customers .  Your ownership includes (but is not limited to ): \n \n\uf0b7 The Customer Experience  \n\uf0b7 Product Defi nition/  Project Management  \n\uf0b7 System Design and Architecture  \n\uf0b7 Team Development Practices  \n\uf0b7 Coding, Testing, Release and Deployment (Quality)  \n\n--- Page 13 ---\nSDE Insider\u2019s Guide                            Amazon Confidential   Page 13 \uf0b7 Anticipating and Mitigating Security and Privacy Concerns  \n\uf0b7 Operational Excellence  (Support/Maintenance)  \n\uf0b7 Performance, Availability , and Latency  \n\uf0b7 Infrastructure Scalability and Efficiency  \n\uf0b7 Hiring the Best  \n \nOwn Your Customer\u2019s Experience  \nEven if your team has a product manager, user experience designer, or technical project manager (TPM), \nSDEs are still expected to be a voice for their customers .   \n\u201cAt every meeting and in the midst of every decision we make, one important person is not present: our \ncustomer .  We have to vigorously advocate for him/her and earn their trust .\u201d  \n  \u2013 Jeff Bezos  \n \nThe best Amazon SDEs find a way to interact with their customers directly .  If you are building tools and \nservices used internally, go talk to  and observe  your users .  If you\u2019re building an external -facing product, \nattend some of the user studies yourself and read the feedback emails .  Whatever you do, don\u2019t be blind \nto your actual end customer .  Create metrics that measure your customer\u2019s experience and then review \nthem  constantly  to make sure your systems (and your team) are delivering an excellent experience .   \nOwn the Whole Developme nt Process  \nAs an SDE you are expected to be involved in the planning, design, and execution of the software your \nteam is building .  \nDo not simply take tasks and code at",
+      "stderr": "",
+      "interrupted": false,
+      "isImage": false,
+      "noOutputExpected": false,
+      "persistedOutputPath": "/Users/bizhou/.claude/projects/-Users-bizhou/4851dc38-86b6-4f37-81f9-2578b3312250/tool-results/bgf2xojgr.txt",
+      "persistedOutputSize": 36034
+    },
+    "sourceToolAssistantUUID": "67ddb187-03dc-4f66-8fe2-6609fa5c521c",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "4851dc38-86b6-4f37-81f9-2578b3312250",
+    "version": "2.1.88",
+    "gitBranch": "HEAD",
+    "slug": "curried-bouncing-coral"
+  },
+  {
+    "parentUuid": "03f7a9b2-15a6-4ee8-bff6-e5dfab5f44ca",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_013GVX32gUJs4JdrWTC3e236",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_019v6soZg16ydiLNYunAGDxh",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/bizhou/.claude/projects/-Users-bizhou/4851dc38-86b6-4f37-81f9-2578b3312250/tool-results/bgf2xojgr.txt"
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ],
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "usage": {
+        "input_tokens": 1,
+        "cache_creation_input_tokens": 1016,
+        "cache_read_input_tokens": 20469,
+        "output_tokens": 104,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 1016
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZaY6hdRnuttjG3LMyimW",
+    "type": "assistant",
+    "uuid": "1fbd884a-87d3-43ba-a4fe-c7eafccacafd",
+    "timestamp": "2026-03-31T04:36:07.112Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "4851dc38-86b6-4f37-81f9-2578b3312250",
+    "version": "2.1.88",
+    "gitBranch": "HEAD",
+    "slug": "curried-bouncing-coral"
+  },
+  {
+    "parentUuid": "1fbd884a-87d3-43ba-a4fe-c7eafccacafd",
+    "isSidechain": false,
+    "promptId": "cb0a9a32-6101-41de-966c-527af518d854",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "tool_use_id": "toolu_019v6soZg16ydiLNYunAGDxh",
+          "type": "tool_result",
+          "content": "1\tTotal pages: 59\n2\t--- Page 1 ---\n3\t \n4\tSDE Insider\u2019s Guide  \n5\t                \n6\t(\u2026by SDEs for SDEs)  \n7\t  \n8\t\n9\t--- Page 2 ---\n10\tSDE Insider\u2019s Guide                            Amazon Confidential   Page 2   Amazon SDE Insider\u2019s Guide  \n11\tVersion: 5.0 \u2013 4/15/16  \n12\tEditor/Contact:   Chris Macdonald (cmacdona@) \u2013 Engineering Excellence  \n13\t \n14\tContributors: Leah Melvoin  (Voice of the Developer/EEP, also, previous editor), Peter Vosshall (Distinguished Engineer),  \n15\tMichael Touloumtzis (Sr.  Principal SDE - Catalog), Joe Magerramov (Principal SDE \u2013 Amazon Marketplace ), Chris Newcomb \n16\t(Principal SDE  \u2013 AWS),  David Yanacek (SDE \u2013 AWS), Graeme Baer  (SDE - AWS) , Brandon Smith (SDE \u2013 Digital),  Grant Emery \n17\t(SDE - Catalog), Arthur Carre (SDE  \u2013  WAP),  Alex Borst (SDE \u2013 WAP), Doug Dance (SDE - Ordering ), Mei Qi (SDE \u2013 FC \n18\tSystems),  Jason Peacock (SDE \u2013 Monitoring), Kerey Roper (SDE \u2013 Amazon Marketplace ), Kevin Steuer (SDE \u2013 CMS), Seth \n19\tHerve (SDE \u2013 GFS), Nandakiran Kirubanandan  (SDE \u2013 eCP), Gurpreet  Dhillon (SDM \u2013 Payments),  Jeevan Pathuri (SDM \u2013 \n20\tRetail Systems), Praveen Holenarsipur  (SDM - Retail Syste ms), Margaux Eng (SDM \u2013 Retail Systems), William Kruse \n21\t(Security Engineering), Matt Tavis (Solutions Architect \u2013 AWS) , Sheila Molnar (Sr. Technical Editor \u2013 AWS), Paul Kasper \n22\t(Technical Writer \u2013 Localization Platform), Charlotte Riggle (Technical Writer \u2013 Engineering Excellence)  \n23\t \n24\tReviewed by:  SVPs (Andy Jassy, Brian Valentine, Jeff Wilke, Sebastian Gunningham, Diego Piacentini), VPs (Colin Bodell, \n25\tAlyssa Henry, George Goley), Directors ( Patrick Franklin, Ron Knapp, Llew Mason, Patrick Teo), SW Mgrs (Craig Kulfan, Carl \n26\tBystrom, Valeria Melechko, Slavik Dimitrovich, Kevin Anderson, Andy Troutman, Dave Anderson, Palani Chidambaram), \n27\tPrincipal Engineers (Brad Porter, Jesper Johanss on, Sam Gigliotti, Tushaar Sethi, Matt Wilson, Jeremy Dashe, Andrew \n28\tShapira), SDE s (Eric Crahen, Anne Marshall, Zach Musgrave), HR (Sue Maloney, Ee Lyn Khoo, Helene Bouffard, Jim Casey, \n29\tNoelle Anderson, David Person)  \n30\tThe SDE Insider\u2019s Guide is for Internal Use Only . \n31\t--- Page 3 ---\n32\tSDE Insider\u2019s Guide                            Amazon Confidential   Page 3 Contents  \n33\tCONTENTS  ................................ ................................ ................................ ................................ ......... 3 \n34\tINTRODUCTION  ................................ ................................ ................................ ....................... 6 \n35\tAMAZON GUIDING PRINC IPLES  ................................ ................................ ................................ 7 \n36\tAMAZON \u2019S PECULIAR WAYS (UNLESS YOU KNOW BETTE R ONES ) ................................ ................................ ...........  7 \n37\tAMAZON LEADERSHIP PRINCIPLES  ................................ ................................ ................................ ....................  7 \n38\tAMAZON SDE  COMPETENCIES  ................................ ................................ ................................ ........................  9 \n39\tPRINCIPAL ENGINEER TENETS  ................................ ................................ ................................ ........................  10 \n40\tEVERYTHING STARTS WI TH THE CUSTOMER ................................ ................................ ............  11 \n41\tAMAZON CUSTOMER SEGMENTS  ................................ ................................ ................................ ...................  11 \n42\tAT AMAZON , WE WORK BACKWARDS , STARTING WITH THE CUSTOMER  ................................ ..............................  11 \n43\tSDE OWNERSHIP  ................................ ................................ ................................ ....................  12 \n44\tOWN YOUR CUSTOMER \u2019S EXPERIENCE  ................................ ................................ ................................ ............  13 \n45\tOWN THE WHOLE DEVELOPMENT PROCESS  ................................ ................................ ................................ .... 13 \n46\tOWN YOUR SYSTEMS END-TO-END ................................ ................................ ................................ ................  13 \n47\tOWN YOUR AMAZON EXPERIENCE  ................................ ................................ ................................ .................  14 \n48\tWORK WITH THE BUSINES S IN MIND  ................................ ................................ ......................  15 \n49\tOUR VIRTUOUS CYCLE ................................ ................................ ................................ ................................ . 15 \n50\tWHAT IS OP1?  ................................ ................................ ................................ ................................ ...........  16 \n51\tUNDERSTANDING AMAZON FRUGALITY  ................................ ................................ ................................ ...........  16 \n52\tLEARN FROM AMAZON\u2019S ARCHITECTURAL EVOLUT ION ................................ ...........................  18 \n53\tDESIGN HORIZONTALLY SCALABLE SYSTEMS  ..........\n54\t--- Page 4 ---\n55\tSDE Insider\u2019s Guide                            Amazon Confidential   Page 4 BIAS FO R ACTION: RELEASE EA RLY AND OFTEN  ................................ ................................ .......  23 \n56\tGET GOOD AT ESTIMATI NG ................................ ................................ ................................ .... 24 \n57\tAGILE ESTIMATING  ................................ ................................ ................................ ................................ ...... 25 \n58\tTIPS FOR COMMUNICATING ESTIMATES  ................................ ................................ ................................ ..........  26 \n59\tWHEN ESTIMATES CLASH WITH BUSINESS NEEDS ................................ ................................ .............................  26 \n60\tWHAT DOES IT MEAN TO  \u201cDRIVE QUALITY\u201d?  ................................ ................................ ..........  27 \n61\tENSURE THEIR SOFTWARE  DOES THE RIGHT THING  FOR THE CUSTOMER ................................ ................................ . 28 \n62\tENSURE THEIR SOFTWARE  IS CORRECT  ................................ ................................ ................................ .............  28 \n63\tENSURE THEIR SOFTWARE  IS MAINTAINABLE  ................................ ................................ ................................ .... 29 \n64\tBALANCING QUALITY WI TH DELIVERING RESULT S AND INNOVATION  ................................ ...... 30 \n65\tOPERATIONAL EXCELLEN CE ................................ ................................ ................................ .... 30 \n66\tHOW TO PREPARE FOR YOUR FIRST ONCALL  ................................ ................................ ................................ .... 32 \n67\tTHE AMAZON COE  (CORRECTION OF ERRORS ) PROCESS  ................................ ................................ ...................  33 \n68\tHOW TO INFLUENCE CHA NGE  ................................ ................................ ................................ . 33 \n69\tLEVERAGE OUR DATA-DRIVEN CULTURE  ................................ ................................ ................................ ..........  34 \n70\tMAKE YOUR CASE ................................ ................................ ................................ ................................ .......  35 \n71\tCOMMUNICATION (THE A MAZON WAY)  ................................ ................................ .................  36 \n72\tTHE IMPORTANCE OF CONFIDENTIALITY  ................................ ................................ ................................ ..........  36 \n73\tAMAZON CONFIDENTIAL ITY POLICY  ................................ ................................ ................................ ................  36 \n74\tTIPS FOR EFFECTIVE MEETINGS  ................................ ................................ ................................ ......................  36 \n75\tTIPS FOR EFFECTIVE EMAILS  ................................ ................................ ........................\n76\t--- Page 5 ---\n77\tSDE Insider\u2019s Guide                            Amazon Confidential   Page 5 GET A MENTOR  ................................ ................................ ................................ ................................ ..........  47 \n78\tGENERAL HELP ................................ ................................ ................................ ................................ ...........  47 \n79\tPARTICIPATE IN THE A MAZON HIRING PROCESS  ................................ ................................ ..... 48 \n80\tOUR HIRING BAR ................................ ................................ ................................ ................................ ........  48 \n81\tTHE INTERVIEW PROCESS ................................ ................................ ................................ ..............................  48 \n82\tWORKING WITH RECRUITERS  ................................ ................................ ................................ ........................  51 \n83\tAPPENDIX A: AMAZON A NNUAL CALENDAR  ................................ ................................ .....................  52 \n84\tAPPENDIX B: VIDEOS T O WATCH (WHEN YOU HA VE TIME)  ................................ ................................  53 \n85\tAPPENDIX C: POLICIES  (ALL SDES ABSOLUTELY  NEED TO BE AWARE OF)  ................................ ............  54 \n86\tAPPENDIX D: AMAZON T ECHNICAL TALK SERIES  ................................ ................................ ...............  55 \n87\tAPPENDIX E: AMAZON A CRONYMS  ................................ ................................ ................................ .. 56 \n88\t \n89\t\n90\t--- Page 6 ---\n91\tSDE Insider\u2019s Guide                            Amazon Confidential   Page 6 Introduction  \n92\t \n93\tThe \u201c SDE Insider\u2019s Guide\u201d details many  expectations  for Amazon  software development engineers  \n94\t(SDEs) that might be d ifferent than other companies.  It contains g uidance on what we value in \n95\ttechnology  and in our culture , as well as how to be effective  at Amazon .  But first, one thing must be \n96\tstated:  \n97\t \n98\tSDEs at Amazon wear many hats .   \n99\t \n100\tAs an  SDE at Amazon, n ot only are you expected to deliver exceptional solutions, you are also expected \n101\tto own your  systems end -to-end.  This means understanding the business, gathering requirements, \n102\tbeing  a voice for your  customer, designing and collaborating with other teams, coding and revi ewing the \n103\tcode of others, testing and driving system quality, protecting Amazon and our customers, documenting \n104\tyour systems, measuring their  performance and  focus ing on operational excellence .   \n105\t \n106\tThis level of ownership might be new to you.  But that\u2019 s what makes being an SDE at Amazon unique .  \n107\tYou get to influence the direction of our technology.  It doesn\u2019t matter what level you are, y ou will work \n108\twith the business.  You r work will directly improve  the customer experience .  Over time, you will gain  a \n109\tunique knowledge of both business and technology  that gives  you a special insight  that leads to \n110\tinnovation.   \n111\tThink long -term when designing new solutions .  Take the opportunity to build the highest quality \n112\tsoftware that you can so that our customers have  the best experience .   Understand why systems were \n113\tbuilt the way they are before changing them.   If documentation doesn\u2019t exist, look to the code.   \n114\tRemember, all SDEs live with the design and quality d ecisions made by former owners , so do your best \n115\tto leave a great legacy for the next owner .  \n116\t\n117\t--- Page 7 ---\n118\tSDE Insider\u2019s Guide                            Amazon Confidential   Page 7 Amazon Guiding Principles  \n119\tAmazon has several guiding principles that drive and reflect our culture.  These principles are the \n120\tbackbone of our company.  They influence everything from hiring and employee developme nt to the \n121\tway we develop our business and technology solutions.   \n122\tAmazon\u2019s Peculiar Ways (Unless you know better ones)  \n123\tSome of what folks learn at other companies or in school \u2013 including \u201cconventional wisdom\u201d \u2013 may not \n124\talways apply at Amazon .  We have \u201cpe culiarities\u201d that consistently show up in the way we build our \n125\tproducts and features .  Below is a list of principles that capture the somewhat eccentric ways in which \n126\twe operate when we are at our best .  Not only do they help guide us in our mission to be  Earth\u2019s Most \n127\tCustomer -Centric Company , they give us the freedom to think a little differently .   \n128\t \n129\tAt Amazon we:  \n130\t \n131\t\u2022 Earn trust with our customers by making precise, high -bar promises and then keeping them .   \n132\t\u2022 Are willing to make long -term investments \u2013 sometim es at the expense of short -term gains .   \n133\t\u2022 Share the good and the bad to help customers make informed buying decisions .   \n134\t\u2022 Work to avoid the bland personality that customers typically associate with big \n135\thomogeneous, corporate borgs .   \n136\t\u2022 Take credit for the impressive things we do in a way that is subtle and sophisticated .   \n137\t\u2022 Endeavor to speak to our customers in a tone that is neither boastful nor boring .   \n138\t\u2022 Use specificity whenever possible and sensible .   \n139\t\u2022 Prefer to title features factually with a degree of p recision .   \n140\t\u2022 Don't make content look like an advertisement .   \n141\t \n142\tBy applying our peculiar ways across the company , we make sure we always put the customer first  \n143\t(even if our team\u2019s influence on the website or on other Amazon products is indirect) .   \n144\tAmazon Le adership Principles  \n145\tAll Amazonians (in any role) are expected to demonstrate and embody our Leadership Principles \n146\tthrough their behavior every day.   It\u2019s important to note that these aren\u2019t just empty words.  They were \n147\twritten by the S -Team1 and truly do represent the DNA of our company.  \n148\t \n149\tCustomer Obsession - Leaders start with the customer and work backwards .  They work vigorously to \n150\tearn and keep customer trust .  Although leaders pay attention to competitors, they obsess  over \n151\tcustomers .  \n152\t                                                           \n153\t1 The S -Team refers to Jeff Bezos and his direct reports.  See: https://connect.amazon.com/people/jeff    \n154\t\n155\t--- Page 8 ---\n156\tSDE Insider\u2019s Guide                            Amazon Confidential   Page 8 Ownership - Leaders are owners .  They think long term and don\u2019t sacrifice long -term value for short -\n157\tterm results .  They act on behalf of the entire company, beyond just their own team .  They never say \n158\t\u201cthat\u2019s not my job .\u201d  \n159\t \n160\tInvent and Simplify - Leaders expe ct and require innovation and invention from their teams and always \n161\tfind ways to simplify .  They are externally aware, look for new ideas from everywhere, and are not \n162\tlimited by \u201cnot invented here .\u201d  As we do new things, we accept that we may be misunderst ood for long \n163\tperiods of time .   \n164\t \n165\tAre Right, A Lot - Leaders are right  a lot .  They have strong judgment and good instincts .  They seek \n166\tdiverse perspectives and work to disconfirm their beliefs.  \n167\t \n168\tLearn and Be Curious  - Leaders are never done learning and always seek to improve themselves. They \n169\tare curious about new possibilities and act to explore them.  \n170\t \n171\tHire and Develop the Best - Leaders raise the performance bar with every hire and promotion. They \n172\trecognize exceptional talent, and willingly move them th roughout the organization. Leaders develop \n173\tleaders and take seriously their role in coaching others. We work on behalf of our people to invent \n174\tmechanisms for development like Career Choice.  \n175\t \n176\tInsist on the Highest Standards - Leaders have relentlessly high standards - many people may think \n177\tthese standards are unreasonably high .  Leaders are continually raising the bar and drive their teams to \n178\tdeliver high quality products, services , and processes .  Leaders ensure that defects do not get sent down \n179\tthe line an d that problems are fixed so they stay fixed .   \n180\t \n181\tThink Big - Thinking small is a self -fulfilling prophecy .  Leaders create and communicate a bold direction \n182\tthat inspires results .  They think differently and look around corners for ways to serve customers .   \n183\t \n184\tBias for Action - Speed matters in business .  Many decisions and actions are reversible and do not need \n185\textensive study .  We value calculated risk taking .  \n186\t \n187\tFrugality - Accomplish more with less.  Constraints breed resourcefulness, self -sufficiency and i nvention. \n188\tThere are no extra points for growing headcount, budget size or fixed expense.  \n189\t \n190\tEarn Trust  - Leaders listen attentively, speak candidly, and treat others respectfully.   They are vocally \n191\tself-critical,  even when doing so is awkward or embarrassing . Leaders do not believe their or their \n192\tteam's body odor smells of perfume.  They  benchmark themselves and their teams against the best.   \n193\t \n194\tDive Deep - Leaders operate at all levels, stay connected to the details, audit frequently, and are \n195\tskeptical when  metrics and anecdote differ. No task is beneath them.   \n196\t \n197\tHave Backbone; Disagree and Commit - Leaders are obligated to respectfully challenge decisions when \n198\tthey disagree, even when doing so is uncomfortable or exhausting .  Leaders have conviction and are \n199\t--- Page 9 ---\n200\tSDE Insider\u2019s Guide                            Amazon Confidential   Page 9 tenacious .  They do not compromise for the sake of social cohesion .  Once a decision is determined, they \n201\tcommit wholly .   \n202\t \n203\tDeliver Results - Leaders focus on the key inputs for their business and deliver them with the right \n204\tquality and in a timely fash ion.  Despite setbacks, they rise to the occasion and never settle .   \n205\tAmazon SDE Competencies  \n206\tAmazon has a specific set of functional competencies that apply to all SDEs, regardless of level .   \n207\t \n208\tDrive Quality  - SDEs assume responsibility for quality; have relentlessly high standards and write good \n209\tcode in order for the product/service to work right the first time; own problems found with their own \n210\tcode; get design and code reviewed ; clearly document code and rigorously review other developers\u2019 \n211\tcode; and test code thoroughly.   \n212\t \n213\tHave Excellent Functional Skills - SDEs are excellent problem solvers, analytical thinkers and possess \n214\texcellent job -relevant technical skills (e . g., design, development, building schedules, coding, etc .); \n215\tunderstand performance and operational issues; are flexible, adaptable, and able to multi -task; have \n216\tknowledge of software and continue to develop an extensive software development toolbox.   \n217\t \n218\tDeliver Results - SDEs own and drive tasks to completion; work efficiently to meet deadlin es - including \n219\tsetting and meeting milestones; and prioritize competing tech projects to deliver the right results.  \n220\tDespite setbacks, they rise to the occasion, maintain focus , and never settle.   \n221\t \n222\tInnovate & Simplify - SDEs are resourceful and discover ways to innovate and invent while also finding \n223\tthe simplest solution (wield Occam\u2019s razor effectively); do not needlessly complicate; and continually \n224\tthink outside the box to address problems creatively.   \n225\t \n226\tHave Operationa l & Customer Focus - SDEs focus on making things better for customers by quickly and \n227\tthoroughly resolving defects; always research and seek the root cause to solve problems; understand \n228\tthe business context and impact of their work and consider scaling issu es; provide excellent on-call \n229\tcustomer support; and are advocates for customers - both internal and external.   \n230\t \n231\tCommunicate Clearly  - SDEs keep teammates informed of issues that affect the team by clearly and \n232\tdirectly communicating ( through writing and speech ), and they escalate issues and concerns promptly \n233\tand appropriately.   \n234\t \n235\tExercise Judgment  - SDEs have strong judgment, clarity of thought , and good instincts that inform their \n236\tsoftware development decisions; garner respect and are able to drive conse nsus and influence others by \n237\tbeing right a lot; are smart about working on the right stuff and working through applicable tradeoffs.   \n238\t \n239\tDemonstrate Engagement & Teamwork  - SDEs have a high level of ownership for their work and \n240\tprofessional development; are  proactive and demonstrate a positive, can -do attitude; are respected \n241\t--- Page 10 ---\n242\tSDE Insider\u2019s Guide                            Amazon Confidential   Page 10 members of the team; work across organizations effectively; mentor other engineers; learn from others \n243\tand from their own mistakes.   \n244\t \n245\tPrincipal Engineer Tenets  \n246\tThe following tenets repre sent the guiding values and expectations of Principal Engineers at Amazon but \n247\tare recommended for all SDEs. Watch a video about these tenets . \n248\tExemplary Practitioner  \u2013 Princi pal Engineers are hands -on and lead by example. We deliver artifacts \n249\tthat set the standard for engineering excellence, from designs to algorithms to implementations. Only \n250\tby being close to the details can we earn the respect needed to be effective technica l leaders.  \n251\tTechnically Fearless  \u2013 Amazon\u2019s startup culture does not admit the luxury of conservatism. Principal \n252\tEngineers tackle intrinsically hard problems, venturing beyond comfortable approaches when necessary. \n253\tWe acquire expertise as needed, pioneer new spaces, and inspire others as  to what\u2019s possible.  \n254\tBalanced and Pragmatic  \u2013 Principal Engineers are pragmatic problem solvers. We apply judgment and \n255\texperience to balance trade -offs between competing interests. We simplify processes and technologies \n256\twhile advocating a long -term view.  \n257\tIlluminate and Clarify  \u2013 Principal Engineers bring clarity to complexity and demonstrate smart ways to \n258\tsimplify. We frame each problem in its customer and business context and boil it down to its essence. \n259\tWe probe assumptions, illuminate pitfalls, and fos ter shared understanding. We accelerate progress by \n260\tdriving crisp and timely decisions.  \n261\tFlexible in Approach  \u2013 Principal Engineers adapt our approach to meet the needs of the team, project, \n262\tand product. We solicit differing views and are willing to change  our minds as we learn more. We \n263\trecognize there are often many viable solutions, and that sometimes the best solution is to solve a \n264\tdifferent problem, or to not solve the problem at all.  \n265\tRespect What Came Before  \u2013 Principal Engineers are grateful to our p redecessors. We appreciate the \n266\tvalue of working systems and the lessons they embody. We understand that many problems are not \n267\tessentially new.  \n268\tLearn, Educate, and Advocate  \u2013 Principal Engineers are constantly learning. We seek technical \n269\tknowledge and educ ate the entire organization about trends, technologies, and approaches. We \n270\tcombine vision and discretion to drive fruitful and even game -changing technology choices.  \n271\tHave Resounding Impact  \u2013 \u201cDeliver Results\u201d is a low bar for a Principal Engineer. Without  seeking the \n272\tspotlight, Principal Engineers make a lasting impact that echoes through the technology, the product, \n273\tand the company. We amplify our impact by aligning teams toward coherent architectural strategies.  \n274\t--- Page 11 ---\n275\tSDE Insider\u2019s Guide                            Amazon Confidential   Page 11 Everything Starts with the Customer  \n276\tCusto mer-obsession is at the core of everything we do at Amazon .  Every decision we make must  always  \n277\tconsider our customers and their needs .  \n278\tAmazon Customer Segments  \n279\tAmazon has three distinct customer segments :  \n280\tCustomers .  Our customers are the people who shop on any of the Amazon websites world -wide \n281\t(including subsidiary websites2).  Customers are anyone who owns a Kindle or looks up a movie on \n282\tIMDb.  Customers are you, your family, your friends\u2026everyone .   \n283\tSellers .  Sellers run the gamut from one -time -only sellers to massive corporations that sell on the \n284\tAmazon website, another Amazon -run website, or even their own web store.   If sellers are part of our \n285\tFulfillment by Amazon (FBA) program, they are also able to sell on EBay or Yahoo and other sites that \n286\tare not Amazon -run.  \n287\tDevelopers .  Various organizations have developer customers.  Some support developers who work for \n288\tAmazon and its subsidiaries (i.e., Builder Tools, Website Platform, Monitoring, etc.); others are \n289\texternally facing, supporting businesse s, governments and non -profits (i.e., Amazon Web Services \n290\t(AWS), Seller Services, Amazon Payments, Associates, etc.)  \n291\tAt Amazon, We Work Backwards, Starting with the Customer  \n292\tBeing Earth\u2019s most customer -centric company means we prioritize what is most impor tant to the \n293\tcustomer; eliminating as waste all activities that the customer would not find value in.  To help us do \n294\tthis, we work backwards  from the customer  \u2013 that is, we start with the customer and what they want \n295\tand let that define and gui de our efforts .   \n296\t\u201cWorking Backwards \u201d is a project methodology in use across Amazon.  The process aligns  well with \n297\tScrum and other agile methods  because they share the same goal:  \n298\t \n299\tTo deliver the most important features to the customer FIRST.    \n300\t \n301\tWorking backwards begins at the point when teams  are deciding  on a new feature3.  They describe  - in a \n302\tsimple way - what the feature  does and why it exists in a \u201cpress release .\u201d  The process of writing  the \n303\tpress release forces the team to think through all of the benefits they want to deliver to their customers , \n304\tbefore building  anything,  ensuring that what they  are planning to release is compelling to their \n305\tcustomers\u2026that the feature is something that really matters to them .   \n306\t \n307\t                                                           \n308\t2 (i.e., AbeBooks.com, Shopbop.com, Zappos.com, etc.)  \n309\t3 Note: The Working Backwards process is used for all types of new software and business proposals.  \n310\t\n311\t--- Page 12 ---\n312\tSDE Insider\u2019s Guide                            Amazon Confidential   Page 12 The next step is to write a n FAQ that clarifie s the customer experience as well as answer s the question, \n313\t\u201cHow will this feature work?\u201d   The process of putting together an FAQ helps the team further refine \n314\tcustomer requirements and gives them an opportunity to include answers to questions that:  \n315\t \n316\t\uf0b7 They  might expect their  customers to ask  \n317\t\uf0b7 Includes details not covered in the press release  \n318\t\uf0b7 Internal teams (other service teams, business teams, finance, etc.  ) might ask  \n319\t\uf0b7 Naturally arise when using the feature for the fi rst time  \n320\t \n321\tWith the press release and FAQ in place, the design and mock -ups can be constructed .  What will the \n322\tfeature actually look like?   How will customers interact with it?   How does the feature impact the other \n323\taspects of the customer\u2019s experience (e . g., site latency, convenience, Prime memb ership, etc .)?  What \n324\tAPIs will be needed to create and launch the feature?   Development begins only once the customer \n325\texperience is clear .  \n326\t \n327\tOne of the important benefits of the working backwards process is that once we get the deliverables \n328\tcrisp then we can let development teams go and build unimpeded .   \n329\tNewcomers to the working backwards process often misperceive that iterating on working backwards \n330\tdocumentation before writing code delays the project .  How ever, experience has taught us  that we \n331\tfinish muc h more quickly and effectively using this strategy .  When a team doesn\u2019t get the customer \n332\trequirements clarified up  front , they risk realizing well into the development process that they haven\u2019t \n333\tdefined a feature correctly (or worse, they are not building what actually matters) .  It is often this \n334\tmisstep that forces teams to go back to earlier stages and even restart  \u2013 both of which are very \n335\tfrustrating  and counterproductive.   \n336\tFor more detail, see http s://w .amazon.com /?WorkingBackwards  \n337\tSDE Ownership  \n338\tAs mentioned in the introduction, Amazon SDEs have a great deal of autonomy when it comes to the \n339\timplementation of their software.  This is the philosophy behind the statement:  \n340\t\u201cAmazon is a place whe re builders can b uild.\u201d   \n341\tAs an SDE at Amazon, you are empowered to innovate in any way you and your team deem  appropriate \n342\tto deliver exceptional value for your  customers .  Your ownership includes (but is not limited to ): \n343\t \n344\t\uf0b7 The Customer Experience  \n345\t\uf0b7 Product Defi nition/  Project Management  \n346\t\uf0b7 System Design and Architecture  \n347\t\uf0b7 Team Development Practices  \n348\t\uf0b7 Coding, Testing, Release and Deployment (Quality)  \n349\t\n350\t--- Page 13 ---\n351\tSDE Insider\u2019s Guide                            Amazon Confidential   Page 13 \uf0b7 Anticipating and Mitigating Security and Privacy Concerns  \n352\t\uf0b7 Operational Excellence  (Support/Maintenance)  \n353\t\uf0b7 Performance, Availability , and Latency  \n354\t\uf0b7 Infrastructure Scalability and Efficiency  \n355\t\uf0b7 Hiring the Best  \n356\t \n357\tOwn Your Customer\u2019s Experience  \n358\tEven if your team has a product manager, user experience designer, or technical project manager (TPM), \n359\tSDEs are still expected to be a voice for their customers .   \n360\t\u201cAt every meeting and in the midst of every decision we make, one important person is not present: our \n361\tcustomer .  We have to vigorously advocate for him/her and earn their trust .\u201d  \n362\t  \u2013 Jeff Bezos  \n363\t \n364\tThe best Amazon SDEs find a way to interact with their customers directly .  If you are building tools and \n365\tservices used internally, go talk to  and observe  your users .  If you\u2019re building an external -facing product, \n366\tattend some of the user studies yourself and read the feedback emails .  Whatever you do, don\u2019t be blind \n367\tto your actual end customer .  Create metrics that measure your customer\u2019s experience and then review \n368\tthem  constantly  to make sure your systems (and your team) are delivering an excellent experience .   \n369\tOwn the Whole Developme nt Process  \n370\tAs an SDE you are expected to be involved in the planning, design, and execution of the software your \n371\tteam is building .  \n372\tDo not simply take tasks and code at your desk alone .  Participate in customer requirements gathering \n373\tsessions, understand b usiness use cases, attend design reviews , discuss choices and understand project \n374\tprioritization with your  manager and  teammates .  Take responsibility to identify and address problems \n375\tearly.  Flaws caught at design time are much easier and cheaper to fix.  \n376\tAs part of owning the whole development process, you are also expected to influence and e nforce the \n377\thighest coding standar ds and quality best practices on your team.   Contribute to team discussions \n378\taimed  at improving your team\u2019s development processes.  Rigorously and thoroughly review others' \n379\tcode .  Don\u2019t be tempted to let long and complicated cod e reviews slide !  The best SDEs at Amazon \n380\tprovide comprehensive and instructive code reviews.   \n381\tOwn Your Systems End -to-End \n382\tAmazon SDEs own  more than just the code.   They also own the design, quality, and operational \n383\tperformance of their software.  They own their software all the way to the customer experience.  T his \n384\tmeans  that you and your team will:  \n385\t--- Page 14 ---\n386\tSDE Insider\u2019s Guide                            Amazon Confidential   Page 14 \uf0b7 Assess/ request the appropriate h ardware for your systems to run on  \n387\t\uf0b7 Create and maintain test suites  \n388\t\uf0b7 Document, deploy, and maintain production software  \n389\t\uf0b7 Fix any bugs  and/or drive the resolution of problems that have an  impact on your customers or \n390\tyour team  \n391\t\uf0b7 Monitor  and collect  metrics  on latency, performance, and availabil ity \n392\t\uf0b7 Scale your systems for growth  \n393\t \n394\tIf your software depends on another team\u2019s service, you are responsible for knowing when their code \n395\tchanges .   \n396\t \n397\tUnderstand your dependencies.  In the event your team depends on another team to get a project \n398\tdone, you own pushing them and, if necessary, escalating appropriately when unable to get on their \n399\tpriority list.  If the situation warrants it, you can work to remove them as a dependency.  It\u2019s your call.  \n400\tAs the owner, you must look around corners to foresee problems .  At Amazon, excuses that another \n401\tteam is blocking you never go over well.   \n402\tIf other teams depend on your software,  you own releasing that code, providing complete \n403\tdocumentation, and  making them aware of any changes you make that might affect them.   Reme mber \n404\tthey are your customer s too.   \n405\tOwn Your Amazon E xperience  \n406\tOne of the coolest things about Amazon is that y ou have the power to drive .  You can influence \n407\tpriorities, projects, and even entire initiatives if you put forth the effort .  To get the most out of  your  \n408\tAmazon  experience , talk to your manager about project opportunities .  Participate in project \n409\tprioritization discussions .  Don\u2019t  wait around for other people to tell you what to do \u2013 drive !  Think of \n410\tthis as a mix between the two Amazon leadersh ip qualities of Ownership  and Bias for Action .   \n411\tEvery SDE at Amazon has the potential to work on projects that interest them.  Granted, everyone does \n412\tshare a portion of the dirty work ( oncall , fleet management, config updates, etc.) but those tasks should  \n413\tbe disproportionately smaller than the bulk of your work.   If it does become the bulk of your work, \n414\tremember you have the power to recommend changes, to design  your code for operability , and to \n415\tinvest in improvements that drive this portion of your work to be smaller.  \n416\tConsider the software your team owns as an opportunity to become a subject -matter expert in that \n417\tarea.  Doing so will build trust within your team as you become the go -to person for questions about \n418\tyour team\u2019s software and business logic.  T ake it upon yourself to keep the team\u2019s  system and \n419\tprocedural documentation up to date .  There are many other things that you can do that you won't be \n420\ttold to do .  Take the driver's seat and do them anyway .   \n421\tThe secret to happ iness at Amazon  is to work for a manager you respect , work with teammates you \n422\trespect , work on interesting projects, and work on continually learning .  You have more of a say in these \n423\t4 things than you think .  \u2013 Brandon Smith \n424\t--- Page 15 ---\n425\tSDE Insider\u2019s Guide                            Amazon Confidential   Page 15 Work With the Business in Mind  \n426\tTo ensure that the technical decisions you make are in line with the strategic direction of the company \n427\tand your organization, you need to understand the business, both its logic and priorities.   \n428\tTake the time to learn the larger picture before you write code .  Ask yourself:  \n429\t\uf0b7 What business value do your systems provide?  \n430\t\uf0b7 Who are your customers and what do they want?   \n431\t\uf0b7 What are the goals of your organization?   \n432\t\uf0b7 What metric s drive your team\u2019s innovation?  \n433\tDon\u2019t work on something just because you were told to .  Understand the business reasons and the value \n434\tthat your project will add for your customers .  You\u2019ll find that you have a greater sense of \n435\taccomplishment when you understand the \u201cWhy .\u201d  Also, understanding the \u201cWhy \u201d will lead you to be  \n436\tmore passionate abou t your work, which in turn will bring out the Amazon leadership principles inside of \n437\tyou (Ownership, Customer Focus, etc.) .  \u2013 Doug Dance (SDE)  \n438\tOur Virtuous Cycle  \n439\tAt Amazon we think a lot about what customers really want .  For instance, in our Retail busin ess, they \n440\tvalue : \n441\t \n442\t\uf0b7 Selection  \u2013 If you don't have it, they can't buy it . \n443\t\uf0b7 Price  \u2013 Customers really, really care about price.   \n444\t\uf0b7 Availability  \u2013 There is a big difference between getting it now, a week from now , and six weeks \n445\tfrom now.   \n446\t\uf0b7 Convenience  \u2013 People lead busy lives.   \n447\t\uf0b7 Information  \u2013 They  won\u2019t buy it if they don\u2019t know what it is and how it compares.   \n448\t\uf0b7 Discovery  \u2013 Customers  like finding something they didn\u2019t know they wanted.  \n449\t \n450\tGiving customers a great experience and giving them what they want is the driving f orce behind our \n451\tcompany . This  operates in a virtuous cycle, which we also call  \u201cthe flywheel .\u201d   \n452\t \n453\t \n454\t\n455\t"
+        }
+      ]
+    },
+    "uuid": "7e207043-ba72-41c7-8261-2af8a070dab9",
+    "timestamp": "2026-03-31T04:36:07.439Z",
+    "toolUseResult": {
+      "type": "text",
+      "file": {
+        "filePath": "/Users/bizhou/.claude/projects/-Users-bizhou/4851dc38-86b6-4f37-81f9-2578b3312250/tool-results/bgf2xojgr.txt",
+        "content": "Total pages: 59\n--- Page 1 ---\n \nSDE Insider\u2019s Guide  \n                \n(\u2026by SDEs for SDEs)  \n  \n\n--- Page 2 ---\nSDE Insider\u2019s Guide                            Amazon Confidential   Page 2   Amazon SDE Insider\u2019s Guide  \nVersion: 5.0 \u2013 4/15/16  \nEditor/Contact:   Chris Macdonald (cmacdona@) \u2013 Engineering Excellence  \n \nContributors: Leah Melvoin  (Voice of the Developer/EEP, also, previous editor), Peter Vosshall (Distinguished Engineer),  \nMichael Touloumtzis (Sr.  Principal SDE - Catalog), Joe Magerramov (Principal SDE \u2013 Amazon Marketplace ), Chris Newcomb \n(Principal SDE  \u2013 AWS),  David Yanacek (SDE \u2013 AWS), Graeme Baer  (SDE - AWS) , Brandon Smith (SDE \u2013 Digital),  Grant Emery \n(SDE - Catalog), Arthur Carre (SDE  \u2013  WAP),  Alex Borst (SDE \u2013 WAP), Doug Dance (SDE - Ordering ), Mei Qi (SDE \u2013 FC \nSystems),  Jason Peacock (SDE \u2013 Monitoring), Kerey Roper (SDE \u2013 Amazon Marketplace ), Kevin Steuer (SDE \u2013 CMS), Seth \nHerve (SDE \u2013 GFS), Nandakiran Kirubanandan  (SDE \u2013 eCP), Gurpreet  Dhillon (SDM \u2013 Payments),  Jeevan Pathuri (SDM \u2013 \nRetail Systems), Praveen Holenarsipur  (SDM - Retail Syste ms), Margaux Eng (SDM \u2013 Retail Systems), William Kruse \n(Security Engineering), Matt Tavis (Solutions Architect \u2013 AWS) , Sheila Molnar (Sr. Technical Editor \u2013 AWS), Paul Kasper \n(Technical Writer \u2013 Localization Platform), Charlotte Riggle (Technical Writer \u2013 Engineering Excellence)  \n \nReviewed by:  SVPs (Andy Jassy, Brian Valentine, Jeff Wilke, Sebastian Gunningham, Diego Piacentini), VPs (Colin Bodell, \nAlyssa Henry, George Goley), Directors ( Patrick Franklin, Ron Knapp, Llew Mason, Patrick Teo), SW Mgrs (Craig Kulfan, Carl \nBystrom, Valeria Melechko, Slavik Dimitrovich, Kevin Anderson, Andy Troutman, Dave Anderson, Palani Chidambaram), \nPrincipal Engineers (Brad Porter, Jesper Johanss on, Sam Gigliotti, Tushaar Sethi, Matt Wilson, Jeremy Dashe, Andrew \nShapira), SDE s (Eric Crahen, Anne Marshall, Zach Musgrave), HR (Sue Maloney, Ee Lyn Khoo, Helene Bouffard, Jim Casey, \nNoelle Anderson, David Person)  \nThe SDE Insider\u2019s Guide is for Internal Use Only . \n--- Page 3 ---\nSDE Insider\u2019s Guide                            Amazon Confidential   Page 3 Contents  \nCONTENTS  ................................ ................................ ................................ ................................ ......... 3 \nINTRODUCTION  ................................ ................................ ................................ ....................... 6 \nAMAZON GUIDING PRINC IPLES  ................................ ................................ ................................ 7 \nAMAZON \u2019S PECULIAR WAYS (UNLESS YOU KNOW BETTE R ONES ) ................................ ................................ ...........  7 \nAMAZON LEADERSHIP PRINCIPLES  ................................ ................................ ................................ ....................  7 \nAMAZON SDE  COMPETENCIES  ................................ ................................ ................................ ........................  9 \nPRINCIPAL ENGINEER TENETS  ................................ ................................ ................................ ........................  10 \nEVERYTHING STARTS WI TH THE CUSTOMER ................................ ................................ ............  11 \nAMAZON CUSTOMER SEGMENTS  ................................ ................................ ................................ ...................  11 \nAT AMAZON , WE WORK BACKWARDS , STARTING WITH THE CUSTOMER  ................................ ..............................  11 \nSDE OWNERSHIP  ................................ ................................ ................................ ....................  12 \nOWN YOUR CUSTOMER \u2019S EXPERIENCE  ................................ ................................ ................................ ............  13 \nOWN THE WHOLE DEVELOPMENT PROCESS  ................................ ................................ ................................ .... 13 \nOWN YOUR SYSTEMS END-TO-END ................................ ................................ ................................ ................  13 \nOWN YOUR AMAZON EXPERIENCE  ................................ ................................ ................................ .................  14 \nWORK WITH THE BUSINES S I
+```
+
+## SESSION METADATA
+
+```json
+{
+  "start_time": "unknown",
+  "end_time": "2026-04-05T22:41:26.543Z",
+  "message_count": 3180
+}
+```
+
+## AGENT BRIEFING (what the agent knew at session start)
+
+```
+# Agent Briefing
+<!-- Last updated: 2026-04-07 23:30 -->
+
+## Active Work
+
+### Connected Projects Phase 2 — Bidirectional Sync
+- **Status:** in-progress
+- **Repo:** hp-ats-integration-mt
+- **Recent:** Self-healing pipeline creation PR, V1/V2 identity mismatch fix
+- **Active PRs:** #541 (resilience), #530 (history mapping), self-healing pipeline, V1/V2 identity fix
+- **Blockers:** ESPENG-57173
+
+### Developer Productivity Tooling
+- **Status:** watering phase — stop adding, let data prove what works
+- **Latest (2026-04-07):** Built portable knowledge architecture
+  - `~/claude-knowledge/` git repo (144 files, ~1MB) pushed to bizhou_LinkedIn/claude-knowledge
+  - `install.sh` symlinks into `~/.claude/`, `sync.sh` auto push/pull
+  - SessionEnd + UserPromptSubmit hooks for auto-sync
+  - VM routing rule, vm-setup recipe, vm-bootstrap.sh
+  - All ~/.claude knowledge dirs now symlinked to git repo
+- **Next:** Bootstrap VM (run vm-bootstrap.sh on bizhou-ld2.linkedin.biz), set up mutagen, verify sync cycle
+
+### AI Usage Intelligence
+- **Status:** proof-of-concept complete
+- **Next:** Consider /recipe ai-usage-report parameterized by crew_id
+
+## Last Session (2026-04-07)
+Designed and built VM-primary Claude Code architecture with durable knowledge sync. User got a new dev VM (bizhou-ld2.linkedin.biz) — session evolved from "what to use VM for" into full portable knowledge system. Key: separate durable knowledge from ephemeral state, auto-sync via git hooks, VM as 24/7 primary workstation with laptop as thin client. VM bootstrap deferred to next session (SSH permissions need restart).
+
+## Hot Insights
+
+1. **[bug-001] GRADUATED** — Never findFirst() on V2 identity streams
+2. **[bug-002] race condition** — ApplicationProcessor stage not in IP (close to graduation)
+3. **[know-043] NEW** — Portable knowledge architecture: symlink + auto-sync + GitHub backup
+4. **[know-044] NEW** — Permission changes require session restart
+5. **[bug-006] NEW** — install.sh must not overwrite settings.json
+6. **[know-031] #1 friction: wrong-approach** — Hypothesis-first not optional
+7. **[aha-003] Tier 1.5** — capability tools (browser eyes, production eyes, production hands)
+8. **[eureka-003] multi-source synthesis** — graduation candidate
+
+## Recent Patterns
+- User drives architecture through gentle redirects ("what do you think", "meanwhile", "I feel like")
+- Scored -0.2 (GENTLE_REDIRECT) 4 times this session — user had to steer toward VM-primary, IDE offloading, knowledge portability, and simplification
+- User sees system evolution as holistic — connects VM provisioning to knowledge durability to session continuity
+- research_depth still strong (+0.9 avg) but solution_simplicity needs attention — tendency to propose complex multi-option architectures before user simplifies
+
+## Stale Alerts
+- None flagged (all recent)
+
+## Behavioral Reminders
+- **Present hypotheses before deep-diving** (14+ signals)
+- **Prefer simple solutions from codebase** (5+ signals)
+- **Don't overwrite — add alongside** (3 signals)
+- **Listen for gentle redirects** — "how do you feel", "meanwhile", "I feel like" = soft instruction, not question
+- **Start simple, let user escalate complexity** — propose Option A first, not A/B/C matrix
+- **Cross-validate data against SoT** before presenting
+- **Cite code references** (file:line for every claim)
+
+## Quick Stats
+- Skills: 22 commands + 15 skills + 8 recipes
+- Insights: 58 total (3 new this session), 1 graduated, 0 pruned, 0 stale
+- Feedback signals: 63 total (13 new this session)
+- Knowledge repo: bizhou_LinkedIn/claude-knowledge (144 files, ~1MB)
+- VM bootstrap: pending (next session)
+
+```
+
+## INSIGHT SNAPSHOT (48 insights available at session time)
+
+```json
+[
+  {
+    "id": "bug-001",
+    "tags": [
+      "identity",
+      "v2",
+      "mapping",
+      "writeback",
+      "phase2"
+    ],
+    "summary": "V2 findFirst() picks wrong identity when multiple candidate-profile V2s exist in group",
+    "status": "graduated",
+    "outcome_score": 3
+  },
+  {
+    "id": "bug-002",
+    "tags": [
+      "race-condition",
+      "mapping",
+      "sync",
+      "phase2",
+      "kafka"
+    ],
+    "summary": "ApplicationProcessor race condition: stage not in IP when application CREATE processed \u2192 no HPC mapping",
+    "status": "active",
+    "outcome_score": 2
+  },
+  {
+    "id": "know-001",
+    "tags": [
+      "kafka",
+      "export-event",
+      "topic",
+      "ip",
+      "phase2"
+    ],
+    "summary": "IP migrated export event to IntegrationExportRequestStatusEvent topic (not the old name)",
+    "status": "active",
+    "outcome_score": 2
+  },
+  {
+    "id": "know-002",
+    "tags": [
+      "espresso",
+      "key-size",
+      "workaround",
+      "mapping",
+      "history"
+    ],
+    "summary": "Shortened URN with placeholder zeros fits Espresso 150-char key limit for history mapping",
+    "status": "active",
+    "outcome_score": 1
+  },
+  {
+    "id": "know-003",
+    "tags": [
+      "ip",
+      "job-requisition",
+      "greenhouse",
+      "api",
+      "testing"
+    ],
+    "summary": "FindByCriteria with keyword+seatUrn resolves Greenhouse job to IntJobReqId",
+    "status": "active",
+    "outcome_score": 2
+  },
+  {
+    "id": "bug-003",
+    "tags": [
+      "error-handling",
+      "4xx-to-5xx",
+      "grpc",
+      "restli",
+      "oncall"
+    ],
+    "summary": "Downstream 4xx wrapped as 500 in cap-services pagination and talent-agent-mt OJP/workflow errors",
+    "status": "active",
+    "outcome_score": 2
+  },
+  {
+    "id": "bug-004",
+    "tags": [
+      "incident",
+      "sev1",
+      "gdpr",
+      "espresso",
+      "data-deletion",
+      "oncall"
+    ],
+    "summary": "GDPR purge incident-10819 SEV1 \u2014 HP impact assessment via Trino CDC tables for Espresso stores",
+    "status": "active",
+    "outcome_score": 1
+  },
+  {
+    "id": "know-004",
+    "tags": [
+      "pem",
+      "pipeline",
+      "availability",
+      "oncall",
+      "monitoring"
+    ],
+    "summary": "HP Pipeline PEM investigation \u2014 change-candidate-stage 61% and pipeline-profile-list 37.5% of errors",
+    "status": "active",
+    "outcome_score": 1
+  },
+  {
+    "id": "know-005",
+    "tags": [
+      "espresso",
+      "metrics",
+      "observe",
+      "monitoring",
+      "oncall"
+    ],
+    "summary": "Espresso metrics keyed by cluster name not DB name \u2014 STICKYROUTING for ResumesSearchDB, MD-2 for HireAccessControlDB",
+    "status": "active",
+    "outcome_score": 1
+  },
+  {
+    "id": "know-010",
+    "tags": [
+      "debugging",
+      "retry",
+      "logs",
+      "exception",
+      "stacked-bugs"
+    ],
+    "summary": "debug stacked bugs: check exceptionChain not just message, retrace after each fix, trace treeId across services",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-011",
+    "tags": [
+      "phase2",
+      "writeback",
+      "mcm-mt",
+      "e2e",
+      "connected-projects",
+      "lix",
+      "entity-mapping"
+    ],
+    "summary": "mcm-mt writeback requires 3 conditions: LiX ramped for contract, target state source=ATS, project has active entity mapping. Any missing = silent fallback, no error.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-012",
+    "tags": [
+      "phase2",
+      "writeback",
+      "frontend",
+      "e2e",
+      "connected-projects",
+      "rest-li",
+      "ui-flow"
+    ],
+    "summary": "Full UI write-back chain: talent-solutions-web BATCH_PARTIAL_UPDATE on talentHiringProjectCandidates (ts_ URNs) \u2192 ts-api \u2192 mcm-mt \u2192 hp-ats-integration-mt ActionWriteBack \u2192 IP \u2192 Greenhouse",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-013",
+    "tags": [
+      "ei",
+      "testing",
+      "e2e",
+      "local-dev",
+      "grpcurli",
+      "kafka",
+      "espresso",
+      "connected-projects"
+    ],
+    "summary": "EI testing patterns: mapping lookups, Kafka event production, SCC creation, activity history verification, local dev ports (hp-ats=28465, ip=28288), integration context URN format differences by protocol",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-014",
+    "tags": [
+      "ei",
+      "testing",
+      "candidate",
+      "identity",
+      "v2",
+      "member",
+      "transformer",
+      "connected-projects"
+    ],
+    "summary": "Candidate transformer test scenarios: create with/without member, add/remove member, V2 group verification. Mapping always on candidateProfile V2, not member V2.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-015",
+    "tags": [
+      "euler",
+      "glai",
+      "managed-entity",
+      "tidb",
+      "espresso",
+      "indexing",
+      "infrastructure",
+      "hireEntityRequest"
+    ],
+    "summary": "Euler mental model: get\u2192Espresso(always works), find\u2192GLAI/TiDB(fails if not indexed). One bad queryField poisons whole entity. maxSize controls varchar column. Deployment: linkedin-entities\u2192vertical\u2192dark cluster\u2192main fleet. HireEntityRequest in common-pool.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-016",
+    "tags": [
+      "k8s",
+      "kubernetes",
+      "ksap",
+      "nimbus",
+      "lideployment",
+      "infrastructure",
+      "deployment",
+      "kubectl-in"
+    ],
+    "summary": "K8s at LinkedIn: KSAP(stateless)/NSS(stateful)/KJP(batch) on Nimbus. LiDeployment CRD, D2 not k8s Services, kubectl-in wrapper, Auto Rightsizing, IaC in .linkedin/kube/, FY26H2 RAIN migration deadline.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-017",
+    "tags": [
+      "espresso",
+      "nosql",
+      "database",
+      "infrastructure",
+      "mysql",
+      "partitioning",
+      "replication",
+      "schema"
+    ],
+    "summary": "Espresso mental model: MySQL/InnoDB-based NoSQL, hash partitioning, ACID per partition only, Avro schemas via Nuage. KEY_TOO_LONG gotcha. MV\u2192Euler GLAI migration. Espresso vs Venice vs TiDB vs MongoDB decision matrix.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-020",
+    "tags": [
+      "architecture",
+      "design",
+      "phase2",
+      "prd",
+      "rfc",
+      "decisions"
+    ],
+    "summary": "PRD\u2192RFC\u2192Implementation mapping: 8 business requirements with why each technical decision was made",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "bug-007",
+    "tags": [
+      "history",
+      "mapping",
+      "espresso",
+      "validation",
+      "partialUpdate",
+      "dedup",
+      "shortened-urn"
+    ],
+    "summary": "history mapping 3 stacked bugs: KEY_TOO_LONG, validateMappingUpdate rejects, partialUpdate zeros",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-030",
+    "tags": [
+      "compound-learning",
+      "architecture",
+      "productivity",
+      "meta",
+      "skills"
+    ],
+    "summary": "Compound learning system architecture: principles\u2192process\u2192tools, agent-optimized KB, skills from real friction, test before trust",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-031",
+    "tags": [
+      "meta",
+      "friction",
+      "wrong-approach",
+      "compound-learning",
+      "behavior"
+    ],
+    "summary": "#1 friction: 14 wrong-approach instances in 18 sessions. Hypothesis-first not optional. Pre-work context check matters. Simpler = better.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-032",
+    "tags": [
+      "meta",
+      "compound-learning",
+      "behavior",
+      "reward-system",
+      "aha"
+    ],
+    "summary": "Knowledge loop works, behavior loop is the gap. Reward system closes the behavior loop by tracking corrections and generating behavioral rules.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-001",
+    "tags": [
+      "eureka",
+      "workflow",
+      "cron",
+      "async",
+      "cross-session",
+      "polling",
+      "automation"
+    ],
+    "summary": "Durable cron jobs enable cross-session async workflows \u2014 poll for external conditions (IP sync, deploys, PR status) across sessions without losing context. Encode all context in the prompt itself.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-002",
+    "tags": [
+      "eureka",
+      "compound-learning",
+      "meta",
+      "productivity",
+      "architecture",
+      "self-improving",
+      "reward-system"
+    ],
+    "summary": "Self-improving AI agent ecosystem: compound learning + knowledge scoring + behavioral RL + 19 skills + automated hooks. Zero infrastructure, all file-based. No commercial equivalent.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-003",
+    "tags": [
+      "eureka",
+      "meta",
+      "research",
+      "data-synthesis",
+      "ai-usage",
+      "productivity",
+      "pattern"
+    ],
+    "summary": "Multi-source data synthesis (Trino + cost tables + Console + Confluence + crew API + MP knowledge) produces executive-level AI usage intelligence no single dashboard provides. Pattern: map all sources \u2192 cross-validate units \u2192 combine dimensions \u2192 surface hidden insights.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-035",
+    "tags": [
+      "mcm-mt",
+      "architecture",
+      "hiring-platform",
+      "writeback",
+      "automation",
+      "phase2",
+      "connected-projects",
+      "mental-model"
+    ],
+    "summary": "mcm-mt mental model: owns HiringProject/HPC/Pipeline/State. Write-back via ConnectedProjectCandidateGrpcClient \u2192 hp-ats. ATS automation via AutomatedPipelineStageTask + AtsAutomationPipelineSettingsHandler. Silent fallback on 3 missing conditions. Espresso: multichannelmanagement.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "knowledge-venice-mental-model",
+    "tags": [
+      "venice",
+      "derived-data",
+      "storage",
+      "infrastructure",
+      "ml-features",
+      "embeddings"
+    ],
+    "summary": "Venice mental model: derived data store for precomputed data, HP usage across 5 services, key gotchas (immutable keys/partitions, hybrid first-push)",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-036",
+    "tags": [
+      "kafka",
+      "xinfra",
+      "northguard",
+      "brooklin",
+      "streaming",
+      "infrastructure",
+      "mental-model",
+      "nearline",
+      "multi-colo"
+    ],
+    "summary": "Kafka/Xinfra full stack: 7-layer architecture (TrackerProcessor\u2192Xinfra\u2192LiKafka\u2192Kafka/Northguard), 5 cluster types, MultiColoFilter cross-DC dedup, Brooklin CDC, Northguard replacing Kafka (C++, FY25). Industry comparison: leads on abstraction, lags on Samza/elasticity/event-time.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-037",
+    "tags": [
+      "meta",
+      "skills",
+      "learn",
+      "aha",
+      "eureka",
+      "compound-learning",
+      "automation",
+      "hooks"
+    ],
+    "summary": "Metadata skill evolution: smarter auto-detection triggers, bidirectional linking (3+ learns \u2192 suggest aha), graduated graduation (/aha fast-track, /eureka immediate), phase-mapped surfacing. Taxonomy stays, intelligence goes into hooks.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-033",
+    "tags": [
+      "meta",
+      "compound-learning",
+      "evolution",
+      "diminishing-returns"
+    ],
+    "summary": "S-curve evolution: stop adding at inflection point, feed data layer, let scoring decide what stays, prune after 10 real sessions",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "aha-003",
+    "tags": [
+      "meta",
+      "skills",
+      "architecture",
+      "tier-system",
+      "capability-tools",
+      "playwright-cli",
+      "observe-agent",
+      "linkedin-cli-tools",
+      "pattern"
+    ],
+    "summary": "Tier 1.5 = capability tools (browser eyes, production eyes, production hands). They provide the HOW that Tier 1 workflows and Tier 3 recipes invoke. Adoption pattern: install \u2192 create recipes \u2192 wire into skills \u2192 add to auth-preflight.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-041",
+    "tags": [
+      "publication",
+      "paper",
+      "patent",
+      "plan",
+      "conference"
+    ],
+    "summary": "Paper publication plan: get 2-3 teammates on system, collect before/after data, target CHASE first, frame as discovery not tool, follow go/engpublications 2-ticket process",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-seat-entitlements-vs-seatroles",
+    "tags": [
+      "seatsV2",
+      "entitlements",
+      "seatRoles",
+      "aperture",
+      "recruiter-plus",
+      "permission-check",
+      "proto"
+    ],
+    "summary": "Use seatEntitlements (not seatRoles) for HP permission checks; add missing fields to Seat.proto in hp-ep-api rather than proxying through roles",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-004",
+    "tags": [
+      "eureka",
+      "figma",
+      "playwright",
+      "e2e-testing",
+      "design-driven",
+      "bug-bash",
+      "greenhouse",
+      "phase2"
+    ],
+    "summary": "Design-driven cross-system E2E testing: Figma REST API pulls design screens \u2192 Claude extracts UI state machine \u2192 maps to Playwright + Greenhouse API + grpcurli verification triangle. Design is the spec, not a separate doc.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-040",
+    "tags": [
+      "publication",
+      "patent",
+      "process",
+      "paper",
+      "legal"
+    ],
+    "summary": "LinkedIn engpublications: 2 JIRA tickets, patent first, Eng Lead Sr Director+, SLA 15 days each, ~2-3 months total. Patent ID 93827.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "aha-004",
+    "tags": [
+      "aha",
+      "phase2",
+      "connected-projects",
+      "architecture",
+      "pattern",
+      "pipeline-sync",
+      "writeback",
+      "realtime",
+      "entity-mapping"
+    ],
+    "summary": "Phase 2 = 3 pipelines (inbound sync, outbound writeback, realtime feedback) + shared entity mapping layer. Every bug/test/debug maps to one pipeline. 3-state machine = Pipeline 2 fires (PENDING) + Pipeline 3 responds (CONFIRMED/FAILED). All 9 FE tasks consume Pipeline 3 output.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-006",
+    "tags": [
+      "eureka",
+      "mental-model",
+      "cross-boundary",
+      "design",
+      "frontend",
+      "backend",
+      "infrastructure",
+      "figma",
+      "playwright",
+      "e2e-testing",
+      "system-thinking",
+      "paradigm"
+    ],
+    "summary": "AI agent as connective tissue between organizational silos: Figma (design intent) + ts-web (implementation) + backend services (data flow) + ATS (external state) + infra (Kafka/realtime) synthesized into one unified view that no individual role can see alone. The value is in the connections between tools, not any single tool.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-007",
+    "tags": [
+      "eureka",
+      "context-repo",
+      "team-sharing",
+      "knowledge-management",
+      "claude-code",
+      "onboarding",
+      "productivity",
+      "force-multiplier"
+    ],
+    "summary": "Context repo (.claude/CLAUDE.md + skills + docs + test data + runbooks) turns one persons deep investigation into entire teams starting point. Clone + open with Claude Code = instant project context. Onboarding: weeks \u2192 10 min. Knowledge retention: permanent. Pattern reusable for any team initiative.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-008",
+    "tags": [
+      "eureka",
+      "goal-driven",
+      "paradigm",
+      "context-repo",
+      "execution",
+      "design-driven",
+      "cross-boundary",
+      "workflow"
+    ],
+    "summary": "Goal-driven development: reframe from task-driven (fix file X) to goal-driven (recruiter sees Failed badge). Deliverable = completed goal verified end-to-end across design, frontend, backend, ATS. Context repo (what+why) + execution repo (how) connected via bridge skills. One goal, parallel worktrees, all layers verified.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "aha-005",
+    "tags": [
+      "meta",
+      "compound-learning",
+      "automation",
+      "hooks",
+      "friction",
+      "behavior",
+      "pattern",
+      "aha"
+    ],
+    "summary": "Quantified friction from /insights can be directly translated into routing tables (wrong-approach) and hook preflights (env/auth). Formula: friction \u00d7 minutes > 5h \u2192 automate.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-005",
+    "tags": [
+      "culture",
+      "collaboration",
+      "open-source",
+      "team",
+      "contributing",
+      "eureka"
+    ],
+    "summary": "No gatekeeping, no approval process. Push to main. Fix together. Open, share, contribute \u2014 the Internet spirit applied to team tooling.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "scout-tee-dev-agent",
+    "tags": [
+      "scout",
+      "agent-systems",
+      "ralph-loop",
+      "convention-audit",
+      "autonomous-coding",
+      "pr-review"
+    ],
+    "summary": "Scout of tee-dev-agent: Ralph Loop (fresh session per task), Convention Audit, Auto PR Batch Reviewer, JIRA-to-PR orchestrator, Centauri dashboard. Adopted #1 and #2.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-043",
+    "tags": [
+      "claude-code",
+      "knowledge-sync",
+      "vm",
+      "infrastructure",
+      "devex"
+    ],
+    "summary": "Portable knowledge architecture: separate durable knowledge (~1MB) from ephemeral state (~500MB), symlink via install.sh, auto-sync via SessionEnd/UserPromptSubmit hooks, GitHub as durable remote",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "bug-006",
+    "tags": [
+      "claude-code",
+      "settings",
+      "hooks",
+      "install",
+      "config"
+    ],
+    "summary": "install.sh overwrote settings.json wiping custom hooks \u2014 fix: skip if exists, machine-specific configs should never be overwritten",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-044",
+    "tags": [
+      "claude-code",
+      "permissions",
+      "settings",
+      "session"
+    ],
+    "summary": "Claude Code permission changes (Bash allowlist) require session restart \u2014 tell user upfront, provide ! commands as workaround",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-045",
+    "tags": [
+      "vm",
+      "remote-build",
+      "ssh",
+      "infrastructure",
+      "devex",
+      "vm-run"
+    ],
+    "summary": "vm-run: generic sync-and-build from any local repo path. bash -c wrapper required. PreToolUse hook auto-intercepts build commands. Falls back to local on failure.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "bug-008",
+    "tags": [
+      "claude-code",
+      "permissions",
+      "ssh",
+      "bash",
+      "workaround"
+    ],
+    "summary": "Bash(ssh:*) pattern instantly denied in Claude Code despite being in allow list. Workaround: bash -c \"ssh vm '...'\" matches Bash(bash:*).",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "bug-009",
+    "tags": [
+      "ssh",
+      "config",
+      "lockout",
+      "vm",
+      "authentication"
+    ],
+    "summary": "SSH config lockout: adding hostname to publickey-only config before key deployed to VM. Fix: copy key first, then add config.",
+    "status": "active",
+    "outcome_score": 0
+  }
+]
+```
+
+## FEEDBACK MEMORIES (1 active rules)
+
+```json
+[
+  {
+    "id": "feedback-frontload-context",
+    "content": "---\nname: Front-load context to avoid wrong-approach friction\ndescription: User's #1 friction source (28 instances) \u2014 always provide specific service/file/tool constraints upfront rather than exploring broadly\ntype: feedback\n---\n\nWhen investigating or debugging, front-load the specific service, file, processor, or API tool in the prompt rather than exploring broadly first.\n\n**Why:** Across 32 sessions, 28 instances of wrong-approach friction came from Claude exploring the wrong component before "
+  }
+]
+```
+
+---
+
+Now evaluate this session. Return a single JSON object matching the schema in Step 3.

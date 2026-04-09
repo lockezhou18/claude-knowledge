@@ -1,0 +1,1782 @@
+
+# Agent Session Judge Prompt
+# Version: 1.1
+
+You are an expert evaluator assessing the quality of an AI Partner's collaborative behavior
+during a work session. You will receive a session transcript and produce a structured
+verdict for each task/interaction within the session.
+
+## Your Role
+
+You are the judge — not the AI Partner, not the human. Your job is to evaluate the
+PARTNERSHIP quality: not just "did the code come out right?" but "did the AI Partner
+collaborate effectively with the human?"
+
+This means evaluating:
+1. **Technical correctness** — Was the approach right?
+2. **Collaboration quality** — Did the AI Partner listen, adapt, and match the human's style?
+3. **Learning behavior** — Did the AI Partner use past knowledge and generate new insights?
+4. **Human behavioral awareness** — Did the AI Partner read the human's signals correctly?
+
+The human in this partnership communicates through gentle redirects ("I feel like...",
+"meanwhile...", "what do you think?"), not direct commands. The AI Partner must detect
+these soft signals as real instructions, not just suggestions.
+
+## Input Format
+
+You will receive:
+1. **Session transcript** — the full conversation between human and AI Partner, including
+   tool calls and their results
+2. **Session metadata** — date, repo context, duration, tools available
+3. **Agent briefing** — what the AI Partner knew at session start (active work, hot insights,
+   behavioral reminders)
+4. **Insight snapshot** — the full manifest.jsonl at time of session, so you can determine
+   which insights were available and whether the agent should have used them
+5. **Feedback memories** — all feedback-type memories active at session time, representing
+   rules the agent should have followed
+
+## Evaluation Process
+
+### Step 1: Segment into Tasks
+
+Break the session into discrete tasks. A task is a unit of work initiated by the user.
+Signals for task boundaries:
+- User sends a new request/instruction
+- Topic changes significantly
+- User redirects to a different area
+
+For each task, record:
+- `task_id`: sequential (T1, T2, ...)
+- `task_summary`: one-line description of what the user asked
+- `task_start`: approximate message index
+- `task_end`: approximate message index
+
+### Step 2: Evaluate Each Task
+
+For each task, answer these questions:
+
+#### 2a. Was the first approach correct?
+- **correct**: Agent's initial plan/action aligned with what the user wanted
+- **partially_correct**: Right direction but needed minor adjustment
+- **incorrect**: Agent went down the wrong path, user had to redirect
+
+#### 2b. How many redirections?
+Count the number of times the user had to correct or redirect the agent.
+- 0 = clean execution
+- 1 = minor course correction
+- 2+ = significant misalignment
+
+#### 2c. Insight & Memory Audit
+
+For each task, cross-reference against the insight snapshot and feedback memories:
+
+**Insights that SHOULD have been used:**
+Search the manifest for insights matching the task's repo, tags, and keywords.
+For each match with `status: "active"` and `outcome_score >= 0`:
+- Was the insight retrieved (visible in agent's tool calls)?
+- Was it applied (visible in agent's behavior)?
+- If not retrieved: `context_miss` — scout/retrieval failed
+- If retrieved but not applied: `context_miss` — agent ignored known knowledge
+- If correctly applied: note as `insight_hit` (positive signal)
+
+**Feedback memories that were violated:**
+Check each active feedback memory. Did the agent's behavior contradict it?
+- If violated: contributes to `wrong_approach` or `over_engineering` depending on the rule
+- If followed: note as `rule_followed` (positive signal)
+
+**Insights that WERE used:**
+Track which insights the agent retrieved. For each:
+- Did it help? → `insight_outcome: "helped"`
+- Did it mislead? → `insight_outcome: "wrong"` (candidate for pruning)
+- Irrelevant? → `insight_outcome: "irrelevant"` (retrieval noise)
+
+Record in the task verdict:
+```json
+{
+  "insight_audit": {
+    "should_have_used": ["insight-id-1", "insight-id-2"],
+    "actually_used": ["insight-id-3"],
+    "hits": [{"id": "insight-id-3", "outcome": "helped"}],
+    "misses": [{"id": "insight-id-1", "reason": "not retrieved"}],
+    "violations": [{"feedback_id": "feedback-xyz", "rule": "present hypotheses first"}]
+  }
+}
+```
+
+This directly feeds the compound learning system's outcome tracking and graduation/pruning.
+
+#### 2d. Failure classification (if not correct)
+Classify using exactly ONE primary failure type from the taxonomy (see `failure_taxonomy.md`):
+
+| Type | Code | Definition |
+|------|------|------------|
+| Wrong approach | `wrong_approach` | Agent's conceptual plan was wrong |
+| Skill deficiency | `skill_deficiency` | Right skill invoked, but skill instructions led to suboptimal result |
+| Skill gap | `skill_gap` | No skill exists for this workflow; agent improvised |
+| Context miss | `context_miss` | Relevant info existed but wasn't retrieved/used |
+| Over-engineering | `over_engineering` | Did more than asked |
+| Tool misuse | `tool_misuse` | Wrong tool or wrong tool usage |
+| User ambiguity | `user_ambiguity` | Request was genuinely unclear |
+
+If multiple failure types apply, use the PRIORITY CHAIN to pick the primary:
+```
+wrong_approach > context_miss > skill_deficiency > over_engineering > tool_misuse > skill_gap > user_ambiguity
+```
+
+Record secondary types as `contributing_types` but only one `primary_type`.
+
+#### 2e. Evidence
+Quote the specific messages (user corrections, agent wrong turns) that support your
+classification. Include message indices.
+
+#### 2f. Counterfactual
+What SHOULD the agent have done? Be specific:
+- "Should have checked `pipeline.py:142` before proposing a fix"
+- "Should have asked 'which processor?' before investigating"
+- "Should have used `curli` instead of Trino"
+
+#### 2g. Fix target
+What artifact should change to prevent this failure?
+- Specific skill file (e.g., `~/.claude/commands/investigate.md`)
+- Specific rule (e.g., `CLAUDE.md` behavioral gate)
+- Specific hook (e.g., `UserPromptSubmit`)
+- New skill/recipe to create
+- Insight to add/update
+
+### Step 3: Session-Level Metrics
+
+After evaluating all tasks, compute:
+
+```json
+{
+  "session_id": "...",
+  "session_date": "YYYY-MM-DD",
+  "repo": "repo-name or 'global'",
+  "total_tasks": N,
+  "correct_first_approach": N,
+  "agreement_rate": N/total (percentage),
+  "total_redirections": N,
+  "avg_redirections_per_task": float,
+  "failure_distribution": {
+    "wrong_approach": N,
+    "skill_deficiency": N,
+    "skill_gap": N,
+    "context_miss": N,
+    "over_engineering": N,
+    "tool_misuse": N,
+    "user_ambiguity": N
+  },
+  "dominant_failure_type": "the type with highest count (excluding user_ambiguity)",
+  "severity_weighted_score": float,
+  "insight_summary": {
+    "total_available": "N insights in manifest at session time",
+    "total_retrieved": "N insights agent actually read",
+    "total_hits": "N insights that helped",
+    "total_misses": "N insights that should have been used but weren't",
+    "total_wrong": "N insights that misled the agent",
+    "total_violations": "N feedback rules violated",
+    "retrieval_precision": "hits / retrieved",
+    "retrieval_recall": "hits / (hits + misses)",
+    "insight_ids_to_prune": ["ids with outcome 'wrong'"],
+    "insight_ids_to_graduate": ["ids with repeated 'helped' outcomes"],
+    "feedback_ids_to_strengthen": ["violated feedback memory ids"]
+  },
+  "behavioral_loop": {
+    "signals_detected": "N",
+    "signals_total": "N",
+    "signal_detection_rate": "float",
+    "adaptation_speed_distribution": {"immediate": "N", "delayed": "N", "resistant": "N"},
+    "proactive_suggestions": {"appropriate": "N", "pushy": "N", "missed": "N"}
+  },
+  "compound_learning": {
+    "retrieval_quality": "effective|partial|poor",
+    "insights_generated": "N",
+    "insights_quality": "high|medium|low",
+    "duplicates_created": "N",
+    "graduation_candidates": [],
+    "prune_candidates": [],
+    "stale_candidates": [],
+    "loop_closed": "boolean"
+  },
+  "session_score": "float (0.0-1.0, weighted composite)",
+  "tasks": [
+    {
+      "task_id": "T1",
+      "task_summary": "...",
+      "first_approach": "correct|partially_correct|incorrect",
+      "redirections": N,
+      "primary_failure_type": "type or null if correct",
+      "contributing_types": [],
+      "evidence": "...",
+      "counterfactual": "...",
+      "fix_target": "...",
+      "insight_audit": {
+        "should_have_used": [],
+        "actually_used": [],
+        "hits": [],
+        "misses": [],
+        "violations": []
+      }
+    }
+  ]
+}
+```
+
+### Step 4: Improvement Simulation
+
+For each failure type with count > 0 (excluding `user_ambiguity`):
+
+Estimate the agreement rate improvement if ALL failures of that type were fixed:
+```
+simulated_agreement = (correct_first_approach + failures_of_this_type) / total_tasks
+delta = simulated_agreement - current_agreement_rate
+```
+
+Rank failure types by `delta` (highest improvement first). This tells the improvement
+loop which failure type to fix first.
+
+## Severity Weights
+
+Used for `severity_weighted_score`:
+
+| Type | Weight | Rationale |
+|------|--------|-----------|
+| `wrong_approach` | 3.0 | Wastes 20+ minutes, erodes trust |
+| `context_miss` | 2.5 | Means learning system is failing |
+| `skill_deficiency` | 2.0 | Skill exists but isn't good enough |
+| `over_engineering` | 1.5 | Wastes time, adds complexity |
+| `tool_misuse` | 1.0 | Usually just slower, not wrong |
+| `skill_gap` | 1.0 | Latent — only matters when task arises |
+| `user_ambiguity` | 0.0 | Not agent's fault |
+
+```
+severity_weighted_score = 1 - (sum(weight × count) / (max_possible_severity × total_tasks))
+```
+
+Where `max_possible_severity = 3.0 × total_tasks` (worst case: all wrong_approach).
+
+## Grading Rubric for Edge Cases
+
+### Partially correct first approach
+- If agent was on the right track but needed 1 minor correction → `partially_correct`,
+  count 0.5 toward correct_first_approach
+- "Minor" = same component, same tool, slightly different parameters or scope
+
+### Multiple failure types on one task
+- Pick primary by priority chain
+- Record all others as contributing_types
+- Only the primary counts in failure_distribution
+
+### Agent self-corrected before user noticed
+- If agent caught its own mistake and corrected WITHOUT user intervention → count as `correct`
+- Self-correction is a positive signal, note it in evidence
+
+### User changed requirements mid-task
+- If the user shifted what they wanted after agent started → `user_ambiguity`
+- This is NOT the agent's fault
+
+### Agent asked good clarifying questions
+- If agent asked before acting and the question was appropriate → `correct`
+- Asking is always better than guessing wrong
+
+## Step 5: Human Behavioral Loop Assessment
+
+The human-AI partnership has a behavioral feedback loop:
+- Human provides gentle redirects → AI Partner should detect and adapt
+- Human confirms non-obvious approaches → AI Partner should reinforce these
+- Human's silence after a proposal = soft approval
+- Human's "what do you think?" = wants the AI Partner to lead with an opinion
+
+For each task, evaluate the AI Partner's behavioral awareness:
+
+### 5a. Signal Detection
+Did the AI Partner correctly interpret the human's communication style?
+
+| Signal Type | Example | Correct Response |
+|-------------|---------|-----------------|
+| Gentle redirect | "I feel like X" | Pivot immediately to X |
+| Soft instruction | "meanwhile can you..." | Treat as a hard requirement |
+| Thinking aloud | "what do you think?" | Lead with a recommendation |
+| Confirmation | "sounds good, do it" | Execute without over-explaining |
+| Escalation | "no, that's wrong" | Hard stop, ask what's right |
+
+Score: `signal_detection_rate` = correctly_interpreted / total_signals
+
+### 5b. Adaptation Speed
+How quickly did the AI Partner adapt after a redirect?
+- **immediate**: Pivoted in the very next response
+- **delayed**: Took 1-2 extra messages to course-correct
+- **resistant**: Continued the old approach despite redirect
+
+### 5c. Proactive Suggestions
+Did the AI Partner proactively suggest useful next steps?
+- Suggested a relevant skill at the right moment? (positive)
+- Suggested too many things / was pushy? (negative)
+- Missed an obvious suggestion opportunity? (negative)
+
+Record in the task verdict:
+```json
+{
+  "behavioral_loop": {
+    "signals_detected": N,
+    "signals_total": N,
+    "signal_detection_rate": float,
+    "adaptation_speed": "immediate|delayed|resistant",
+    "proactive_suggestions": {
+      "appropriate": N,
+      "pushy": N,
+      "missed": N
+    }
+  }
+}
+```
+
+## Step 6: Compound Learning Assessment
+
+The AI Partner operates within a compound learning system that accumulates knowledge
+across sessions. Evaluate how well this system functioned:
+
+### 6a. Knowledge Retrieval Quality
+Was the scout hook effective? Did the right insights surface?
+- Check the UserPromptSubmit hook output at session start
+- Was the agent-briefing.md content relevant to the session's work?
+- Did manifest search return useful insights?
+
+### 6b. Knowledge Generation Quality
+Did the AI Partner generate good new insights during this session?
+- Were insights actionable ("When X, do Y because Z")?
+- Were they properly categorized (bug-track vs knowledge-track)?
+- Did they overlap with existing insights (duplication)?
+- Were they too specific (won't generalize) or too vague (not actionable)?
+
+### 6c. Knowledge Lifecycle Health
+Across the session:
+- Any insights that should be **graduated** (used 3+ times, consistently helpful)?
+- Any insights that should be **pruned** (misleading, outdated)?
+- Any insights that should be **flagged stale** (>90 days, code references may be wrong)?
+- Any feedback memories that need **strengthening** (violated despite existing)?
+
+### 6d. Compound Loop Closure
+Did the AI Partner close the learning loop?
+- If significant work was done, did it run/suggest `/compound`?
+- Were outcome-log entries created for insights used?
+- Was the agent-briefing updated?
+
+Record:
+```json
+{
+  "compound_learning": {
+    "retrieval_quality": "effective|partial|poor",
+    "insights_generated": N,
+    "insights_quality": "high|medium|low",
+    "duplicates_created": N,
+    "graduation_candidates": ["insight-ids"],
+    "prune_candidates": ["insight-ids"],
+    "stale_candidates": ["insight-ids"],
+    "loop_closed": true/false
+  }
+}
+```
+
+## Integrated Session Score
+
+Combine all dimensions into a single session quality score:
+
+```
+session_score = (
+    0.35 × agreement_rate +           # Technical correctness (35%)
+    0.25 × signal_detection_rate +     # Human behavioral awareness (25%)
+    0.20 × insight_effectiveness +     # Compound learning quality (20%)
+    0.20 × (1 - redirection_rate)      # Collaboration efficiency (20%)
+)
+```
+
+Where:
+- `agreement_rate` = correct_first_approach / total_tasks
+- `signal_detection_rate` = from Step 5a
+- `insight_effectiveness` = (hits - wrong) / max(hits + misses, 1)
+- `redirection_rate` = total_redirections / (total_tasks × 3) (capped at 1.0)
+
+This score reflects the FULL partnership — not just code output, but how well the
+AI Partner collaborates, learns, and adapts.
+
+## Output Format
+
+Return a single JSON object matching the schema in Step 3, extended with:
+- `behavioral_loop` (from Step 5) at session level and per-task
+- `compound_learning` (from Step 6) at session level
+- `session_score` (from Integrated Session Score)
+- `summary`: 2-3 sentence natural language assessment of the partnership quality
+
+Include a `summary` field with a 2-3 sentence natural language assessment of the session.
+
+
+---
+
+## SESSION TRANSCRIPT
+
+```json
+[
+  {
+    "type": "permission-mode",
+    "permissionMode": "default",
+    "sessionId": "8ba638f2-4792-4777-8b1b-9fd8954aa274"
+  },
+  {
+    "type": "file-history-snapshot",
+    "messageId": "648accfe-558b-4f06-84e1-8a699fedd9d9",
+    "snapshot": {
+      "messageId": "648accfe-558b-4f06-84e1-8a699fedd9d9",
+      "trackedFileBackups": {},
+      "timestamp": "2026-04-02T20:50:12.822Z"
+    },
+    "isSnapshotUpdate": false
+  },
+  {
+    "parentUuid": null,
+    "isSidechain": false,
+    "promptId": "925b408c-f797-4498-9b58-c8b033649543",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": "context we may need to check seat roles to return a flag (permission check) at here - https://jarvis.corp.linkedin.com/codesearch/result/?name=EmailHireProjectCollabInviteDataFetcher.java&path=ssr-data-service%2Fgraphql-runtime-modules%2Fhire%2Fsrc%2Fmain%2Fjava%2Fcom%2Flinkedin%2Fssr%2Fdatafetchers&reponame=linkedin-multiproduct%2Fssr-data-service#56, currently we only have EP profile, could you think up, probably call /seatsV2 or /epSeats? https://jarvis.corp.linkedin.com/codesearch/result/?name=SeatsV2Resource.java&path=hp-ep-mt%2Fimpl%2Fresource-impl%2Fsrc%2Fmain%2Fjava%2Fcom%2Flinkedin%2Fhire%2Fenterpriseplatform%2Fresource%2Fimpl&reponame=linkedin-multiproduct%2Fhp-ep-mt https://jarvis.corp.linkedin.com/codesearch/result/?name=EpSeatsResource.java&path=ep-apps-connector%2Fep-apps-connector-mt%2Fsrc%2Fmain%2Fjava%2Fcom%2Flinkedin%2Fenterprise%2Fappsconnector%2Fresources&reponame=linkedin-multiproduct%2Fep-apps-connector /investigate"
+    },
+    "uuid": "648accfe-558b-4f06-84e1-8a699fedd9d9",
+    "timestamp": "2026-04-02T20:50:12.402Z",
+    "permissionMode": "default",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "8ba638f2-4792-4777-8b1b-9fd8954aa274",
+    "version": "2.1.90",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "648accfe-558b-4f06-84e1-8a699fedd9d9",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01CbC5LhpBuHFuSDakQwt8qe",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "thinking",
+          "thinking": "",
+          "signature": "EtkFClkIDBgCKkDsSgAEDz7dsBFNB8VubUdY8tk803rRu+axxJt9BmeNhGlfLOh10uShDL8PwMlIGrIzjcBe6lG0mWtNndAW52wtMg9jbGF1ZGUtb3B1cy00LTY4ABIMFtka7ec0tEXIIunPGgxqwRfzvzVM6Fwkao0iMOr14mdV2iQyZn5Ts+BWhZpik/2UJCZbOGH+YC2K/kddREOKCgDyz76BFUUkyzosriqtBMvFBn44SteAE09LbuK6AcISZDt6zCZQTxvJbCMr6r6qe1PYN0/eO6zaDvXUvIdqqSG0vBA4j0QbJbcBzx6gbDNzhOVzY8gK3YuuYlMcBCoIj9yu+bgYA5iTUtKQyHaJsRfMDbhLM1Smf2nzT3nBt6IAs0yCxzlNaGvl1N2yeqQnWUsAutJlG/s/gAxfdQD85zMRjtZ6nbt4IOoiCISiikZmUDfVEc2bxP+oVdC3Q8gdDg4363jyOMVDRyo7FoSe7rnbnHel9UXCRsjkGIGtVBB6lLxpkBTXi0+HjN59zClJd/VfU938d3zSWOj42ZqHRnxDhHg7eGQPXiLek9vuLyJ0FV++/6vwvFW4Twww7eVMLBENG7IhXinXpIaXAPAhzDTv3FXXp86+HbuMDk6YrcOqWKtWdhM6gIR+8rfpQsGpzV2vin+vvIgLsZPWS6Wn0BKucNVFtLH5mB9RUKr/dG8x/4E7MUUfgm1aYTVAhIpWPx2Xk4QWS/oUbYZfJK2QXOGshrN2Lf/MCPWiZH04JgIwn1POGsYp8ATZge1DfYhK0iosKohPiLjhbgbAYxUNYQl8I/FoA8PrYK+02BX6+frUlLDaphkY5vGgsJLc016p+Vvvho25vCnq83tZGNX6VrvJHJXbZW4Ntue0JA3Ko+rCA/AAY8Xuv76bUNk11SEgQwlDS7nYFj/2kROkHgiL92rPqiwA9Rp69EYXS5ItMVMvlEpvdMdbyF8kC0SaGAE="
+        }
+      ],
+      "stop_reason": null,
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 13003,
+        "cache_read_input_tokens": 11859,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 13003,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 51,
+        "service_tier": "standard",
+        "inference_geo": "global"
+      }
+    },
+    "requestId": "req_011CZfc11cyhmnxKDNHM9V6F",
+    "type": "assistant",
+    "uuid": "5c697c41-e316-4fcc-9df9-d3d0ce04b860",
+    "timestamp": "2026-04-02T20:50:19.118Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "8ba638f2-4792-4777-8b1b-9fd8954aa274",
+    "version": "2.1.90",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "5c697c41-e316-4fcc-9df9-d3d0ce04b860",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01CbC5LhpBuHFuSDakQwt8qe",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_01VuFDKpvrcDiEUHJm8Hdicz",
+          "name": "Skill",
+          "input": {
+            "skill": "investigate",
+            "args": "Investigate how to add seat role permission checks in EmailHireProjectCollabInviteDataFetcher.java (ssr-data-service). Need to determine whether to use /seatsV2 (hp-ep-mt) or /epSeats (ep-apps-connector) API to check seat roles and return a permission flag. Currently only have EP profile."
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ],
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 13003,
+        "cache_read_input_tokens": 11859,
+        "output_tokens": 330,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 13003
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZfc11cyhmnxKDNHM9V6F",
+    "type": "assistant",
+    "uuid": "857a91f9-42d0-438d-9073-6dd9c3b8e458",
+    "timestamp": "2026-04-02T20:50:20.918Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "8ba638f2-4792-4777-8b1b-9fd8954aa274",
+    "version": "2.1.90",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "857a91f9-42d0-438d-9073-6dd9c3b8e458",
+    "isSidechain": false,
+    "promptId": "925b408c-f797-4498-9b58-c8b033649543",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "toolu_01VuFDKpvrcDiEUHJm8Hdicz",
+          "content": "Launching skill: investigate"
+        }
+      ]
+    },
+    "uuid": "fe6cb12e-dfd8-46fb-a223-ce7b083d4bb4",
+    "timestamp": "2026-04-02T20:50:21.017Z",
+    "toolUseResult": {
+      "success": true,
+      "commandName": "investigate"
+    },
+    "sourceToolAssistantUUID": "857a91f9-42d0-438d-9073-6dd9c3b8e458",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "8ba638f2-4792-4777-8b1b-9fd8954aa274",
+    "version": "2.1.90",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "fe6cb12e-dfd8-46fb-a223-ce7b083d4bb4",
+    "isSidechain": false,
+    "promptId": "925b408c-f797-4498-9b58-c8b033649543",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "# Investigate \u2014 Find Root Cause\n\nStructured investigation workflow for debugging, incident response, and \"why is this broken\" scenarios. Follows the hypothesis-first approach with 5 Whys until root cause is found.\n\n**Usage:** `/investigate [symptom or problem description]`\n\nIf no argument, ask: \"What's the symptom or problem you're seeing?\"\n\n## Step 0: Check Past Knowledge\n\nBefore investigating from scratch:\n1. Read `~/.claude/learnings/agent-briefing.md` \u2014 has this been seen before?\n2. Search `~/.claude/learnings/manifest.jsonl` filtering by `track: bug` + matching tags/repo/error patterns.\n3. If a matching episodic insight exists, present it: \"This looks similar to [bug-XXX]. Last time the root cause was X. Want to verify if it's the same issue?\"\n4. If no match, proceed with fresh investigation.\n\n## Step 1: Establish the Facts\n\nGather concrete data before forming any hypothesis:\n- **What is the exact symptom?** Error messages, log lines, metrics, user reports. Copy exact text.\n- **When did it start?** Check metrics/logs for the transition point. `git log --since=\"X days ago\"` for recent deployments.\n- **What changed?** Recent PRs, deploys, config changes, upstream dependency changes.\n- **What's the blast radius?** One user? One fabric? All traffic? Check canary vs stable.\n- **What's the severity?** Does this need immediate action or can it be investigated methodically?\n\nPresent facts to the user before hypothesizing.\n\n## Step 2: Form Hypotheses (at least 2-3)\n\nBased on the facts, generate multiple hypotheses \u2014 not just the first one that comes to mind:\n\n**Hypothesis format:**\n```\nH1: [what you think is happening] because [evidence that supports it]\n    Disproves if: [what would prove this wrong]\n    \nH2: [alternative explanation] because [evidence]\n    Disproves if: [what would prove this wrong]\n\nH3: [less likely but possible] because [evidence]\n    Disproves if: [what would prove this wrong]\n```\n\n**Common root cause categories** (check each):\n- Recent deploy introduced a bug (check `git log`, `go-status`)\n- Upstream dependency changed behavior (check dependency logs, PEM)\n- Configuration drift (check config files, LiX ramps)\n- Data issue (bad input, schema mismatch, null where not expected)\n- Infrastructure issue (capacity, network, Espresso, Kafka lag)\n- Race condition / timing issue (ordering, eventual consistency)\n\n## Step 3: Test Hypotheses (most likely first)\n\nFor each hypothesis, define the **one check** that would confirm or disprove it:\n\nUse available tools:\n- **Logs**: Use `observe-agent` skill or `kql_fetch_logs` for application logs\n- **Metrics**: Use `fetch_metrics_by_rrd` or Grafana dashboards\n- **Traces**: Use `analyze_single_trace` for specific request traces (treeId). See search-guides/logs-metrics.md for top-down + bottom-up strategies.\n- **Code**: Read the code path \u2014 look for the business logic. Use `jarvis_codesearch` for cross-repo tracing.\n- **Data**: Query Espresso/Trino for data state. Use `linkedin-framework:infra-specs-expert` for Espresso/Kafka questions.\n- **Deploys**: `go-status` for current versions (via `linkedin-cli-tools:cli-tools`), `git log` for recent changes\n- **API verification**: Use `grpcurli` / `curli` (via `linkedin-cli-tools:cli-tools`) to test endpoints directly\n- **PEM**: Check PEM dashboards for availability dips. See search-guides/logs-metrics.md for PEM Kusto queries.\n- **Broad search**: Use `unified_context_search` to search code + wiki + Slack + Jira simultaneously when unsure where to look\n\n**After each check**, update the hypothesis:\n- Confirmed \u2192 proceed to Step 4\n- Disproved \u2192 move to next hypothesis\n- Inconclusive \u2192 refine the check, gather more data\n\n## Step 4: Apply 5 Whys\n\nOnce you have the proximate cause, dig deeper:\n\n```\nWhy 1: Why did [symptom] happen?\n  \u2192 Because [proximate cause]\n\nWhy 2: Why did [proximate cause] happen?\n  \u2192 Because [deeper cause]\n\nWhy 3: Why did [deeper cause] happen?\n  \u2192 Because [root cause]\n\nWhy 4: Why did [root cause] exist?\n  \u2192 Because [systemic issue]\n\nWhy 5: Why wasn't [systemic issue] caught?\n  \u2192 Because [process gap]\n```\n\nStop when you reach something actionable. Not every investigation needs all 5 whys.\n\n## Step 5: Present Findings\n\n```\n## Investigation: [symptom]\n\n### Root Cause\n[What's actually wrong and why]\n\n### Evidence\n- [Log line / metric / code path that confirms]\n\n### 5 Whys Chain\n1. \u2192 2. \u2192 3. \u2192 ... \u2192 root cause\n\n### Fix\n- **Immediate**: [what to do right now to stop the bleeding]\n- **Proper fix**: [the real fix, with PR plan]\n- **Prevention**: [how to prevent recurrence \u2014 test, monitor, guard]\n\n### Impact\n- Duration: [how long was this broken]\n- Scope: [who/what was affected]\n- Severity: [actual customer impact]\n```\n\n## Step 6: Auto-Learn\n\nAfter investigation completes, automatically run the equivalent of `/learn`:\n- Save as a `bug-track` episodic insight with:\n  - `situation.error_pattern`: the exact error/symptom\n  - `situation.context`: what was happening\n  - `resolution.steps`: the fix steps\n  - `resolution.outcome`: what resolved it\n- This ensures the next time someone sees the same symptom, Step 0 catches it immediately.\n\nTell the user: \"Saved as [bug-XXX]. Next time this symptom appears, I'll recognize it.\"\n\n\nARGUMENTS: Investigate how to add seat role permission checks in EmailHireProjectCollabInviteDataFetcher.java (ssr-data-service). Need to determine whether to use /seatsV2 (hp-ep-mt) or /epSeats (ep-apps-connector) API to check seat roles and return a permission flag. Currently only have EP profile."
+        }
+      ]
+    },
+    "isMeta": true,
+    "uuid": "0a2d3f3a-6ab2-41f0-9653-9a9996f0eb76",
+    "timestamp": "2026-04-02T20:50:21.017Z",
+    "sourceToolUseID": "toolu_01VuFDKpvrcDiEUHJm8Hdicz",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "8ba638f2-4792-4777-8b1b-9fd8954aa274",
+    "version": "2.1.90",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "0a2d3f3a-6ab2-41f0-9653-9a9996f0eb76",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01XxLqr26EfK7yydbRbBL9C7",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "thinking",
+          "thinking": "",
+          "signature": "EqEEClkIDBgCKkCbE2ARCY96YtBhxDd5ndWwSAtd3n3oPdGpwlnLIl+d55tCplFMbXts/p/DDYTp47GeU+G6869wXvJYwbzV22GxMg9jbGF1ZGUtb3B1cy00LTY4ABIM7xnm0o2t3FxgmAOoGgwEZMbSqC4QN8mjzIQiMIp136W6YsHsJ87tqMFeLd9x7701vLdd8fgx062csW92+P2XEYVzYZySVIVB1y8zJyr1AgPAqAAc4YVoL1WYwoVl/51+CSw6LMM3aoSOj3AoaOH6QPFryGQ32OuIaCSpQTNUu9RXLpxgjTmBScQIrpGflJEioZB13BphOXxFwhOWfIRd2yoxMQhvdcSrg4jti0B014fhidCAI/VfuOLnhQJZtDH3XMMOqLTeKbaK6q6V94OvCGziE5fwYI7/LejYQDs9tEtQPSEa+AHKs2T3VEsajcMVrUvxxIG6ZGB2w4tAQCooYeIRh7tXpLGlKEEutrYfWa1G8jA53I2bBw/GJqb84FAFfXdCLXHDHOR842iAHUHwNN5iKFEeySM2JoW0pawxEgYuYZbXt9gI9MiX84TI/Bw6YuCLu6jQ1WInZlDMq89yqfh2W1fOXQbfD/eyEu9vSOFWBYgMawMZka0fz/uxGjZurVY2Fy59jlkfahxEStgGWEpDN5js8ZyF4HjpKmrhI2+750AdfRUIJZRf1bFFLX5uocMXEBc341kTkG/XyWy0AKsOMqgYAQ=="
+        }
+      ],
+      "stop_reason": null,
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 1901,
+        "cache_read_input_tokens": 24862,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 1901,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 45,
+        "service_tier": "standard",
+        "inference_geo": "global"
+      }
+    },
+    "requestId": "req_011CZfc1cWCzVW1oWihxkezq",
+    "type": "assistant",
+    "uuid": "4cef11da-a1b9-475f-bd1a-bee9588ad4d9",
+    "timestamp": "2026-04-02T20:50:24.541Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "8ba638f2-4792-4777-8b1b-9fd8954aa274",
+    "version": "2.1.90",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "4cef11da-a1b9-475f-bd1a-bee9588ad4d9",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01XxLqr26EfK7yydbRbBL9C7",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "## Investigation: Adding Seat Role Permission Check to EmailHireProjectCollabInviteDataFetcher\n\nLet me gather the facts first by examining the three files you referenced.\n\n### Step 1: Establish the Facts\n\nLet me fetch all three files in parallel to understand the current state."
+        }
+      ],
+      "stop_reason": null,
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 1901,
+        "cache_read_input_tokens": 24862,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 1901,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 45,
+        "service_tier": "standard",
+        "inference_geo": "global"
+      }
+    },
+    "requestId": "req_011CZfc1cWCzVW1oWihxkezq",
+    "type": "assistant",
+    "uuid": "76272117-8c49-4006-a257-dd24df5ea064",
+    "timestamp": "2026-04-02T20:50:26.374Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "8ba638f2-4792-4777-8b1b-9fd8954aa274",
+    "version": "2.1.90",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "76272117-8c49-4006-a257-dd24df5ea064",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01XxLqr26EfK7yydbRbBL9C7",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_0136UKhAP1uoo1au1dvT66e6",
+          "name": "ToolSearch",
+          "input": {
+            "query": "select:mcp__captain__jarvis_get_file",
+            "max_results": 1
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ],
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 1901,
+        "cache_read_input_tokens": 24862,
+        "output_tokens": 247,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 1901
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZfc1cWCzVW1oWihxkezq",
+    "type": "assistant",
+    "uuid": "0666be09-afd5-43fc-8dfc-e377f79c457a",
+    "timestamp": "2026-04-02T20:50:27.010Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "8ba638f2-4792-4777-8b1b-9fd8954aa274",
+    "version": "2.1.90",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "0666be09-afd5-43fc-8dfc-e377f79c457a",
+    "isSidechain": false,
+    "promptId": "925b408c-f797-4498-9b58-c8b033649543",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "toolu_0136UKhAP1uoo1au1dvT66e6",
+          "content": [
+            {
+              "type": "tool_reference",
+              "tool_name": "mcp__captain__jarvis_get_file"
+            }
+          ]
+        }
+      ]
+    },
+    "uuid": "75f4ce6b-0615-49b0-ad47-554555a6548e",
+    "timestamp": "2026-04-02T20:50:27.125Z",
+    "toolUseResult": {
+      "matches": [
+        "mcp__captain__jarvis_get_file"
+      ],
+      "query": "select:mcp__captain__jarvis_get_file",
+      "total_deferred_tools": 78
+    },
+    "sourceToolAssistantUUID": "0666be09-afd5-43fc-8dfc-e377f79c457a",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "8ba638f2-4792-4777-8b1b-9fd8954aa274",
+    "version": "2.1.90",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "75f4ce6b-0615-49b0-ad47-554555a6548e",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01UPyreU3RpnUoEEUfMs9f3k",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_015UbyVdczgBQHCBtHxM23iA",
+          "name": "mcp__captain__jarvis_get_file",
+          "input": {
+            "repo": "linkedin-multiproduct/ssr-data-service",
+            "filepath": "ssr-data-service/graphql-runtime-modules/hire/src/main/java/com/linkedin/ssr/datafetchers/EmailHireProjectCollabInviteDataFetcher.java"
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ],
+      "stop_reason": null,
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 774,
+        "cache_read_input_tokens": 26763,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 774,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 57,
+        "service_tier": "standard",
+        "inference_geo": "global"
+      }
+    },
+    "requestId": "req_011CZfc24cqPbso7VtyBKkrH",
+    "type": "assistant",
+    "uuid": "f0776b4e-41ae-4e72-9db8-6942b6e7101b",
+    "timestamp": "2026-04-02T20:50:31.071Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "8ba638f2-4792-4777-8b1b-9fd8954aa274",
+    "version": "2.1.90",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "f0776b4e-41ae-4e72-9db8-6942b6e7101b",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01UPyreU3RpnUoEEUfMs9f3k",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_01AGfFdKYCNuCiBrBkvibigz",
+          "name": "mcp__captain__jarvis_get_file",
+          "input": {
+            "repo": "linkedin-multiproduct/hp-ep-mt",
+            "filepath": "hp-ep-mt/impl/resource-impl/src/main/java/com/linkedin/hire/enterpriseplatform/resource/impl/SeatsV2Resource.java"
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ],
+      "stop_reason": null,
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 774,
+        "cache_read_input_tokens": 26763,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 774,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 57,
+        "service_tier": "standard",
+        "inference_geo": "global"
+      }
+    },
+    "requestId": "req_011CZfc24cqPbso7VtyBKkrH",
+    "type": "assistant",
+    "uuid": "fc697276-68ad-4957-ab05-59e06eb12ea7",
+    "timestamp": "2026-04-02T20:50:31.763Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "8ba638f2-4792-4777-8b1b-9fd8954aa274",
+    "version": "2.1.90",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "fc697276-68ad-4957-ab05-59e06eb12ea7",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01UPyreU3RpnUoEEUfMs9f3k",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_01K7eFTSFP1kNGkHWvJWoVAy",
+          "name": "mcp__captain__jarvis_get_file",
+          "input": {
+            "repo": "linkedin-multiproduct/ep-apps-connector",
+            "filepath": "ep-apps-connector/ep-apps-connector-mt/src/main/java/com/linkedin/enterprise/appsconnector/resources/EpSeatsResource.java"
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ],
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 774,
+        "cache_read_input_tokens": 26763,
+        "output_tokens": 357,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 774
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZfc24cqPbso7VtyBKkrH",
+    "type": "assistant",
+    "uuid": "35451c3e-f279-48f8-b11e-345164749453",
+    "timestamp": "2026-04-02T20:50:32.276Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "8ba638f2-4792-4777-8b1b-9fd8954aa274",
+    "version": "2.1.90",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "f0776b4e-41ae-4e72-9db8-6942b6e7101b",
+    "isSidechain": false,
+    "promptId": "925b408c-f797-4498-9b58-c8b033649543",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "tool_use_id": "toolu_015UbyVdczgBQHCBtHxM23iA",
+          "type": "tool_result",
+          "content": "{\"sourceCode\":\"package com.linkedin.ssr.datafetchers;\\n\\nimport com.linkedin.parseq.Task;\\nimport com.linkedin.ssr.AbstractDataFetcher;\\nimport com.linkedin.ssr.BaseEmailDataFetcherInput;\\nimport com.linkedin.ssr.DataFetchingResult;\\nimport com.linkedin.ssr.DataLoaderContainer;\\nimport com.linkedin.ssr.EmailHireProjectCollabInvite;\\nimport com.linkedin.ssr.EmailHireProjectCollabInviteDataFetcherInput;\\nimport com.linkedin.ssr.Engine;\\nimport com.linkedin.ssr.EnterpriseProfileDataFetcherInput;\\nimport com.linkedin.ssr.HiringProjectDataFetcherInput;\\nimport com.linkedin.ssr.RequestContext;\\nimport com.linkedin.ssr.SelectedFieldSpecs;\\nimport javax.annotation.Nonnull;\\nimport org.slf4j.Logger;\\nimport org.slf4j.LoggerFactory;\\n\\n/**\\n * A data fetcher that resolves EmailHireProjectCollabInviteDataFetcher using a EmailHireProjectCollabInviteDataFetcherInput.\\n */\\npublic class EmailHireProjectCollabInviteDataFetcher extends AbstractDataFetcher<EmailHireProjectCollabInviteDataFetcherInput, EmailHireProjectCollabInvite> {\\n  private static final Logger LOG = LoggerFactory.getLogger(EmailHireProjectCollabInviteDataFetcher.class);\\n\\n  public EmailHireProjectCollabInviteDataFetcher(Engine engine) {\\n    super(engine);\\n  }\\n\\n  @Override\\n  protected Task<DataFetchingResult<EmailHireProjectCollabInvite>> execute(\\n      @Nonnull EmailHireProjectCollabInviteDataFetcherInput input,\\n      @Nonnull RequestContext requestContext,\\n      @Nonnull DataLoaderContainer dataLoaderContainer,\\n      @Nonnull SelectedFieldSpecs selectedFieldSpecs) {\\n    if (!input.validate()) {\\n      return Task.value(new DataFetchingResult.Builder<EmailHireProjectCollabInvite>(null).build());\\n    }\\n\\n    EmailHireProjectCollabInvite output = new EmailHireProjectCollabInvite();\\n    DataFetchingResult.Builder<EmailHireProjectCollabInvite> emailHireProjectCollabInviteBuilder =\\n        new DataFetchingResult.Builder<EmailHireProjectCollabInvite>(output);\\n\\n    // Fetch base email\\n    BaseEmailDataFetcherInput baseEmailDataFetcherInput = new BaseEmailDataFetcherInput();\\n    emailHireProjectCollabInviteBuilder.childInput(baseEmailDataFetcherInput);\\n\\n    // Fetch Hiring Project\\n    if (selectedFieldSpecs.contains(EmailHireProjectCollabInvite.fields().hiringProject())) {\\n      HiringProjectDataFetcherInput hiringProjectDataFetcherInput = new HiringProjectDataFetcherInput()\\n          .setHiringProjectUrn(input.getHiringProjectUrn())\\n          .setHiringContextUrn(input.getHiringContextUrn());\\n      emailHireProjectCollabInviteBuilder.childInput(hiringProjectDataFetcherInput);\\n    }\\n\\n    // Fetch Enterprise Profile\\n    if (selectedFieldSpecs.contains(EmailHireProjectCollabInvite.fields().enterpriseProfile())) {\\n      EnterpriseProfileDataFetcherInput enterpriseProfileDataFetcherInput = new EnterpriseProfileDataFetcherInput()\\n          .setEnterpriseProfileInput(input.getEnterpriseProfileUrn());\\n      emailHireProjectCollabInviteBuilder.childInput(enterpriseProfileDataFetcherInput);\\n    }\\n\\n    return Task.value(emailHireProjectCollabInviteBuilder.build());\\n  }\\n}\",\"url\":\"https://github.com/linkedin-multiproduct/ssr-data-service/blob/master/graphql-runtime-modules/hire/src/main/java/com/linkedin/ssr/datafetchers/EmailHireProjectCollabInviteDataFetcher.java\"}"
+        }
+      ]
+    },
+    "uuid": "e9e7c903-7e7e-401b-8523-eab393bcfd60",
+    "timestamp": "2026-04-02T20:50:33.725Z",
+    "toolUseResult": "{\"sourceCode\":\"package com.linkedin.ssr.datafetchers;\\n\\nimport com.linkedin.parseq.Task;\\nimport com.linkedin.ssr.AbstractDataFetcher;\\nimport com.linkedin.ssr.BaseEmailDataFetcherInput;\\nimport com.linkedin.ssr.DataFetchingResult;\\nimport com.linkedin.ssr.DataLoaderContainer;\\nimport com.linkedin.ssr.EmailHireProjectCollabInvite;\\nimport com.linkedin.ssr.EmailHireProjectCollabInviteDataFetcherInput;\\nimport com.linkedin.ssr.Engine;\\nimport com.linkedin.ssr.EnterpriseProfileDataFetcherInput;\\nimport com.linkedin.ssr.HiringProjectDataFetcherInput;\\nimport com.linkedin.ssr.RequestContext;\\nimport com.linkedin.ssr.SelectedFieldSpecs;\\nimport javax.annotation.Nonnull;\\nimport org.slf4j.Logger;\\nimport org.slf4j.LoggerFactory;\\n\\n/**\\n * A data fetcher that resolves EmailHireProjectCollabInviteDataFetcher using a EmailHireProjectCollabInviteDataFetcherInput.\\n */\\npublic class EmailHireProjectCollabInviteDataFetcher extends AbstractDataFetcher<EmailHireProjectCollabInviteDataFetcherInput, EmailHireProjectCollabInvite> {\\n  private static final Logger LOG = LoggerFactory.getLogger(EmailHireProjectCollabInviteDataFetcher.class);\\n\\n  public EmailHireProjectCollabInviteDataFetcher(Engine engine) {\\n    super(engine);\\n  }\\n\\n  @Override\\n  protected Task<DataFetchingResult<EmailHireProjectCollabInvite>> execute(\\n      @Nonnull EmailHireProjectCollabInviteDataFetcherInput input,\\n      @Nonnull RequestContext requestContext,\\n      @Nonnull DataLoaderContainer dataLoaderContainer,\\n      @Nonnull SelectedFieldSpecs selectedFieldSpecs) {\\n    if (!input.validate()) {\\n      return Task.value(new DataFetchingResult.Builder<EmailHireProjectCollabInvite>(null).build());\\n    }\\n\\n    EmailHireProjectCollabInvite output = new EmailHireProjectCollabInvite();\\n    DataFetchingResult.Builder<EmailHireProjectCollabInvite> emailHireProjectCollabInviteBuilder =\\n        new DataFetchingResult.Builder<EmailHireProjectCollabInvite>(output);\\n\\n    // Fetch base email\\n    BaseEmailDataFetcherInput baseEmailDataFetcherInput = new BaseEmailDataFetcherInput();\\n    emailHireProjectCollabInviteBuilder.childInput(baseEmailDataFetcherInput);\\n\\n    // Fetch Hiring Project\\n    if (selectedFieldSpecs.contains(EmailHireProjectCollabInvite.fields().hiringProject())) {\\n      HiringProjectDataFetcherInput hiringProjectDataFetcherInput = new HiringProjectDataFetcherInput()\\n          .setHiringProjectUrn(input.getHiringProjectUrn())\\n          .setHiringContextUrn(input.getHiringContextUrn());\\n      emailHireProjectCollabInviteBuilder.childInput(hiringProjectDataFetcherInput);\\n    }\\n\\n    // Fetch Enterprise Profile\\n    if (selectedFieldSpecs.contains(EmailHireProjectCollabInvite.fields().enterpriseProfile())) {\\n      EnterpriseProfileDataFetcherInput enterpriseProfileDataFetcherInput = new EnterpriseProfileDataFetcherInput()\\n          .setEnterpriseProfileInput(input.getEnterpriseProfileUrn());\\n      emailHireProjectCollabInviteBuilder.childInput(enterpriseProfileDataFetcherInput);\\n    }\\n\\n    return Task.value(emailHireProjectCollabInviteBuilder.build());\\n  }\\n}\",\"url\":\"https://github.com/linkedin-multiproduct/ssr-data-service/blob/master/graphql-runtime-modules/hire/src/main/java/com/linkedin/ssr/datafetchers/EmailHireProjectCollabInviteDataFetcher.java\"}",
+    "mcpMeta": {
+      "structuredContent": {
+        "sourceCode": "package com.linkedin.ssr.datafetchers;\n\nimport com.linkedin.parseq.Task;\nimport com.linkedin.ssr.AbstractDataFetcher;\nimport com.linkedin.ssr.BaseEmailDataFetcherInput;\nimport com.linkedin.ssr.DataFetchingResult;\nimport com.linkedin.ssr.DataLoaderContainer;\nimport com.linkedin.ssr.EmailHireProjectCollabInvite;\nimport com.linkedin.ssr.EmailHireProjectCollabInviteDataFetcherInput;\nimport com.linkedin.ssr.Engine;\nimport com.linkedin.ssr.EnterpriseProfileDataFetcherInput;\nimport com.linkedin.ssr.HiringProjectDataFetcherInput;\nimport com.linkedin.ssr.RequestContext;\nimport com.linkedin.ssr.SelectedFieldSpecs;\nimport javax.annotation.Nonnull;\nimport org.slf4j.Logger;\nimport org.slf4j.LoggerFactory;\n\n/**\n * A data fetcher that resolves EmailHireProjectCollabInviteDataFetcher using a EmailHireProjectCollabInviteDataFetcherInput.\n */\npublic class EmailHireProjectCollabInviteDataFetcher extends AbstractDataFetcher<EmailHireProjectCollabInviteDataFetcherInput, EmailHireProjectCollabInvite> {\n  private static final Logger LOG = LoggerFactory.getLogger(EmailHireProjectCollabInviteDataFetcher.class);\n\n  public EmailHireProjectCollabInviteDataFetcher(Engine engine) {\n    super(engine);\n  }\n\n  @Override\n  protected Task<DataFetchingResult<EmailHireProjectCollabInvite>> execute(\n      @Nonnull EmailHireProjectCollabInviteDataFetcherInput input,\n      @Nonnull RequestContext requestContext,\n      @Nonnull DataLoaderContainer dataLoaderContainer,\n      @Nonnull SelectedFieldSpecs selectedFieldSpecs) {\n    if (!input.validate()) {\n      return Task.value(new DataFetchingResult.Builder<EmailHireProjectCollabInvite>(null).build());\n    }\n\n    EmailHireProjectCollabInvite output = new EmailHireProjectCollabInvite();\n    DataFetchingResult.Builder<EmailHireProjectCollabInvite> emailHireProjectCollabInviteBuilder =\n        new DataFetchingResult.Builder<EmailHireProjectCollabInvite>(output);\n\n    // Fetch base email\n    BaseEmailDataFetcherInput baseEmailDataFetcherInput = new BaseEmailDataFetcherInput();\n    emailHireProjectCollabInviteBuilder.childInput(baseEmailDataFetcherInput);\n\n    // Fetch Hiring Project\n    if (selectedFieldSpecs.contains(EmailHireProjectCollabInvite.fields().hiringProject())) {\n      HiringProjectDataFetcherInput hiringProjectDataFetcherInput = new HiringProjectDataFetcherInput()\n          .setHiringProjectUrn(input.getHiringProjectUrn())\n          .setHiringContextUrn(input.getHiringContextUrn());\n      emailHireProjectCollabInviteBuilder.childInput(hiringProjectDataFetcherInput);\n    }\n\n    // Fetch Enterprise Profile\n    if (selectedFieldSpecs.contains(EmailHireProjectCollabInvite.fields().enterpriseProfile())) {\n      EnterpriseProfileDataFetcherInput enterpriseProfileDataFetcherInput = new EnterpriseProfileDataFetcherInput()\n          .setEnterpriseProfileInput(input.getEnterpriseProfileUrn());\n      emailHireProjectCollabInviteBuilder.childInput(enterpriseProfileDataFetcherInput);\n    }\n\n    return Task.value(emailHireProjectCollabInviteBuilder.build());\n  }\n}",
+        "url": "https://github.com/linkedin-multiproduct/ssr-data-service/blob/master/graphql-runtime-modules/hire/src/main/java/com/linkedin/ssr/datafetchers/EmailHireProjectCollabInviteDataFetcher.java"
+      }
+    },
+    "sourceToolAssistantUUID": "f0776b4e-41ae-4e72-9db8-6942b6e7101b",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou",
+    "sessionId": "8ba638f2-4792-4777-8b1b-9fd8954aa274",
+    "version": "2.1.90",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "fc697276-68ad-4957-ab05-59e06eb12ea7",
+    "isSidechain": false,
+    "promptId": "925b408c-f797-4498-9b58-c8b033649543",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "tool_use_id": "toolu_01AGfFdKYCNuCiBrBkvibigz",
+          "type": "tool_result",
+          "content": "{\"sourceCode\":\"package com.linkedin.hire.enterpriseplatform.resource.impl;\\n\\nimport com.google.common.collect.ImmutableSet;\\nimport com.linkedin.cap.VisibilityLevel;\\nimport com.linkedin.common.TimeRange;\\nimport com.linkedin.common.urn.CapAccountUrn;\\nimport com.linkedin.common.urn.ContractUrn;\\nimport com.linkedin.common.urn.EnterpriseProfileUrn;\\nimport com.linkedin.common.urn.MemberUrn;\\nimport com.linkedin.common.urn.SeatUrn;\\nimport com.linkedin.common.urn.Urn;\\nimport com.linkedin.data.template.GetMode;\\nimport com.linkedin.hire.ContractType;\\nimport com.linkedin.hire.Seat;\\nimport com.linkedin.hire.SeatRole;\\nimport com.linkedin.hire.SeatState;\\nimport com.linkedin.hire.SeatTypeaheadQuery;\\nimport com.linkedin.hire.SeatUserType;\\nimport com.linkedin.hire.enterpriseplatform.service.SeatService;\\nimport com.linkedin.hire.enterpriseplatform.service.impl.GatewayAuthorizationManager;\\nimport com.linkedin.hire.restli.BatchLimit;\\nimport com.linkedin.hire.util.LixUtils;\\nimport com.linkedin.hire.util.RestLiUtils;\\nimport com.linkedin.parseq.Task;\\nimport com.linkedin.restli.common.CollectionMetadata;\\nimport com.linkedin.restli.common.HttpStatus;\\nimport com.linkedin.restli.common.PatchRequest;\\nimport com.linkedin.restli.common.validation.CreateOnly;\\nimport com.linkedin.restli.common.validation.ReadOnly;\\nimport com.linkedin.restli.server.ActionResult;\\nimport com.linkedin.restli.server.BasicCollectionResult;\\nimport com.linkedin.restli.server.BatchResult;\\nimport com.linkedin.restli.server.CollectionResult;\\nimport com.linkedin.restli.server.CreateResponse;\\nimport com.linkedin.restli.server.PagingContext;\\nimport com.linkedin.restli.server.RestLiServiceException;\\nimport com.linkedin.restli.server.UpdateResponse;\\nimport com.linkedin.restli.server.annotations.Action;\\nimport com.linkedin.restli.server.annotations.ActionParam;\\nimport com.linkedin.restli.server.annotations.Finder;\\nimport com.linkedin.restli.server.annotations.Optional;\\nimport com.linkedin.restli.server.annotations.PagingContextParam;\\nimport com.linkedin.restli.server.annotations.QueryParam;\\nimport com.linkedin.restli.server.annotations.RestLiCollection;\\nimport com.linkedin.restli.server.annotations.RestMethod;\\nimport com.linkedin.restli.server.resources.CollectionResourceTaskTemplate;\\nimport java.util.Arrays;\\nimport java.util.Collections;\\nimport java.util.HashMap;\\nimport java.util.HashSet;\\nimport java.util.List;\\nimport java.util.Map;\\nimport java.util.Set;\\nimport java.util.stream.Collectors;\\nimport javax.inject.Inject;\\nimport javax.inject.Named;\\nimport org.apache.commons.collections.CollectionUtils;\\nimport org.slf4j.Logger;\\nimport org.slf4j.LoggerFactory;\\n\\n\\n/**\\n * Resource for Hiring Platform Seats.\\n * This is a facade resource merging Enterprise Seat stored by EP and application specific Seat stored by LTS.\\n * @author yfwang\\n */\\n@SuppressWarnings(\\\"unused\\\")\\n@RestLiCollection(name = \\\"seatsV2\\\", namespace = \\\"com.linkedin.hire\\\", keyName = \\\"id\\\")\\n@ReadOnly({\\\"id\\\", \\\"firstName\\\", \\\"lastName\\\", \\\"enterpriseProfile\\\", \\\"enterpriseLicenseTypes\\\"})\\n@CreateOnly({\\\"contract\\\", \\\"member\\\", \\\"email\\\", \\\"state\\\", \\\"seatType\\\"})\\npublic class SeatsV2Resource extends CollectionResourceTaskTemplate<Long, Seat> {\\n  private final static ContractUrn DUMMY_CONTRACT_URN = new ContractUrn(0L);\\n  private final Logger _logger = LoggerFactory.getLogger(this.getClass().getSimpleName());\\n\\n  @Inject\\n  @Named(\\\"sotAwareSeatService\\\")\\n  private SeatService<Seat> _service;\\n\\n  @Inject\\n  @Named(\\\"gatewayAuthorizationManager\\\")\\n  private GatewayAuthorizationManager _gatewayAuthorizationManager;\\n\\n  @Inject\\n  @Named(\\\"lixUtils\\\")\\n  private LixUtils _lixUtils;\\n\\n  /**\\n   * Get a single seat by seat ID.\\n   * @param id long value which uniquely identifies a seat.\\n   * @param contract contract Urn of the seat being fetched, used to choose the source-of-truth and is not used for visibility validation.\\n   *                 If absent, will use the contract retrieved from seat to determine source-of-truth, which can impact performance.\\n   * @param visibility The level of visibility. It defaults to full visibility. The value is supported by the rest.li gateway\\n   *                   for external calls to this endpoint based on the permission of caller's developer application id.\\n   * @return Seat.\\n   */\\n  @RestMethod.Get\\n  public Task<Seat> get(Long id,\\n      @QueryParam(value = \\\"contract\\\", typeref = com.linkedin.common.ContractUrn.class) @Optional final ContractUrn contract,\\n      @QueryParam(\\\"visibility\\\") @Optional(\\\"INTEGRATION_CONTRACTS\\\")  final VisibilityLevel visibility) {\\n    return _service.get(new SeatUrn(id), contract, getContext().getProjectionMask()).flatMap(seat ->\\n        _gatewayAuthorizationManager.checkAuthorizationV2(Collections.singleton(seat.getContract()), visibility).map(aVoid -> seat)\\n    );\\n  }\\n\\n  /**\\n   * Batch get seats by seat IDs.\\n   * @param ids a set of unique seat IDs.\\n   * @param contract contract Urn of the seat being fetched, used to choose the source-of-truth and is not used for visibility validation.\\n   *                 If absent, will use the contract retrieved from seat to determine source-of-truth, which can impact performance.\\n   * @param visibility The level of visibility. It defaults to full visibility. The value is supported by the rest.li gateway\\n   *                   for external calls to this endpoint based on the permission of caller's developer application id.\\n   * @return A result map from ID to Seat objects.\\n   *\\n   * Note: Updated the implementation to use _service.get, so that the cache will be utilized for retrieving Agent Seat Mapping.\\n   *\\n   */\\n  @RestMethod.BatchGet\\n  @BatchLimit(limit = 100, warnOnly = true)\\n  public Task<Map<Long, Seat>> batchGet(Set<Long> ids,\\n      @QueryParam(value = \\\"contract\\\", typeref = com.linkedin.common.ContractUrn.class) @Optional final ContractUrn contract,\\n      @QueryParam(\\\"visibility\\\") @Optional(\\\"INTEGRATION_CONTRACTS\\\") final VisibilityLevel visibility) {\\n    final Map<Long, Seat> data = new HashMap<>();\\n    final Map<Long, RestLiServiceException> errors = new HashMap<>();\\n    BatchResult<Long, Seat> result = new BatchResult<>(data, errors);\\n\\n    List<Task<Seat>> taskList = ids.stream()\\n        .map(id -> _service.get(new SeatUrn(id), contract, getContext().getProjectionMask()).flatMap(seat -> {\\n          data.put(id, seat);\\n          return Task.value(seat);\\n        }).recover(e -> {\\n          errors.put(id, RestLiUtils.toRestliServiceException(e));\\n          return null;\\n        }))\\n        .collect(Collectors.toList());\\n\\n    return Task.par(taskList).flatMap(list -> {\\n      Map<Long, Seat> seatsMap =\\n          result.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));\\n      if (seatsMap.isEmpty()) {\\n        return Task.value(seatsMap);\\n      }\\n      List<ContractUrn> contractUrns = result.values().stream().map(Seat::getContract).collect(Collectors.toList());\\n      return _gatewayAuthorizationManager.checkAuthorizationV2(new HashSet<>(contractUrns), visibility)\\n          .map(aVoid -> seatsMap);\\n    });\\n  }\\n\\n  /**\\n   * To create a seat.\\n   * @param seat The {@link com.linkedin.hire.Seat} object to be created.\\n   * @param actor Actor who is performing the action. If absent, not setting created AuditStamp.\\n   *              Supported types: SeatUrn, EnterpriseApplicationUrn.\\n   * @return A create response with the ID of the created seat.\\n   */\\n  @RestMethod.Create\\n  public Task<CreateResponse> create(final Seat seat,\\n      @QueryParam(value = \\\"actor\\\", typeref = com.linkedin.common.Urn.class) @Optional final Urn actor) {\\n    ContractUrn contract = seat.getContract(GetMode.NULL);\\n    return _service.create(seat, contract, actor).map(id -> new CreateResponse(id, HttpStatus.S_201_CREATED));\\n  }\\n\\n  /**\\n   * Partially update the seat.\\n   * @param id ID of the seat to be updated.\\n   * @param patchRequest Patch applied to the identified seat.\\n   * @param contract Contract urn of the seat being updated, used to choose the source-of-truth\\n   *                 and is not used for visibility validation.\\n   * @param actor Actor who is performing the action. If absent, not setting lastModified AuditStamp.\\n   *              Supported types: SeatUrn, EnterpriseApplicationUrn.\\n   * @return update response.\\n   */\\n  @RestMethod.PartialUpdate\\n  public Task<UpdateResponse> partialUpdate(final Long id, final PatchRequest<Seat> patchRequest,\\n      @QueryParam(value = \\\"contract\\\", typeref = com.linkedin.common.ContractUrn.class) final ContractUrn contract,\\n      @QueryParam(value = \\\"actor\\\", typeref = com.linkedin.common.Urn.class) @Optional final Urn actor) {\\n    return _service.partialUpdate(new SeatUrn(id), patchRequest, contract, actor).map(UpdateResponse::new);\\n  }\\n\\n  /**\\n   * Update the seat.\\n   * @param id ID of the seat to be updated.\\n   * @param seat seat to be updated to.\\n   * @param contract Contract urn of the seat being updated, used to choose the source-of-truth\\n   *                 and is not used for visibility validation.\\n   * @param actor Actor who is performing the action. If absent, not setting lastModified AuditStamp.\\n   *              Supported types: SeatUrn, EnterpriseApplicationUrn.\\n   * @return update response.\\n   */\\n  @RestMethod.Update\\n  public Task<UpdateResponse> update(final Long id, final Seat seat,\\n      @QueryParam(value = \\\"contract\\\", typeref = com.linkedin.common.ContractUrn.class) final ContractUrn contract,\\n      @QueryParam(value = \\\"actor\\\", typeref = com.linkedin.common.Urn.class) @Optional final Urn actor) {\\n    return _service.update(new SeatUrn(id), seat, contract, actor).map(UpdateResponse::new);\\n  }\\n\\n  /**\\n   * Finds seats associated with the given member.\\n   * This call ensures strong read-after-write consistency after seat creation.\\n   * More information can be found in go/membercontractseat\\n   * findByAttributes should be used if strong consistency is not required.\\n   * @param pagingContext paging context\\n   * @param member Member to find seats for\\n   * @param contracts Contract urns for filtering seats\\n   * @param seatStates Seat states to filter by\\n   * @param contractActive Whether the seat belongs to an active contract. If not present, don't filter by contract activeness\\n   * @param contractTypes Contract types to filter by\\n   * @param viewer Urn of the viewer\\n   * @return CollectionResponse of Seats found associated with the member\\n   */\\n  @Finder(\\\"member\\\")\\n  public Task<CollectionResult<Seat, CollectionMetadata>> findByMember(@PagingContextParam final PagingContext pagingContext,\\n      @QueryParam(value = \\\"member\\\", typeref = com.linkedin.common.MemberUrn.class) final MemberUrn member,\\n      @QueryParam(value = \\\"contracts\\\", typeref = com.linkedin.common.ContractUrn.class) @Optional(\\\"[]\\\") final ContractUrn[] contracts,\\n      @QueryParam(value = \\\"seatStates\\\") @Optional(\\\"[\\\\\\\"ACTIVE\\\\\\\"]\\\") SeatState[] seatStates,\\n      @QueryParam(value = \\\"contractActive\\\") @Optional final Boolean contractActive,\\n      @QueryParam(value = \\\"contractTypes\\\") @Optional(\\\"[]\\\") ContractType[] contractTypes,\\n      @QueryParam(value = \\\"viewer\\\", typeref = com.linkedin.common.Urn.class) final Urn viewer) {\\n    return _service.findByMember(member, contracts, seatStates, contractActive, contractTypes, viewer, pagingContext, getContext().getProjectionMask());\\n  }\\n\\n  /**\\n   * Finds Seats given a list of enterprise profile Urns in a specific contract.\\n   * @param pagingContext paging context.\\n   * @param profiles list of enterprise profile Urns who hold the seats.\\n   * @param contract the contract Urn to which the seats belong.\\n   * @param includeSeatsWithoutMember Whether or not to include seats with no member associations in the results.\\n   *                                  The default value is false.\\n   *                                  More details - https://iwww.corp.linkedin.com/wiki/cf/display/PRT/SeatsV2+Finders+flag,\\n   *                                  https://go/unboundseatsv2/rfc\\n   * @return the collection of seats that match the given enterpriseProfiles and contract.\\n   */\\n  @Finder(\\\"enterpriseProfiles\\\")\\n  public Task<CollectionResult<Seat, CollectionMetadata>> findByProfiles(@PagingContextParam final PagingContext pagingContext,\\n      @QueryParam(value = \\\"profiles\\\", typeref = com.linkedin.common.EnterpriseProfileUrn.class) final EnterpriseProfileUrn[] profiles,\\n      @QueryParam(value = \\\"contract\\\", typeref = com.linkedin.common.ContractUrn.class) final ContractUrn contract,\\n      @QueryParam(value = \\\"includeSeatsWithoutMember\\\") @Optional(\\\"false\\\") final boolean includeSeatsWithoutMember) {\\n    return _service.findByEnterpriseProfiles(ImmutableSet.copyOf(profiles), contract, pagingContext,\\n        getContext().getProjectionMask(), includeSeatsWithoutMember);\\n  }\\n\\n  /**\\n   * To find a seat based on a job poster memberUrn and a specified contractUrn.\\n   * <p/>\\n   * If the job poster member has a seat in the given contract, return the seat.\\n   * <p/>\\n   * If the job poster member does not have seat in the given contract, AND if the account level jobs access flag is on\\n   * for the account of the given contract, we will search the member in all the contracts under the account.\\n   * If found one, return the seat.\\n   * <p/>\\n   * If no seat is found, nothing is returned.\\n   * @param jobPoster job poster member Urn who hold the seats.\\n   * @param contract contract Urn to which the seats belong, if seat not found under contract, used to determine if\\n   *                 account level job access is enabled.\\n   * @return a collection of Seats.\\n   */\\n  @Finder(\\\"jobPoster\\\")\\n  public Task<BasicCollectionResult<Seat>> findByJobPoster(\\n      @QueryParam(value = \\\"jobPoster\\\", typeref = com.linkedin.common.MemberUrn.class) final MemberUrn jobPoster,\\n      @QueryParam(value = \\\"contract\\\", typeref = com.linkedin.common.ContractUrn.class) final ContractUrn contract) {\\n    return _service.findByJobPoster(jobPoster, contract, getContext().getProjectionMask());\\n  }\\n\\n  /**\\n   * Find Seats by the following attributes. This does not enforce strong read-after-write consistency and should be used instead of \\\"findByMember\\\"\\n   * if strong consistency is not required.\\n   * @param pagingContext paging context.\\n   * @param contracts contract Urns to which the seats belong.\\n   * @param members member Urns who hold the seats.\\n   * @param emails emails of members who hold the seats. Case insensitive.\\n   * @param states array of {@link SeatState} values, e.g. \\\"active\\\", \\\"parked\\\", \\\"pending\\\", \\\"invited\\\".\\n   * @param userTypes array of {@link SeatUserType} values, e.g. GUEST_ADMIN, END_USER. Default to END_USER for backwards\\n   *                  compatibility with legacy api.\\n   * @param seatRoles array of {@link SeatRole} values, e.g. ADMIN_SEAT, HP_EMPLOYEE_SEAT, etc.\\n   * @param contractActive Whether the contract the seats belong to is active, if not present, don't filter by contract activeness.\\n   * @param contractTypes array of {@link ContractType} values, e.g. RECRUITER, HIRING_PLATFORM, etc.\\n   * @param capAccount cap account Urn to which the seats belong, if not present, don't filter by account.\\n   * @param lastUpdatedTimeRange Lower and upper bounds of the last updated time, if not present, no limit on last updated time.\\n   * @param visibility The level of visibility. It defaults to full visibility. The value is supported by the rest.li gateway\\n   *                   for external calls to this endpoint based on the permission of caller's developer application id.\\n   * @param includeSeatsWithoutMember Whether or not to include seats with no member associations in the results. The only attribute supported will be \\\"emails\\\".\\n   *                                  If any other attribute is passed independently or in combination with \\\"emails\\\", a set flag will not be honored.\\n   *                                  The default value is false. More details - https://iwww.corp.linkedin.com/wiki/cf/display/PRT/SeatsV2+Finders+flag,\\n   *                                  https://go/unboundseatsv2/rfc\\n   * @return a collection of Seats.\\n   */\\n  @Finder(\\\"attributes\\\")\\n  public Task<CollectionResult<Seat, CollectionMetadata>> findByAttributes(@PagingContextParam final PagingContext pagingContext,\\n      @QueryParam(value = \\\"contracts\\\", typeref = com.linkedin.common.ContractUrn.class) @Optional(\\\"[]\\\")  final ContractUrn[] contracts,\\n      @QueryParam(value = \\\"members\\\", typeref = com.linkedin.common.MemberUrn.class) @Optional(\\\"[]\\\")  final MemberUrn[] members,\\n      @QueryParam(value = \\\"emails\\\", typeref = com.linkedin.common.EmailAddress.class) @Optional(\\\"[]\\\")  final String[] emails,\\n      @QueryParam(\\\"states\\\") @Optional(\\\"[]\\\")  final SeatState[] states,\\n      @QueryParam(\\\"userTypes\\\") @Optional(\\\"[\\\\\\\"END_USER\\\\\\\"]\\\")  final SeatUserType[] userTypes,\\n      @QueryParam(\\\"seatRoles\\\") @Optional(\\\"[]\\\") final SeatRole[] seatRoles,\\n      @QueryParam(\\\"contractActive\\\") @Optional final Boolean contractActive,\\n      @QueryParam(\\\"contractTypes\\\") @Optional(\\\"[]\\\") final ContractType[] contractTypes,\\n      @QueryParam(value = \\\"capAccount\\\", typeref = com.linkedin.common.CapAccountUrn.class) @Optional final CapAccountUrn capAccount,\\n      @QueryParam(\\\"lastUpdatedTimeRange\\\") @Optional final TimeRange lastUpdatedTimeRange,\\n      @QueryParam(\\\"visibility\\\") @Optional(\\\"FULL_VISIBILITY\\\")  final VisibilityLevel visibility,\\n      @QueryParam(value = \\\"includeSeatsWithoutMember\\\") @Optional(\\\"false\\\") final boolean includeSeatsWithoutMember) {\\n    return _service.findByAttributes(contracts, members, emails, states, userTypes, seatRoles, contractActive, contractTypes,\\n        capAccount, lastUpdatedTimeRange, pagingContext, getContext().getProjectionMask(), includeSeatsWithoutMember, false)\\n      .flatMap(seats -> {\\n        if (CollectionUtils.isEmpty(seats.getElements())) {\\n          return Task.value(seats);\\n        }\\n        Set<ContractUrn> contractUrns = seats.getElements().stream().map(Seat::getContract).collect(Collectors.toSet());\\n        return _gatewayAuthorizationManager.checkAuthorizationV2(new HashSet<>(contractUrns), visibility).map(aVoid -> seats);\\n      });\\n  }\\n\\n  /**\\n   * Activates a seat by completing necessary job posting reassignment and update seat state from INVITED to ACTIVE.\\n   * @param seat seat Urn of the seat to be activated.\\n   * @param contract contract Urn of the seat being activated, used to choose the source-of-truth and is not used for visibility validation.\\n   * @return action result.\\n   */\\n  @Action(name = \\\"activateSeat\\\")\\n  public Task<ActionResult<Void>> activateSeat(\\n      @ActionParam(value = \\\"seat\\\", typeref = com.linkedin.common.SeatUrn.class) final SeatUrn seat,\\n      @ActionParam(value = \\\"contract\\\", typeref = com.linkedin.common.ContractUrn.class) final ContractUrn contract) {\\n    return _service.activateSeat(seat, contract).map(ActionResult::new);\\n  }\\n\\n  /**\\n   * Parks a seat by updating seat state from ACTIVE to PARKED.\\n   * @param seat seat Urn of the seat to be parked.\\n   * @param contract contract Urn of the seat being parked, used to choose the source-of-truth and is not used for visibility validation.\\n   * @param actor SeatUrn of the actor who performed the action. Could be null.\\n   * @return action result.\\n   */\\n  @Action(name = \\\"parkSeat\\\")\\n  public Task<ActionResult<Void>> parkSeat(\\n      @ActionParam(value = \\\"seat\\\", typeref = com.linkedin.common.SeatUrn.class) final SeatUrn seat,\\n      @ActionParam(value = \\\"contract\\\", typeref = com.linkedin.common.ContractUrn.class) final ContractUrn contract,\\n      @Optional @ActionParam(value = \\\"actor\\\", typeref = com.linkedin.common.SeatUrn.class) final SeatUrn actor) {\\n    return _service.parkSeat(seat, contract, actor).map(ActionResult::new);\\n  }\\n\\n  /**\\n   * Un-parks a seat by updating seat state from PARKED to ACTIVE.\\n   * @param seat seat Urn of the seat to be un-parked.\\n   * @param contract contract Urn of the seat being un-parked, used to choose the source-of-truth and is not used for visibility validation.\\n   * @return action result.\\n   */\\n  @Action(name = \\\"unparkSeat\\\")\\n  public Task<ActionResult<Void>> unparkSeat(\\n      @ActionParam(value = \\\"seat\\\", typeref = com.linkedin.common.SeatUrn.class) final SeatUrn seat,\\n      @ActionParam(value = \\\"contract\\\", typeref = com.linkedin.common.ContractUrn.class) final ContractUrn contract) {\\n    return _service.unparkSeat(seat, contract).map(ActionResult::new);\\n  }\\n\\n  /**\\n   * Onboard a member to a contract, member will be set to the EnterpriseProfile (overrides if different from the inferred member),\\n   * bindingStatus will be changed to CONFIRMED, user's EnterpriseLicenses on the contract will be activated.\\n   * A Cap seat will be created for the member on the contract.\\n   * @param member member Urn to onboard.\\n   * @param contract contract Urn to which the member is onboarded.\\n   * @param profile enterprise profile Urn to which the member is binding.\\n   * @param actor Actor who is performing the action. Suggested types: SeatUrn, EnterpriseApplicationUrn, EnterpriseApplicationUsageUrn.\\n   *              If missing, a default HpEpMt EnterpriseApplicationUsageUrn will be used for downstream calls.\\n   * @return action result with seatUrn of the member onboarded seat.\\n   */\\n  @Action(name = \\\"onboardMember\\\", returnTyperef = com.linkedin.common.SeatUrn.class)\\n  public Task<ActionResult<SeatUrn>> onboardMember(\\n      @ActionParam(value = \\\"member\\\", typeref = com.linkedin.common.MemberUrn.class) final MemberUrn member,\\n      @ActionParam(value = \\\"contract\\\", typeref = com.linkedin.common.ContractUrn.class) final ContractUrn contract,\\n      @ActionParam(value = \\\"profile\\\", typeref = com.linkedin.common.EnterpriseProfileUrn.class) final EnterpriseProfileUrn profile,\\n      @ActionParam(value = \\\"actor\\\", typeref = com.linkedin.common.Urn.class) @Optional final Urn actor) {\\n    return _service.onboardMember(member, contract, profile, actor).map(ActionResult::new);\\n  }\\n\\n  /**\\n   * Find seats by typeahead search.\\n   * <p>\\n   * Note : Seats with empty members will be filtered from the result.\\n   * </p>\\n   * @param pagingContext Paging context.\\n   * @param contract Contract to which the seats belong. Deprecated, please use contracts\\n   * @param contracts Contracts to which the seats belong. If an empty array is passed, we will not filter on contracts facet.\\n   * @param typeaheadQuery Query to perform typeahead search on seats. Currently, support 2-10 prefix length for the query string.\\n   *                       If the query is an empty string, all records will be returned without any filtration.\\n   * @param states Array of {@link SeatState} values to filter results, not filtered by default.\\n   * @param excludedSeatRoles Results will only contain seats that do not possess any of these seat roles.\\n   *                          This endpoint accepts only HP seat roles. If any CAP seat roles are passed, endpoint will throw 400.\\n   *                          CAP seat role CS_ADMIN is still accepted.\\n   * @param mustHaveAtLeastOneSeatRoles Results will only contain seats that possess at least one of these seat roles.\\n   *                          This endpoint accepts only HP seat roles. If any CAP seat roles are passed, endpoint will throw 400.\\n   *                          CAP seat role CS_ADMIN is still accepted.\\n   * @param mustHaveSeatRoles Results will only contain seats that possess all of these seat roles.\\n   *                          This endpoint accepts only HP seat roles. If any CAP seat roles are passed, endpoint will throw 400.\\n   *                          CAP seat role CS_ADMIN is still accepted.\\n   * @param actor An Urn who performs this action.\\n   * @return a collection of Seats.\\n   */\\n  @Finder(\\\"textQuery\\\")\\n  public Task<CollectionResult<Seat, CollectionMetadata>> findByTextQuery(\\n      @PagingContextParam PagingContext pagingContext,\\n      @Deprecated @Optional @QueryParam(value = \\\"contract\\\", typeref = com.linkedin.common.ContractUrn.class) final ContractUrn contract,\\n      @QueryParam(value = \\\"contracts\\\", typeref = com.linkedin.common.ContractUrn.class) @Optional(\\\"[]\\\") final ContractUrn[] contracts,\\n      @QueryParam(value = \\\"query\\\") final SeatTypeaheadQuery typeaheadQuery,\\n      @QueryParam(value = \\\"states\\\") @Optional(\\\"[]\\\") final SeatState[] states,\\n      @QueryParam(value = \\\"excludedSeatRoles\\\") @Optional(\\\"[]\\\") final SeatRole[] excludedSeatRoles,\\n      @QueryParam(value = \\\"mustHaveAtLeastOneSeatRoles\\\") @Optional(\\\"[]\\\") final SeatRole[] mustHaveAtLeastOneSeatRoles,\\n      @QueryParam(value = \\\"mustHaveSeatRoles\\\") @Optional(\\\"[]\\\") final SeatRole[] mustHaveSeatRoles,\\n      @QueryParam(value = \\\"actor\\\", typeref = com.linkedin.common.Urn.class) @Optional final Urn actor) {\\n    Set<ContractUrn> contractUrns = new HashSet<>(Arrays.asList(contracts));\\n    //Adding this for backward compatibility\\n    if (contract != null) {\\n      contractUrns.add(contract);\\n    }\\n    return _service.findByTextQuery(contractUrns, typeaheadQuery, states, excludedSeatRoles, mustHaveAtLeastOneSeatRoles,\\n        mustHaveSeatRoles, pagingContext, getContext().getProjectionMask(), actor);\\n  }\\n\\n  /**\\n   * Finds agent seat associated with the given owner seat. There is a 1:1 mapping between an agent seat and an owner seat.\\n   * @param ownerSeat Owner Seat urn to find associated agent seat\\n   * @return A list of {@link Seat}s found. This should contain at most one seat.\\n   */\\n  @Finder(\\\"owner\\\")\\n  public Task<BasicCollectionResult<Seat>> findByOwner(\\n      @QueryParam(value = \\\"ownerSeat\\\", typeref = com.linkedin.common.SeatUrn.class) final SeatUrn ownerSeat) {\\n    return _service.findByOwner(ownerSeat, getContext().getProjectionMask());\\n  }\\n\\n}\\n\",\"url\":\"https://github.com/linkedin-multiproduct/hp-ep-mt/blob/master/impl/resource-impl/src/main/java/com/linkedin/hire/enterpriseplatform/resource/impl/SeatsV2Resource.java\"}"
+        }
+      ]
+    },
+    "uuid": "6c3dc705-c5f8-44e0-91b3-5ab73c320950",
+    "timestamp": "2026-04-02T20:50:34.739Z",
+    "toolUseResult": "{\"sourceCode\":\"package com.linkedin.hire.enterpriseplatform.resource.impl;\\n\\nimport com.google.common.collect.ImmutableSet;\\nimport com.linkedin.cap.VisibilityLevel;\\nimport com.linkedin.common.TimeRange;\\nimport com.linkedin.common.urn.CapAccountUrn;\\nimport com.linkedin.common.urn.ContractUrn;\\nimport com.linkedin.common.urn.EnterpriseProfileUrn;\\nimport com.linkedin.common.urn.MemberUrn;\\nimport com.linkedin.common.urn.SeatUrn;\\nimport com.linkedin.common.urn.Urn;\\nimport com.linkedin.data.template.GetMode;\\nimport com.linkedin.hire.ContractType;\\nimport com.linkedin.hire.Seat;\\nimport com.linkedin.hire.SeatRole;\\nimport com.linkedin.hire.SeatState;\\nimport com.linkedin.hire.SeatTypeaheadQuery;\\nimport com.linkedin.hire.SeatUserType;\\nimport com.linkedin.hire.enterpriseplatform.service.SeatService;\\nimport com.linkedin.hire.enterpriseplatform.service.impl.GatewayAuthorizationManager;\\nimport com.linkedin.hire.restli.BatchLimit;\\nimport com.linkedin.hire.util.LixUtils;\\nimport com.linkedin.hire.util.RestLiUtils;\\nimport com.linkedin.parseq.Task;\\nimport com.linkedin.restli.common.CollectionMetadata;\\nimport com.linkedin.restli.common.HttpStatus;\\nimport com.linkedin.restli.common.PatchRequest;\\nimport com.linkedin.restli.common.validation.CreateOnly;\\nimport com.linkedin.restli.common.validation.ReadOnly;\\nimport com.linkedin.restli.server.ActionResult;\\nimport com.linkedin.restli.server.BasicCollectionResult;\\nimport com.linkedin.restli.server.BatchResult;\\nimport com.linkedin.restli.server.CollectionResult;\\nimport com.linkedin.restli.server.CreateResponse;\\nimport com.linkedin.restli.server.PagingContext;\\nimport com.linkedin.restli.server.RestLiServiceException;\\nimport com.linkedin.restli.server.UpdateResponse;\\nimport com.linkedin.restli.server.annotations.Action;\\nimport com.linkedin.restli.server.annotations.ActionParam;\\nimport com.linkedin.restli.server.annotations.Finder;\\nimport com.linkedin.restli.server.annotations.Optional;\\nimport com.linkedin.restli.server.annotations.PagingContextParam;\\nimport com.linkedin.restli.server.annotations.QueryParam;\\nimport com.linkedin.restli.server.annotations.RestLiCollection;\\nimport com.linkedin.restli.server.annotations.RestMethod;\\nimport com.linkedin.restli.server.resources.CollectionResourceTaskTemplate;\\nimport java.util.Arrays;\\nimport java.util.Collections;\\nimport java.util.HashMap;\\nimport java.util.HashSet;\\nimport java.util.List;\\nimport java.util.Map;\\nimport java.util.Set;\\nimport java.util.stream.Collectors;\\nimport javax.inject.Inject;\\nimport javax.inject.Named;\\nimport org.apache.commons.collections.CollectionUtils;\\nimport org.slf4j.Logger;\\nimport org.slf4j.LoggerFactory;\\n\\n\\n/**\\n * Resource for Hiring Platform Seats.\\n * This is a facade resource merging Enterprise Seat stored by EP and application specific Seat stored by LTS.\\n * @author yfwang\\n */\\n@SuppressWarnings(\\\"unused\\\")\\n@RestLiCollection(name = \\\"seatsV2\\\", namespace = \\\"com.linkedin.hire\\\", keyName = \\\"id\\\")\\n@ReadOnly({\\\"id\\\", \\\"firstName\\\", \\\"lastName\\\", \\\"enterpriseProfile\\\", \\\"enterpriseLicenseTypes\\\"})\\n@CreateOnly({\\\"contract\\\", \\\"member\\\", \\\"email\\\", \\\"state\\\", \\\"seatType\\\"})\\npublic class SeatsV2Resource extends CollectionResourceTaskTemplate<Long, Seat> {\\n  private final static ContractUrn DUMMY_CONTRACT_URN = new ContractUrn(0L);\\n  private final Logger _logger = LoggerFactory.getLogger(this.getClass().getSimpleName());\\n\\n  @Inject\\n  @Named(\\\"sotAwareSeatService\\\")\\n  private SeatService<Seat> _service;\\n\\n  @Inject\\n  @Named(\\\"gatewayAuthorizationManager\\\")\\n  private GatewayAuthorizationManager _gatewayAuthorizationManager;\\n\\n  @Inject\\n  @Named(\\\"lixUtils\\\")\\n  private LixUtils _lixUtils;\\n\\n  /**\\n   * Get a single seat by seat ID.\\n   * @param id long value which uniquely identifies a seat.\\n   * @param contract contract Urn of the seat being fetched, used to choose the source-of-truth and is not used for visibility validation.\\n   *                 If absent, will use the contract retrieved from seat to determine source-of-truth, which can impact performance.\\n   * @param visibility The level of visibility. It defaults to full visibility. The value is supported by the rest.li gateway\\n   *                   for external calls to this endpoint based on the permission of caller's developer application id.\\n   * @return Seat.\\n   */\\n  @RestMethod.Get\\n  public Task<Seat> get(Long id,\\n      @QueryParam(value = \\\"contract\\\", typeref = com.linkedin.common.ContractUrn.class) @Optional final ContractUrn contract,\\n      @QueryParam(\\\"visibility\\\") @Optional(\\\"INTEGRATION_CONTRACTS\\\")  final VisibilityLevel visibility) {\\n    return _service.get(new SeatUrn(id), contract, getContext().getProjectionMask()).flatMap(seat ->\\n        _gatewayAuthorizationManager.checkAuthorizationV2(Collections.singleton(seat.getContract()), visibility).map(aVoid -> seat)\\n    );\\n  }\\n\\n  /**\\n   * Batch get seats by seat IDs.\\n   * @param ids a set of unique seat IDs.\\n   * @param contract contract Urn of the seat being fetched, used to choose the source-of-truth and is not used for visibility validation.\\n   *                 If absent, will use the contract retrieved from seat to determine source-of-truth, which can impact performance.\\n   * @param visibility The level of visibility. It defaults to full visibility. The value is supported by the rest.li gateway\\n   *                   for external calls to this endpoint based on the permission of caller's developer application id.\\n   * @return A result map from ID to Seat objects.\\n   *\\n   * Note: Updated the implementation to use _service.get, so that the cache will be utilized for retrieving Agent Seat Mapping.\\n   *\\n   */\\n  @RestMethod.BatchGet\\n  @BatchLimit(limit = 100, warnOnly = true)\\n  public Task<Map<Long, Seat>> batchGet(Set<Long> ids,\\n      @QueryParam(value = \\\"contract\\\", typeref = com.linkedin.common.ContractUrn.class) @Optional final ContractUrn contract,\\n      @QueryParam(\\\"visibility\\\") @Optional(\\\"INTEGRATION_CONTRACTS\\\") final VisibilityLevel visibility) {\\n    final Map<Long, Seat> data = new HashMap<>();\\n    final Map<Long, RestLiServiceException> errors = new HashMap<>();\\n    BatchResult<Long, Seat> result = new BatchResult<>(data, errors);\\n\\n    List<Task<Seat>> taskList = ids.stream()\\n        .map(id -> _service.get(new SeatUrn(id), contract, getContext().getProjectionMask()).flatMap(seat -> {\\n          data.put(id, seat);\\n          return Task.value(seat);\\n        }).recover(e -> {\\n          errors.put(id, RestLiUtils.toRestliServiceException(e));\\n          return null;\\n        }))\\n        .collect(Collectors.toList());\\n\\n    return Task.par(taskList).flatMap(list -> {\\n      Map<Long, Seat> seatsMap =\\n          result.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));\\n      if (seatsMap.isEmpty()) {\\n        return Task.value(seatsMap);\\n      }\\n      List<ContractUrn> contractUrns = result.values().stream().map(Seat::getContract).collect(Collectors.toList());\\n      return _gatewayAuthorizationManager.checkAuthorizationV2(new HashSet<>(contractUrns), visibility)\\n          .map(aVoid -> seatsMap);\\n    });\\n  }\\n\\n  /**\\n   * To create a seat.\\n   * @param seat The {@link com.linkedin.hire.Seat} object to be created.\\n   * @param actor Actor who is performing the action. If absent, not setting created AuditStamp.\\n   *              Supported types: SeatUrn, EnterpriseApplicationUrn.\\n   * @return A create response with the ID of the created seat.\\n   */\\n  @RestMethod.Create\\n  public Task<CreateResponse> create(final Seat seat,\\n      @QueryParam(value = \\\"actor\\\", typeref = com.linkedin.common.Urn.class) @Optional final Urn actor) {\\n    ContractUrn contract = seat.getContract(GetMode.NULL);\\n    return _service.create(seat, contract, actor).map(id -> new CreateResponse(id, HttpStatus.S_201_CREATED));\\n  }\\n\\n  /**\\n   * Partially update the seat.\\n   * @param id ID of the seat to be updated.\\n   * @param patchRequest Patch applied to the identified seat.\\n   * @param contract Contract urn of the seat being updated, used to choose the source-of-truth\\n   *                 and is not used for visibility validation.\\n   * @param actor Actor who is performing the action. If absent, not setting lastModified AuditStamp.\\n   *              Supported types: SeatUrn, EnterpriseApplicationUrn.\\n   * @return update response.\\n   */\\n  @RestMethod.PartialUpdate\\n  public Task<UpdateResponse> partialUpdate(final Long id, final PatchRequest<Seat> patchRequest,\\n      @QueryParam(value = \\\"contract\\\", typeref = com.linkedin.common.ContractUrn.class) final ContractUrn contract,\\n      @QueryParam(value = \\\"actor\\\", typeref = com.linkedin.common.Urn.class) @Optional final Urn actor) {\\n    return _service.partialUpdate(new SeatUrn(id), patchRequest, contract, actor).map(UpdateResponse::new);\\n  }\\n\\n  /**\\n   * Update the seat.\\n   * @param id ID of the seat to be updated.\\n   * @param seat seat to be updated to.\\n   * @param contract Contract urn of the seat being updated, used to choose the source-of-truth\\n   *                 and is not used for visibility validation.\\n   * @param actor Actor who is performing the action. If absent, not setting lastModified AuditStamp.\\n   *              Supported types: SeatUrn, EnterpriseApplicationUrn.\\n   * @return update response.\\n   */\\n  @RestMethod.Update\\n  public Task<UpdateResponse> update(final Long id, final Seat seat,\\n      @QueryParam(value = \\\"contract\\\", typeref = com.linkedin.common.ContractUrn.class) final ContractUrn contract,\\n      @QueryParam(value = \\\"actor\\\", typeref = com.linkedin.common.Urn.class) @Optional final Urn actor) {\\n    return _service.update(new SeatUrn(id), seat, contract, actor).map(UpdateResponse::new);\\n  }\\n\\n  /**\\n   * Finds seats associated with the given member.\\n   * This call ensures strong read-after-write consistency after seat creation.\\n   * More information can be found in go/membercontractseat\\n   * findByAttributes should be used if strong consistency is not required.\\n   * @param pagingContext paging context\\n   * @param member Member to find seats for\\n   * @param contracts Contract urns for filtering seats\\n   * @param seatStates Seat states to filter by\\n   * @param contractActive Whether the seat belongs to an active contract. If not present, don't filter by contract activeness\\n   * @param contractTypes Contract types to filter by\\n   * @param viewer Urn of the viewer\\n   * @return CollectionResponse of Seats found associated with the member\\n   */\\n  @Finder(\\\"member\\\")\\n  public Task<CollectionResult<Seat, CollectionMetadata>> findByMember(@PagingContextParam final PagingContext pagingContext,\\n      @QueryParam(value = \\\"member\\\", typeref = com.linkedin.common.MemberUrn.class) final MemberUrn member,\\n      @QueryParam(value = \\\"contracts\\\", typeref = com.linkedin.common.ContractUrn.class) @Optional(\\\"[]\\\") final ContractUrn[] contracts,\\n      @QueryParam(value = \\\"seatStates\\\") @Optional(\\\"[\\\\\\\"ACTIVE\\\\\\\"]\\\") SeatState[] seatStates,\\n      @QueryParam(value = \\\"contractActive\\\") @Optional final Boolean contractActive,\\n      @QueryParam(value = \\\"contractTypes\\\") @Optional(\\\"[]\\\") ContractType[] contractTypes,\\n      @QueryParam(value = \\\"viewer\\\", typeref = com.linkedin.common.Urn.class) final Urn viewer) {\\n    return _service.findByMember(member, contracts, seatStates, contractActive, contractTypes, viewer, pagingContext, getContext().getProjectionMask());\\n  }\\n\\n  /**\\n   * Finds Seats given a list of enterprise profile Urns in a specific contract.\\n   * @param pagingContext paging context.\\n   * @param profiles list of enterprise profile Urns who hold the seats.\\n   * @param contract the contract Urn to which the seats belong.\\n   * @param includeSeatsWithoutMember Whether or not to include seats with no member associations in the results.\\n   *                                  The default value is false.\\n   *                                  More details - https://iwww.corp.linkedin.com/wiki/cf/display/PRT/SeatsV2+Finders+flag,\\n   *                                  https://go/unboundseatsv2/rfc\\n   * @return the collection of seats that match the given enterpriseProfiles and contract.\\n   */\\n  @Finder(\\\"enterpriseProfiles\\\")\\n  public Task<CollectionResult<Seat, CollectionMetadata>> findByProfiles(@PagingContextParam final PagingContext pagingContext,\\n      @QueryParam(value = \\\"profiles\\\", typeref = com.linkedin.common.EnterpriseProfileUrn.class) final EnterpriseProfileUrn[] profiles,\\n      @QueryParam(value = \\\"contract\\\", typeref = com.linkedin.common.ContractUrn.class) final ContractUrn contract,\\n      @QueryParam(value = \\\"includeSeatsWithoutMember\\\") @Optional(\\\"false\\\") final boolean includeSeatsWithoutMember) {\\n    return _service.findByEnterpriseProfiles(ImmutableSet.copyOf(profiles), contract, pagingContext,\\n        getContext().getProjectionMask(), includeSeatsWithoutMember);\\n  }\\n\\n  /**\\n   * To find a seat based on a job poster memberUrn and a specified contractUrn.\\n   * <p/>\\n   * If the job poster member has a seat in the given contract, return the seat.\\n   * <p/>\\n   * If the job poster member does not have seat in the given contract, AND if the account level jobs access flag is on\\n   * for the account of the given contract, we will search the member in all the contracts under the account.\\n   * If found one, return the seat.\\n   * <p/>\\n   * If no seat is found, nothing is returned.\\n   * @param jobPoster job poster member Urn who hold the seats.\\n   * @param contract contract Urn to which the seats belong, if seat not found under contract, used to determine if\\n   *                 account level job access is enabled.\\n   * @return a collection of Seats.\\n   */\\n  @Finder(\\\"jobPoster\\\")\\n  public Task<BasicCollectionResult<Seat>> findByJobPoster(\\n      @QueryParam(value = \\\"jobPoster\\\", typeref = com.linkedin.common.MemberUrn.class) final MemberUrn jobPoster,\\n      @QueryParam(value = \\\"contract\\\", typeref = com.linkedin.common.ContractUrn.class) final ContractUrn contract) {\\n    return _service.findByJobPoster(jobPoster, contract, getContext().getProjectionMask());\\n  }\\n\\n  /**\\n   * Find Seats by the following attributes. This does not enforce strong read-after-write consistency and should be used instead of \\\"findByMember\\\"\\n   * if strong consistency is not required.\\n   * @param pagingContext paging context.\\n   * @param contracts contract Urns to which the seats belong.\\n   * @param members member Urns who hold the seats.\\n   * @param emails emails of members who hold the seats. Case insensitive.\\n   * @param states array of {@link SeatState} values, e.g. \\\"active\\\", \\\"parked\\\", \\\"pending\\\", \\\"invited\\\".\\n   * @param userTypes array of {@link SeatUserType} values, e.g. GUEST_ADMIN, END_USER. Default to END_USER for backwards\\n   *                  compatibility with legacy api.\\n   * @param seatRoles array of {@link SeatRole} values, e.g. ADMIN_SEAT, HP_EMPLOYEE_SEAT, etc.\\n   * @param contractActive Whether the contract the seats belong to is active, if not present, don't filter by contract activeness.\\n   * @param contractTypes array of {@link ContractType} values, e.g. RECRUITER, HIRING_PLATFORM, etc.\\n   * @param capAccount cap account Urn to which the seats belong, if not present, don't filter by account.\\n   * @param lastUpdatedTimeRange Lower and upper bounds of the last updated time, if not present, no limit on last updated time.\\n   * @param visibility The level of visibility. It defaults to full visibility. The value is supported by the rest.li gateway\\n   *                   for external calls to this endpoint based on the permission of caller's developer application id.\\n   * @param includeSeatsWithoutMember Whether or not to include seats with no member associations in the results. The only attribute supported will be \\\"emails\\\".\\n   *                                  If any other attribute is passed independently or in combination with \\\"emails\\\", a set flag will not be honored.\\n   *                                  The default value is false. More details - https://iwww.corp.linkedin.com/wiki/cf/display/PRT/SeatsV2+Finders+flag,\\n   *                                  https://go/unboundseatsv2/rfc\\n   * @return a collection of Seats.\\n   */\\n  @Finder(\\\"attributes\\\")\\n  public Task<CollectionResult<Seat, CollectionMetadata>> findByAttributes(@PagingContextParam final PagingContext pagingContext,\\n      @QueryParam(value = \\\"contracts\\\", typeref = com.linkedin.common.ContractUrn.class) @Optional(\\\"[]\\\")  final ContractUrn[] contracts,\\n      @QueryParam(value = \\\"members\\\", typeref = com.linkedin.common.MemberUrn.class) @Optional(\\\"[]\\\")  final MemberUrn[] members,\\n      @QueryParam(value = \\\"emails\\\", typeref = com.linkedin.common.EmailAddress.class) @Optional(\\\"[]\\\")  final String[] emails,\\n      @QueryParam(\\\"states\\\") @Optional(\\\"[]\\\")  final SeatState[] states,\\n      @QueryParam(\\\"userTypes\\\") @Optional(\\\"[\\\\\\\"END_USER\\\\\\\"]\\\")  final SeatUserType[] userTypes,\\n      @QueryParam(\\\"seatRoles\\\") @Optional(\\\"[]\\\") final SeatRole[] seatRoles,\\n      @QueryParam(\\\"contractActive\\\") @Optional final Boolean contractActive,\\n      @QueryParam(\\\"contractTypes\\\") @Optional(\\\"[]\\\") final ContractType[] contractTypes,\\n      @QueryParam(value = \\\"capAccount\\\", typeref = com.linkedin.common.CapAccountUrn.class) @Optional final CapAccountUrn capAccount,\\n      @QueryParam(\\\"lastUpdatedTimeRange\\\") @Optional final TimeRange lastUpdatedTimeRange,\\n      @QueryParam(\\\"visibility\\\") @Optional(\\\"FULL_VISIBILITY\\\")  final VisibilityLevel visibility,\\n      @QueryParam(value = \\\"includeSeatsWithoutMember\\\") @Optional(\\\"false\\\") final boolean includeSeatsWithoutMember) {\\n    return _service.findByAttributes(contracts, members, emails, states, userTypes, seatRoles, contractActive, contractTypes,\\n        capAccount, lastUpdatedTimeRange, pagingContext, getContext().getProjectionMask(), includeSeatsWithoutMember, false)\\n      .flatMap(seats -> {\\n        if (CollectionUtils.isEmpty(seats.getElements())) {\\n          return Task.value(seats);\\n        }\\n        Set<ContractUrn> contractUrns = seats.getElements().stream().map(Seat::getContract).collect(Collectors.toSet());\\n        return _gatewayAuthorizationManager.checkAuthorizationV2(new HashSet<>(contractUrns), visibility).map(aVoid -> seats);\\n      });\\n  }\\n\\n  /**\\n   * Activates a seat by completing necessary job posting reassignment and update seat state from INVITED to ACTIVE.\\n   * @param seat seat Urn of the seat to be activated.\\n   * @param contract contract Urn of the seat being activated, used to choose the source-of-truth and is not used for visibility validation.\\n   * @return action result.\\n   */\\n  @Action(name = \\\"activateSeat\\\")\\n  public Task<ActionResult<Void>> activateSeat(\\n      @ActionParam(value = \\\"seat\\\", typeref = com.linkedin.common.SeatUrn.class) final SeatUrn seat,\\n      @ActionParam(value = \\\"contract\\\", typeref = com.linkedin.common.ContractUrn.class) final ContractUrn contract) {\\n    return _service.activateSeat(seat, contract).map(ActionResult::new);\\n  }\\n\\n  /**\\n   * Parks a seat by updating seat state from ACTIVE to PARKED.\\n   * @param seat seat Urn of the seat to be parked.\\n   * @param contract contract Urn of the seat being parked, used to choose the source-of-truth and is not used for visibility validation.\\n   * @param actor SeatUrn of the actor who performed the action. Could be null.\\n   * @return action result.\\n   */\\n  @Action(name = \\\"parkSeat\\\")\\n  public Task<ActionResult<Void>> parkSeat(\\n      @ActionParam(value = \\\"seat\\\", typeref = com.linkedin.common.SeatUrn.class) final SeatUrn seat,\\n      @ActionParam(value = \\\"contract\\\", typeref = com.linkedin.common.ContractUrn.class) final ContractUrn contract,\\n      @Optional @ActionParam(value = \\\"actor\\\", typeref = com.linkedin.common.SeatUrn.class) final SeatUrn actor) {\\n    return _service.parkSeat(seat, contract, actor).map(ActionResult::new);\\n  }\\n\\n  /**\\n   * Un-parks a seat by updating seat state from PARKED to ACTIVE.\\n   * @param seat seat Urn of the seat to be un-parked.\\n   * @param contract contract Urn of the seat being un-parked, used to choose the source-of-truth and is not used for visibility validation.\\n   * @return action result.\\n   */\\n  @Action(name = \\\"unparkSeat\\\")\\n  public Task<ActionResult<Void>> unparkSeat(\\n      @ActionParam(value = \\\"seat\\\", typeref = com.linkedin.common.SeatUrn.class) final SeatUrn seat,\\n      @ActionParam(value = \\\"contract\\\", typeref = com.linkedin.common.ContractUrn.class) final ContractUrn contract) {\\n    return _service.unparkSeat(seat, contract).map(ActionResult::new);\\n  }\\n\\n  /**\\n   * Onboard a member to a contract, member will be set to the EnterpriseProfile (overrides if different from the inferred member),\\n   * bindingStatus will be changed to CONFIRMED, user's EnterpriseLicenses on the contract will be activated.\\n   * A Cap seat will be created for the member on the contract.\\n   * @param member member Urn to onboard.\\n   * @param contract contract Urn to which the member is onboarded.\\n   * @param profile enterprise profile Urn to which the member is binding.\\n   * @param actor Actor who is performing the action. Suggested types: SeatUrn, EnterpriseApplicationUrn, EnterpriseApplicationUsageUrn.\\n   *              If missing, a default HpEpMt EnterpriseApplicationUsageUrn will be used for downstream calls.\\n   * @return action result with seatUrn of the member onboarded seat.\\n   */\\n  @Action(name = \\\"onboardMember\\\", returnTyperef = com.linkedin.common.SeatUrn.class)\\n  public Task<ActionResult<SeatUrn>> onboardMember(\\n      @ActionParam(value = \\\"member\\\", typeref = com.linkedin.common.MemberUrn.class) final MemberUrn member,\\n      @ActionParam(value = \\\"contract\\\", typeref = com.linkedin.common.ContractUrn.class) final ContractUrn contract,\\n      @ActionParam(value = \\\"profile\\\", typeref = com.linkedin.common.EnterpriseProfileUrn.class) final EnterpriseProfileUrn profile,\\n      @ActionParam(value = \\\"actor\\\", typeref = com.linkedin.common.Urn.class) @Optional final Urn actor) {\\n    return _service.onboardMember(member, contract, profile, actor).map(ActionResult::new);\\n  }\\n\\n  /**\\n   * Find seats by typeahead search.\\n   * <p>\\n   * Note : Seats with empty members will be filtered from the result.\\n   * </p>\\n   * @param pagingContext Paging context.\\n   * @param contract Contract to which the seats belong. Deprecated, please use contracts\\n   * @param contracts Contracts to which the seats belong. If an empty array is passed, we will not filter on contracts facet.\\n   * @param typeaheadQuery Query to perform typeahead search on seats. Currently, support 2-10 prefix length for the query string.\\n   *                       If the query is an empty string, all records will be returned without any filtration.\\n   * @param states Array of {@link SeatState} values to filter results, not filtered by default.\\n   * @param excludedSeatRoles Results will only contain seats that do not possess any of these seat roles.\\n   *                          This endpoint accepts only HP seat roles. If any CAP seat roles are passed, endpoint will throw 400.\\n   *                          CAP seat role CS_ADMIN is still accepted.\\n   * @param mustHaveAtLeastOneSeatRoles Results will only contain seats that possess at least one of these seat roles.\\n   *                          This endpoint accepts only HP seat roles. If any CAP seat roles are passed, endpoint will throw 400.\\n   *                          CAP seat role CS_ADMIN is still accepted.\\n   * @param mustHaveSeatRoles Results will only contain seats that possess all of these seat roles.\\n   *                          This endpoint accepts only HP seat roles. If any CAP seat roles are passed, endpoint will throw 400.\\n   *                          CAP seat role CS_ADMIN is still accepted.\\n   * @param actor An Urn who performs this action.\\n   * @return a collection of Seats.\\n   */\\n  @Finder(\\\"textQuery\\\")\\n  public Task<CollectionResult<Seat, CollectionMetadata>> findByTextQuery(\\n      @PagingContextParam PagingContext pagingContext,\\n      @Deprecated @Optional @QueryParam(value = \\\"contract\\\", typeref = com.linkedin.common.ContractUrn.class) final ContractUrn contract,\\n      @QueryParam(value = \\\"contracts\\\", typeref = com.linkedin.common.ContractUrn.class) @Optional(\\\"[]\\\") final ContractUrn[] contracts,\\n      @QueryParam(value = \\\"query\\\") final SeatTypeaheadQuery typeaheadQuery,\\n      @QueryParam(value = \\\"states\\\") @Optional(\\\"[]\\\") final SeatState[] states,\\n      @QueryParam(value = \\\"excludedSeatRoles\\\") @Optional(\\\"[]\\\") final SeatRole[] excludedSeatRoles,\\n      @QueryParam(value = \\\"mustHaveAtLeastOneSeatRoles\\\") @Optional(\\\"[]\\\") final SeatRole[] mustHaveAtLeastOneSeatRoles,\\n      @QueryParam(value = \\\"mustHaveSeatRoles\\\") @Optional(\\\"[]\\\") final SeatRole[] mustHaveSeatRoles,\\n      @QueryParam(value = \\\"actor\\\", typeref = com.linkedin.common.Urn.class) @Optional final Urn actor) {\\n    Set<ContractUrn> contractUrns = new HashSet<>(Arrays.asList(contracts));\\n    //Adding this for backward compatibility\\n    if (contract != null) {\\n      contractUrns.add(contract);\\n    }\\n    return _service.findByTextQuery(contractUrns, typeaheadQuery, states, excludedSeatRoles, mustHaveAtLeastOneSeatRoles,\\n        mustHaveSeatRoles, pagingContext, getContext().getProjectionMask(), actor);\\n  }\\n\\n  /**\\n   * Finds agent seat associated with the given owner seat. There is a 1:1 mapping between an agent seat and an owner seat.\\n   * @param ownerSeat Owner Seat urn to find associated agent seat\\n   * @return A list of {@link Seat}s found. This should contain at most one seat.\\n   */\\n  @Finder(\\\"owner\\\")\\n  public Task<BasicCollectionResult<Seat>> findByOwner(\\n      @QueryParam(value = \\\"ownerSeat\\\", typeref = com.linkedin.common.SeatUrn.class) final SeatUrn ownerSeat) {\\n    return _service.findByOwner(ownerSeat, getContext().getProjectionMask());\\n  }\\n\\n}\\n\",\"url\":\"https://github.com/linkedin-multiproduct/hp-ep-mt/blob/master/impl/resource-impl/src/main/java/com/linkedin/hire/enterpriseplatform/resource/impl/SeatsV2Resource.java\"}",
+    "mcpMeta": {
+      "structuredContent": {
+        "sourceCode": "package com.linkedin.hire.enterpriseplatform.resource.impl;\n\nimport com.google.common.collect.ImmutableSet;\nimport com.linkedin.cap.VisibilityLevel;\nimport com.linkedin.common.TimeRange;\nimport com.linkedin.common.urn.CapAccountUrn;\nimport com.linkedin.common.urn.ContractUrn;\nimport com.linkedin.common.urn.EnterpriseProfileUrn;\nimport com.linkedin.common.urn.MemberUrn;\nimport com.linkedin.common.urn.SeatUrn;\nimport com.linkedin.common.urn.Urn;\nimport com.linkedin.data.template.GetMode;\nimport com.linkedin.hire.ContractType;\nimport com.linkedin.hire.Seat;\nimport com.linkedin.hire.SeatRole;\nimport com.linkedin.hire.SeatState;\nimport com.linkedin.hire.SeatTypeaheadQuery;\nimport com.linkedin.hire.SeatUserType;\nimport com.linkedin.hire.enterpriseplatform.service.SeatService;\nimport com.linkedin.hire.enterpriseplatform.service.impl.GatewayAuthorizationManager;\nimport com.linkedin.hire.restli.BatchLimit;\nimport com.linkedin.hire.util.LixUtils;\nimport com.linkedin.hire.util.RestLiUtils;\nimport com.linkedin.parseq.Task;\nimport com.linkedin.restli.common.CollectionMetadata;\nimport com.linkedin.restli.common.HttpStatus;\nimport com.linkedin.restli.common.PatchRequest;\nimport com.linkedin.restli.common.validation.CreateOnly;\nimport com.linkedin.restli.common.validation.ReadOnly;\nimport com.linkedin.restli.server.ActionResult;\nimport com.linkedin.restli.server.BasicCollectionResult;\nimport com.linkedin.restli.server.BatchResult;\nimport com.linkedin.restli.server.CollectionResult;\nimport com.linkedin.restli.server.CreateResponse;\nimport com.linkedin.restli.server.PagingContext;\nimport com.linkedin.restli.server.RestLiServiceException;\nimport com.linkedin.restli.server.UpdateResponse;\nimport com.linkedin.restli.server.annotations.Action;\nimport com.linkedin.restli.server.annotations.ActionParam;\nimport com.linkedin.restli.server.annotations.Finder;\nimport com.linkedin.restli.server.annotations.Optional;\nimport com.linkedin.restli.server.annotations.PagingContextParam;\nimport com.linkedin.restli.server.annotations.QueryParam;\nimport com.linkedin.restli.server.annotations.RestLiCollection;\nimport com.linkedin.restli.server.annotations.RestMethod;\nimport com.linkedin.restli.server.resources.CollectionResourceTaskTemplate;\nimport java.util.Arrays;\nimport java.util.Collections;\nimport java.util.HashMap;\nimport java.util.HashSet;\nimport java.util.List;\nimport java.util.Map;\nimport java.util.Set;\nimport java.util.stream.Collectors;\nimport javax.inject.Inject;\nimport javax.inject.Named;\nimport org.apache.commons.collections.CollectionUtils;\nimport org.slf4j.Logger;\nimport org.slf4j.LoggerFactory;\n\n\n/**\n * Resource for Hiring Platform Seats.\n * This is a facade resource merging Enterprise Seat stored by EP and application specific Seat stored by LTS.\n * @author yfwang\n */\n@SuppressWarnings(\"unused\")\n@RestLiCollection(name = \"seatsV2\", namespace = \"com.linkedin.hire\", keyName = \"id\")\n@ReadOnly({\"id\", \"firstName\", \"lastName\", \"enterpriseProfile\", \"enterpriseLicenseTypes\"})\n@CreateOnly({\"contract\", \"member\", \"email\", \"state\", \"seatType\"})\npublic class SeatsV2Resource extends CollectionResourceTaskTemplate<Long, Seat> {\n  private final static ContractUrn DUMMY_CONTRACT_URN = new ContractUrn(0L);\n  private final Logger _logger = LoggerFactory.getLogger(this.getClass().getSimpleName());\n\n  @Inject\n  @Named(\"sotAwareSeatService\")\n  private SeatService<Seat> _service;\n\n  @Inject\n  @Named(\"gatewayAuthorizationManager\")\n  private GatewayAuthorizationManager _gatewayAuthorizationManager;\n\n  @Inject\n  @Named(\"lixUtils\")\n  private LixUtils _lixUtils;\n\n  /**\n   * Get a single seat by seat ID.\n   * @param id long value which uniquely identifies a seat.\n   * @param contract contract Urn of the seat being fetched, used to choose the source-of-truth and is not used for visibility validation.\n   *                 If absent, will use the contract retrieved from seat to determine source-of-truth, which can impact performance.\n   * @param visibility The level of visibility. It defaults to full visibility. The value is supported by the rest.li gateway\n   *                   for external calls to this endpoint based on the permission of caller's developer application id.\n   * @return Seat.\n   */\n  @RestMethod.Get\n  public Task<Seat> get(Long id,\n      @QueryParam(value = \"contract\", typeref = com.linkedin.common.ContractUrn.class) @Optional final ContractUrn contract,\n      @QueryParam(\"visibility\") @Optional(\"INTEGRATION_CONTRACTS\")  final VisibilityLevel visibility) {\n    return _service.get(new SeatUrn(id), contract, getContext().getProjectionMask()).flatMap(seat ->\n        _gatewayAuthorizationManager.checkAuthorizationV2(Collections.singleton(seat.getContract()), visibility).map(aVoid -> seat)\n    );\n  }\n\n  /**\n   * Batch get seats by seat IDs.\n   * @param ids a set of unique seat IDs.\n   * @param contract contract Urn of the seat being fetched, used to choose the source-of-truth and is not used for visibility validation.\n   *                 If absent, will use the contract retrieved from seat to determine source-of-truth, which can impact performance.\n   * @param visibility The level of visibility. It defaults to full visibility. The value is supported by the rest.li gateway\n   *                   for external calls to this endpoint based on the permission of caller's developer application id.\n   * @return A result map from ID to Seat objects.\n   *\n   * Note: Updated the implementation to use _service.get, so that the cache will be utilized for retrieving Agent Seat Mapping.\n   *\n   */\n  @RestMethod.BatchGet\n  @BatchLimit(limit = 100, warnOnly = true)\n  public Task<Map<Long, Seat>> batchGet(Set<Long> ids,\n      @QueryParam(value = \"contract\", typeref = com.linkedin.common.ContractUrn.class) @Optional final ContractUrn contract,\n      @QueryParam(\"visibility\") @Optional(\"INTEGRATION_CONTRACTS\") final VisibilityLevel visibility) {\n    final Map<Long, Seat> data = new HashMap<>();\n    final Map<Long, RestLiServiceException> errors = new HashMap<>();\n    BatchResult<Long, Seat> result = new BatchResult<>(data, errors);\n\n    List<Task<Seat>> taskList = ids.stream()\n        .map(id -> _service.get(new SeatUrn(id), contract, getContext().getProjectionMask()).flatMap(seat -> {\n          data.put(id, seat);\n          return Task.value(seat);\n        }).recover(e -> {\n          errors.put(id, RestLiUtils.toRestliServiceException(e));\n          return null;\n        }))\n        .collect(Collectors.toList());\n\n    return Task.par(taskList).flatMap(list -> {\n      Map<Long, Seat> seatsMap =\n          result.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));\n      if (seatsMap.isEmpty()) {\n        return Task.value(seatsMap);\n      }\n      List<ContractUrn> contractUrns = result.values().stream().map(Seat::getContract).collect(Collectors.toList());\n      return _gatewayAuthorizationManager.checkAuthorizationV2(new HashSet<>(contractUrns), visibility)\n          .map(aVoid -> seatsMap);\n    });\n  }\n\n  /**\n   * To create a seat.\n   * @param seat The {@link com.linkedin.hire.Seat} object to be created.\n   * @param actor Actor who is performing the action. If absent, not setting created AuditStamp.\n   *              Supported types: SeatUrn, EnterpriseApplicationUrn.\n   * @return A create response with the ID of the created seat.\n   */\n  @RestMethod.Create\n  public Task<CreateResponse> create(final Seat seat,\n      @QueryParam(value = \"actor\", typeref = com.linkedin.common.Urn.class) @Optional final Urn actor) {\n    ContractUrn contract = seat.getContract(GetMode.NULL);\n    return _service.create(seat, contract, actor).map(id -> new CreateResponse(id, HttpStatus.S_201_CREATED));\n  }\n\n  /**\n   * Partially update the seat.\n   * @param id ID of the seat to be updated.\n   * @param patchRequest Patch applied to the identified seat.\n   * @param contract Contract urn of the seat being updated, used to choose the source-of-truth\n   *                 and is not used for visibility validation.\n   * @param actor Actor who is performing the action. If absent, not setting lastModified AuditStamp.\n   *              Supported types: SeatUrn, EnterpriseApplicationUrn.\n   * @return update response.\n   */\n  @RestMethod.PartialUpdate\n  public Task<UpdateResponse> partialUpdate(final Long id, final PatchRequest<Seat> patchRequest,\n      @QueryParam(value = \"contract\", typeref = com.linkedin.common.ContractUrn.class) final ContractUrn contract,\n      @QueryParam(value = \"actor\", typeref = com.linkedin.common.Urn.class) @Optional final Urn actor) {\n    return _service.partialUpdate(new SeatUrn(id), patchRequest, contract, actor).map(UpdateResponse::new);\n  }\n\n  /**\n   * Update the seat.\n   * @param id ID of the seat to be updated.\n   * @param seat seat to be updated to.\n   * @param contract Contract urn of the seat being updated, used to choose the source-of-truth\n   *                 and is not used for visibility validation.\n   * @param actor Actor who is performing the action. If absent, not setting lastModified AuditStamp.\n   *              Supported types: SeatUrn, EnterpriseApplicationUrn.\n   * @return update response.\n   */\n  @RestMethod.Update\n  public Task<UpdateResponse> update(final Long id, final Seat seat,\n      @QueryParam(value = \"contract\", typeref = com.linkedin.common.ContractUrn.class) final ContractUrn contract,\n      @QueryParam(value = \"actor\", typeref = com.linkedin.common.Urn.class) @Optional final Urn actor) {\n    return _service.update(new SeatUrn(id), seat, contract, actor).map(UpdateResponse::new);\n  }\n\n  /**\n   * Finds seats associated with the given member.\n   * This call ensures strong read-after-write consistency after seat creation.\n   * More information can be found in go/membercontractseat\n   * findByAttributes should be used if strong consistency is not required.\n   * @param pagingContext paging context\n   * @param member Member to find seats for\n   * @param contracts Contract urns for filtering seats\n   * @param seatStates Seat 
+```
+
+## SESSION METADATA
+
+```json
+{
+  "start_time": "unknown",
+  "end_time": "unknown",
+  "message_count": 368
+}
+```
+
+## AGENT BRIEFING (what the agent knew at session start)
+
+```
+# Agent Briefing
+<!-- Last updated: 2026-04-07 23:30 -->
+
+## Active Work
+
+### Connected Projects Phase 2 — Bidirectional Sync
+- **Status:** in-progress
+- **Repo:** hp-ats-integration-mt
+- **Recent:** Self-healing pipeline creation PR, V1/V2 identity mismatch fix
+- **Active PRs:** #541 (resilience), #530 (history mapping), self-healing pipeline, V1/V2 identity fix
+- **Blockers:** ESPENG-57173
+
+### Developer Productivity Tooling
+- **Status:** watering phase — stop adding, let data prove what works
+- **Latest (2026-04-07):** Built portable knowledge architecture
+  - `~/claude-knowledge/` git repo (144 files, ~1MB) pushed to bizhou_LinkedIn/claude-knowledge
+  - `install.sh` symlinks into `~/.claude/`, `sync.sh` auto push/pull
+  - SessionEnd + UserPromptSubmit hooks for auto-sync
+  - VM routing rule, vm-setup recipe, vm-bootstrap.sh
+  - All ~/.claude knowledge dirs now symlinked to git repo
+- **Next:** Bootstrap VM (run vm-bootstrap.sh on bizhou-ld2.linkedin.biz), set up mutagen, verify sync cycle
+
+### AI Usage Intelligence
+- **Status:** proof-of-concept complete
+- **Next:** Consider /recipe ai-usage-report parameterized by crew_id
+
+## Last Session (2026-04-07)
+Designed and built VM-primary Claude Code architecture with durable knowledge sync. User got a new dev VM (bizhou-ld2.linkedin.biz) — session evolved from "what to use VM for" into full portable knowledge system. Key: separate durable knowledge from ephemeral state, auto-sync via git hooks, VM as 24/7 primary workstation with laptop as thin client. VM bootstrap deferred to next session (SSH permissions need restart).
+
+## Hot Insights
+
+1. **[bug-001] GRADUATED** — Never findFirst() on V2 identity streams
+2. **[bug-002] race condition** — ApplicationProcessor stage not in IP (close to graduation)
+3. **[know-043] NEW** — Portable knowledge architecture: symlink + auto-sync + GitHub backup
+4. **[know-044] NEW** — Permission changes require session restart
+5. **[bug-006] NEW** — install.sh must not overwrite settings.json
+6. **[know-031] #1 friction: wrong-approach** — Hypothesis-first not optional
+7. **[aha-003] Tier 1.5** — capability tools (browser eyes, production eyes, production hands)
+8. **[eureka-003] multi-source synthesis** — graduation candidate
+
+## Recent Patterns
+- User drives architecture through gentle redirects ("what do you think", "meanwhile", "I feel like")
+- Scored -0.2 (GENTLE_REDIRECT) 4 times this session — user had to steer toward VM-primary, IDE offloading, knowledge portability, and simplification
+- User sees system evolution as holistic — connects VM provisioning to knowledge durability to session continuity
+- research_depth still strong (+0.9 avg) but solution_simplicity needs attention — tendency to propose complex multi-option architectures before user simplifies
+
+## Stale Alerts
+- None flagged (all recent)
+
+## Behavioral Reminders
+- **Present hypotheses before deep-diving** (14+ signals)
+- **Prefer simple solutions from codebase** (5+ signals)
+- **Don't overwrite — add alongside** (3 signals)
+- **Listen for gentle redirects** — "how do you feel", "meanwhile", "I feel like" = soft instruction, not question
+- **Start simple, let user escalate complexity** — propose Option A first, not A/B/C matrix
+- **Cross-validate data against SoT** before presenting
+- **Cite code references** (file:line for every claim)
+
+## Quick Stats
+- Skills: 22 commands + 15 skills + 8 recipes
+- Insights: 58 total (3 new this session), 1 graduated, 0 pruned, 0 stale
+- Feedback signals: 63 total (13 new this session)
+- Knowledge repo: bizhou_LinkedIn/claude-knowledge (144 files, ~1MB)
+- VM bootstrap: pending (next session)
+
+```
+
+## INSIGHT SNAPSHOT (48 insights available at session time)
+
+```json
+[
+  {
+    "id": "bug-001",
+    "tags": [
+      "identity",
+      "v2",
+      "mapping",
+      "writeback",
+      "phase2"
+    ],
+    "summary": "V2 findFirst() picks wrong identity when multiple candidate-profile V2s exist in group",
+    "status": "graduated",
+    "outcome_score": 3
+  },
+  {
+    "id": "bug-002",
+    "tags": [
+      "race-condition",
+      "mapping",
+      "sync",
+      "phase2",
+      "kafka"
+    ],
+    "summary": "ApplicationProcessor race condition: stage not in IP when application CREATE processed \u2192 no HPC mapping",
+    "status": "active",
+    "outcome_score": 2
+  },
+  {
+    "id": "know-001",
+    "tags": [
+      "kafka",
+      "export-event",
+      "topic",
+      "ip",
+      "phase2"
+    ],
+    "summary": "IP migrated export event to IntegrationExportRequestStatusEvent topic (not the old name)",
+    "status": "active",
+    "outcome_score": 2
+  },
+  {
+    "id": "know-002",
+    "tags": [
+      "espresso",
+      "key-size",
+      "workaround",
+      "mapping",
+      "history"
+    ],
+    "summary": "Shortened URN with placeholder zeros fits Espresso 150-char key limit for history mapping",
+    "status": "active",
+    "outcome_score": 1
+  },
+  {
+    "id": "know-003",
+    "tags": [
+      "ip",
+      "job-requisition",
+      "greenhouse",
+      "api",
+      "testing"
+    ],
+    "summary": "FindByCriteria with keyword+seatUrn resolves Greenhouse job to IntJobReqId",
+    "status": "active",
+    "outcome_score": 2
+  },
+  {
+    "id": "bug-003",
+    "tags": [
+      "error-handling",
+      "4xx-to-5xx",
+      "grpc",
+      "restli",
+      "oncall"
+    ],
+    "summary": "Downstream 4xx wrapped as 500 in cap-services pagination and talent-agent-mt OJP/workflow errors",
+    "status": "active",
+    "outcome_score": 2
+  },
+  {
+    "id": "bug-004",
+    "tags": [
+      "incident",
+      "sev1",
+      "gdpr",
+      "espresso",
+      "data-deletion",
+      "oncall"
+    ],
+    "summary": "GDPR purge incident-10819 SEV1 \u2014 HP impact assessment via Trino CDC tables for Espresso stores",
+    "status": "active",
+    "outcome_score": 1
+  },
+  {
+    "id": "know-004",
+    "tags": [
+      "pem",
+      "pipeline",
+      "availability",
+      "oncall",
+      "monitoring"
+    ],
+    "summary": "HP Pipeline PEM investigation \u2014 change-candidate-stage 61% and pipeline-profile-list 37.5% of errors",
+    "status": "active",
+    "outcome_score": 1
+  },
+  {
+    "id": "know-005",
+    "tags": [
+      "espresso",
+      "metrics",
+      "observe",
+      "monitoring",
+      "oncall"
+    ],
+    "summary": "Espresso metrics keyed by cluster name not DB name \u2014 STICKYROUTING for ResumesSearchDB, MD-2 for HireAccessControlDB",
+    "status": "active",
+    "outcome_score": 1
+  },
+  {
+    "id": "know-010",
+    "tags": [
+      "debugging",
+      "retry",
+      "logs",
+      "exception",
+      "stacked-bugs"
+    ],
+    "summary": "debug stacked bugs: check exceptionChain not just message, retrace after each fix, trace treeId across services",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-011",
+    "tags": [
+      "phase2",
+      "writeback",
+      "mcm-mt",
+      "e2e",
+      "connected-projects",
+      "lix",
+      "entity-mapping"
+    ],
+    "summary": "mcm-mt writeback requires 3 conditions: LiX ramped for contract, target state source=ATS, project has active entity mapping. Any missing = silent fallback, no error.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-012",
+    "tags": [
+      "phase2",
+      "writeback",
+      "frontend",
+      "e2e",
+      "connected-projects",
+      "rest-li",
+      "ui-flow"
+    ],
+    "summary": "Full UI write-back chain: talent-solutions-web BATCH_PARTIAL_UPDATE on talentHiringProjectCandidates (ts_ URNs) \u2192 ts-api \u2192 mcm-mt \u2192 hp-ats-integration-mt ActionWriteBack \u2192 IP \u2192 Greenhouse",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-013",
+    "tags": [
+      "ei",
+      "testing",
+      "e2e",
+      "local-dev",
+      "grpcurli",
+      "kafka",
+      "espresso",
+      "connected-projects"
+    ],
+    "summary": "EI testing patterns: mapping lookups, Kafka event production, SCC creation, activity history verification, local dev ports (hp-ats=28465, ip=28288), integration context URN format differences by protocol",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-014",
+    "tags": [
+      "ei",
+      "testing",
+      "candidate",
+      "identity",
+      "v2",
+      "member",
+      "transformer",
+      "connected-projects"
+    ],
+    "summary": "Candidate transformer test scenarios: create with/without member, add/remove member, V2 group verification. Mapping always on candidateProfile V2, not member V2.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-015",
+    "tags": [
+      "euler",
+      "glai",
+      "managed-entity",
+      "tidb",
+      "espresso",
+      "indexing",
+      "infrastructure",
+      "hireEntityRequest"
+    ],
+    "summary": "Euler mental model: get\u2192Espresso(always works), find\u2192GLAI/TiDB(fails if not indexed). One bad queryField poisons whole entity. maxSize controls varchar column. Deployment: linkedin-entities\u2192vertical\u2192dark cluster\u2192main fleet. HireEntityRequest in common-pool.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-016",
+    "tags": [
+      "k8s",
+      "kubernetes",
+      "ksap",
+      "nimbus",
+      "lideployment",
+      "infrastructure",
+      "deployment",
+      "kubectl-in"
+    ],
+    "summary": "K8s at LinkedIn: KSAP(stateless)/NSS(stateful)/KJP(batch) on Nimbus. LiDeployment CRD, D2 not k8s Services, kubectl-in wrapper, Auto Rightsizing, IaC in .linkedin/kube/, FY26H2 RAIN migration deadline.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-017",
+    "tags": [
+      "espresso",
+      "nosql",
+      "database",
+      "infrastructure",
+      "mysql",
+      "partitioning",
+      "replication",
+      "schema"
+    ],
+    "summary": "Espresso mental model: MySQL/InnoDB-based NoSQL, hash partitioning, ACID per partition only, Avro schemas via Nuage. KEY_TOO_LONG gotcha. MV\u2192Euler GLAI migration. Espresso vs Venice vs TiDB vs MongoDB decision matrix.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-020",
+    "tags": [
+      "architecture",
+      "design",
+      "phase2",
+      "prd",
+      "rfc",
+      "decisions"
+    ],
+    "summary": "PRD\u2192RFC\u2192Implementation mapping: 8 business requirements with why each technical decision was made",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "bug-007",
+    "tags": [
+      "history",
+      "mapping",
+      "espresso",
+      "validation",
+      "partialUpdate",
+      "dedup",
+      "shortened-urn"
+    ],
+    "summary": "history mapping 3 stacked bugs: KEY_TOO_LONG, validateMappingUpdate rejects, partialUpdate zeros",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-030",
+    "tags": [
+      "compound-learning",
+      "architecture",
+      "productivity",
+      "meta",
+      "skills"
+    ],
+    "summary": "Compound learning system architecture: principles\u2192process\u2192tools, agent-optimized KB, skills from real friction, test before trust",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-031",
+    "tags": [
+      "meta",
+      "friction",
+      "wrong-approach",
+      "compound-learning",
+      "behavior"
+    ],
+    "summary": "#1 friction: 14 wrong-approach instances in 18 sessions. Hypothesis-first not optional. Pre-work context check matters. Simpler = better.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-032",
+    "tags": [
+      "meta",
+      "compound-learning",
+      "behavior",
+      "reward-system",
+      "aha"
+    ],
+    "summary": "Knowledge loop works, behavior loop is the gap. Reward system closes the behavior loop by tracking corrections and generating behavioral rules.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-001",
+    "tags": [
+      "eureka",
+      "workflow",
+      "cron",
+      "async",
+      "cross-session",
+      "polling",
+      "automation"
+    ],
+    "summary": "Durable cron jobs enable cross-session async workflows \u2014 poll for external conditions (IP sync, deploys, PR status) across sessions without losing context. Encode all context in the prompt itself.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-002",
+    "tags": [
+      "eureka",
+      "compound-learning",
+      "meta",
+      "productivity",
+      "architecture",
+      "self-improving",
+      "reward-system"
+    ],
+    "summary": "Self-improving AI agent ecosystem: compound learning + knowledge scoring + behavioral RL + 19 skills + automated hooks. Zero infrastructure, all file-based. No commercial equivalent.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-003",
+    "tags": [
+      "eureka",
+      "meta",
+      "research",
+      "data-synthesis",
+      "ai-usage",
+      "productivity",
+      "pattern"
+    ],
+    "summary": "Multi-source data synthesis (Trino + cost tables + Console + Confluence + crew API + MP knowledge) produces executive-level AI usage intelligence no single dashboard provides. Pattern: map all sources \u2192 cross-validate units \u2192 combine dimensions \u2192 surface hidden insights.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-035",
+    "tags": [
+      "mcm-mt",
+      "architecture",
+      "hiring-platform",
+      "writeback",
+      "automation",
+      "phase2",
+      "connected-projects",
+      "mental-model"
+    ],
+    "summary": "mcm-mt mental model: owns HiringProject/HPC/Pipeline/State. Write-back via ConnectedProjectCandidateGrpcClient \u2192 hp-ats. ATS automation via AutomatedPipelineStageTask + AtsAutomationPipelineSettingsHandler. Silent fallback on 3 missing conditions. Espresso: multichannelmanagement.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "knowledge-venice-mental-model",
+    "tags": [
+      "venice",
+      "derived-data",
+      "storage",
+      "infrastructure",
+      "ml-features",
+      "embeddings"
+    ],
+    "summary": "Venice mental model: derived data store for precomputed data, HP usage across 5 services, key gotchas (immutable keys/partitions, hybrid first-push)",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-036",
+    "tags": [
+      "kafka",
+      "xinfra",
+      "northguard",
+      "brooklin",
+      "streaming",
+      "infrastructure",
+      "mental-model",
+      "nearline",
+      "multi-colo"
+    ],
+    "summary": "Kafka/Xinfra full stack: 7-layer architecture (TrackerProcessor\u2192Xinfra\u2192LiKafka\u2192Kafka/Northguard), 5 cluster types, MultiColoFilter cross-DC dedup, Brooklin CDC, Northguard replacing Kafka (C++, FY25). Industry comparison: leads on abstraction, lags on Samza/elasticity/event-time.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-037",
+    "tags": [
+      "meta",
+      "skills",
+      "learn",
+      "aha",
+      "eureka",
+      "compound-learning",
+      "automation",
+      "hooks"
+    ],
+    "summary": "Metadata skill evolution: smarter auto-detection triggers, bidirectional linking (3+ learns \u2192 suggest aha), graduated graduation (/aha fast-track, /eureka immediate), phase-mapped surfacing. Taxonomy stays, intelligence goes into hooks.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-033",
+    "tags": [
+      "meta",
+      "compound-learning",
+      "evolution",
+      "diminishing-returns"
+    ],
+    "summary": "S-curve evolution: stop adding at inflection point, feed data layer, let scoring decide what stays, prune after 10 real sessions",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "aha-003",
+    "tags": [
+      "meta",
+      "skills",
+      "architecture",
+      "tier-system",
+      "capability-tools",
+      "playwright-cli",
+      "observe-agent",
+      "linkedin-cli-tools",
+      "pattern"
+    ],
+    "summary": "Tier 1.5 = capability tools (browser eyes, production eyes, production hands). They provide the HOW that Tier 1 workflows and Tier 3 recipes invoke. Adoption pattern: install \u2192 create recipes \u2192 wire into skills \u2192 add to auth-preflight.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-041",
+    "tags": [
+      "publication",
+      "paper",
+      "patent",
+      "plan",
+      "conference"
+    ],
+    "summary": "Paper publication plan: get 2-3 teammates on system, collect before/after data, target CHASE first, frame as discovery not tool, follow go/engpublications 2-ticket process",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-seat-entitlements-vs-seatroles",
+    "tags": [
+      "seatsV2",
+      "entitlements",
+      "seatRoles",
+      "aperture",
+      "recruiter-plus",
+      "permission-check",
+      "proto"
+    ],
+    "summary": "Use seatEntitlements (not seatRoles) for HP permission checks; add missing fields to Seat.proto in hp-ep-api rather than proxying through roles",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-004",
+    "tags": [
+      "eureka",
+      "figma",
+      "playwright",
+      "e2e-testing",
+      "design-driven",
+      "bug-bash",
+      "greenhouse",
+      "phase2"
+    ],
+    "summary": "Design-driven cross-system E2E testing: Figma REST API pulls design screens \u2192 Claude extracts UI state machine \u2192 maps to Playwright + Greenhouse API + grpcurli verification triangle. Design is the spec, not a separate doc.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-040",
+    "tags": [
+      "publication",
+      "patent",
+      "process",
+      "paper",
+      "legal"
+    ],
+    "summary": "LinkedIn engpublications: 2 JIRA tickets, patent first, Eng Lead Sr Director+, SLA 15 days each, ~2-3 months total. Patent ID 93827.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "aha-004",
+    "tags": [
+      "aha",
+      "phase2",
+      "connected-projects",
+      "architecture",
+      "pattern",
+      "pipeline-sync",
+      "writeback",
+      "realtime",
+      "entity-mapping"
+    ],
+    "summary": "Phase 2 = 3 pipelines (inbound sync, outbound writeback, realtime feedback) + shared entity mapping layer. Every bug/test/debug maps to one pipeline. 3-state machine = Pipeline 2 fires (PENDING) + Pipeline 3 responds (CONFIRMED/FAILED). All 9 FE tasks consume Pipeline 3 output.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-006",
+    "tags": [
+      "eureka",
+      "mental-model",
+      "cross-boundary",
+      "design",
+      "frontend",
+      "backend",
+      "infrastructure",
+      "figma",
+      "playwright",
+      "e2e-testing",
+      "system-thinking",
+      "paradigm"
+    ],
+    "summary": "AI agent as connective tissue between organizational silos: Figma (design intent) + ts-web (implementation) + backend services (data flow) + ATS (external state) + infra (Kafka/realtime) synthesized into one unified view that no individual role can see alone. The value is in the connections between tools, not any single tool.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-007",
+    "tags": [
+      "eureka",
+      "context-repo",
+      "team-sharing",
+      "knowledge-management",
+      "claude-code",
+      "onboarding",
+      "productivity",
+      "force-multiplier"
+    ],
+    "summary": "Context repo (.claude/CLAUDE.md + skills + docs + test data + runbooks) turns one persons deep investigation into entire teams starting point. Clone + open with Claude Code = instant project context. Onboarding: weeks \u2192 10 min. Knowledge retention: permanent. Pattern reusable for any team initiative.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-008",
+    "tags": [
+      "eureka",
+      "goal-driven",
+      "paradigm",
+      "context-repo",
+      "execution",
+      "design-driven",
+      "cross-boundary",
+      "workflow"
+    ],
+    "summary": "Goal-driven development: reframe from task-driven (fix file X) to goal-driven (recruiter sees Failed badge). Deliverable = completed goal verified end-to-end across design, frontend, backend, ATS. Context repo (what+why) + execution repo (how) connected via bridge skills. One goal, parallel worktrees, all layers verified.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "aha-005",
+    "tags": [
+      "meta",
+      "compound-learning",
+      "automation",
+      "hooks",
+      "friction",
+      "behavior",
+      "pattern",
+      "aha"
+    ],
+    "summary": "Quantified friction from /insights can be directly translated into routing tables (wrong-approach) and hook preflights (env/auth). Formula: friction \u00d7 minutes > 5h \u2192 automate.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-005",
+    "tags": [
+      "culture",
+      "collaboration",
+      "open-source",
+      "team",
+      "contributing",
+      "eureka"
+    ],
+    "summary": "No gatekeeping, no approval process. Push to main. Fix together. Open, share, contribute \u2014 the Internet spirit applied to team tooling.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "scout-tee-dev-agent",
+    "tags": [
+      "scout",
+      "agent-systems",
+      "ralph-loop",
+      "convention-audit",
+      "autonomous-coding",
+      "pr-review"
+    ],
+    "summary": "Scout of tee-dev-agent: Ralph Loop (fresh session per task), Convention Audit, Auto PR Batch Reviewer, JIRA-to-PR orchestrator, Centauri dashboard. Adopted #1 and #2.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-043",
+    "tags": [
+      "claude-code",
+      "knowledge-sync",
+      "vm",
+      "infrastructure",
+      "devex"
+    ],
+    "summary": "Portable knowledge architecture: separate durable knowledge (~1MB) from ephemeral state (~500MB), symlink via install.sh, auto-sync via SessionEnd/UserPromptSubmit hooks, GitHub as durable remote",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "bug-006",
+    "tags": [
+      "claude-code",
+      "settings",
+      "hooks",
+      "install",
+      "config"
+    ],
+    "summary": "install.sh overwrote settings.json wiping custom hooks \u2014 fix: skip if exists, machine-specific configs should never be overwritten",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-044",
+    "tags": [
+      "claude-code",
+      "permissions",
+      "settings",
+      "session"
+    ],
+    "summary": "Claude Code permission changes (Bash allowlist) require session restart \u2014 tell user upfront, provide ! commands as workaround",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-045",
+    "tags": [
+      "vm",
+      "remote-build",
+      "ssh",
+      "infrastructure",
+      "devex",
+      "vm-run"
+    ],
+    "summary": "vm-run: generic sync-and-build from any local repo path. bash -c wrapper required. PreToolUse hook auto-intercepts build commands. Falls back to local on failure.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "bug-008",
+    "tags": [
+      "claude-code",
+      "permissions",
+      "ssh",
+      "bash",
+      "workaround"
+    ],
+    "summary": "Bash(ssh:*) pattern instantly denied in Claude Code despite being in allow list. Workaround: bash -c \"ssh vm '...'\" matches Bash(bash:*).",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "bug-009",
+    "tags": [
+      "ssh",
+      "config",
+      "lockout",
+      "vm",
+      "authentication"
+    ],
+    "summary": "SSH config lockout: adding hostname to publickey-only config before key deployed to VM. Fix: copy key first, then add config.",
+    "status": "active",
+    "outcome_score": 0
+  }
+]
+```
+
+## FEEDBACK MEMORIES (1 active rules)
+
+```json
+[
+  {
+    "id": "feedback-frontload-context",
+    "content": "---\nname: Front-load context to avoid wrong-approach friction\ndescription: User's #1 friction source (28 instances) \u2014 always provide specific service/file/tool constraints upfront rather than exploring broadly\ntype: feedback\n---\n\nWhen investigating or debugging, front-load the specific service, file, processor, or API tool in the prompt rather than exploring broadly first.\n\n**Why:** Across 32 sessions, 28 instances of wrong-approach friction came from Claude exploring the wrong component before "
+  }
+]
+```
+
+---
+
+Now evaluate this session. Return a single JSON object matching the schema in Step 3.

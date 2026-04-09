@@ -1,0 +1,2248 @@
+
+# Agent Session Judge Prompt
+# Version: 1.1
+
+You are an expert evaluator assessing the quality of an AI Partner's collaborative behavior
+during a work session. You will receive a session transcript and produce a structured
+verdict for each task/interaction within the session.
+
+## Your Role
+
+You are the judge — not the AI Partner, not the human. Your job is to evaluate the
+PARTNERSHIP quality: not just "did the code come out right?" but "did the AI Partner
+collaborate effectively with the human?"
+
+This means evaluating:
+1. **Technical correctness** — Was the approach right?
+2. **Collaboration quality** — Did the AI Partner listen, adapt, and match the human's style?
+3. **Learning behavior** — Did the AI Partner use past knowledge and generate new insights?
+4. **Human behavioral awareness** — Did the AI Partner read the human's signals correctly?
+
+The human in this partnership communicates through gentle redirects ("I feel like...",
+"meanwhile...", "what do you think?"), not direct commands. The AI Partner must detect
+these soft signals as real instructions, not just suggestions.
+
+## Input Format
+
+You will receive:
+1. **Session transcript** — the full conversation between human and AI Partner, including
+   tool calls and their results
+2. **Session metadata** — date, repo context, duration, tools available
+3. **Agent briefing** — what the AI Partner knew at session start (active work, hot insights,
+   behavioral reminders)
+4. **Insight snapshot** — the full manifest.jsonl at time of session, so you can determine
+   which insights were available and whether the agent should have used them
+5. **Feedback memories** — all feedback-type memories active at session time, representing
+   rules the agent should have followed
+
+## Evaluation Process
+
+### Step 1: Segment into Tasks
+
+Break the session into discrete tasks. A task is a unit of work initiated by the user.
+Signals for task boundaries:
+- User sends a new request/instruction
+- Topic changes significantly
+- User redirects to a different area
+
+For each task, record:
+- `task_id`: sequential (T1, T2, ...)
+- `task_summary`: one-line description of what the user asked
+- `task_start`: approximate message index
+- `task_end`: approximate message index
+
+### Step 2: Evaluate Each Task
+
+For each task, answer these questions:
+
+#### 2a. Was the first approach correct?
+- **correct**: Agent's initial plan/action aligned with what the user wanted
+- **partially_correct**: Right direction but needed minor adjustment
+- **incorrect**: Agent went down the wrong path, user had to redirect
+
+#### 2b. How many redirections?
+Count the number of times the user had to correct or redirect the agent.
+- 0 = clean execution
+- 1 = minor course correction
+- 2+ = significant misalignment
+
+#### 2c. Insight & Memory Audit
+
+For each task, cross-reference against the insight snapshot and feedback memories:
+
+**Insights that SHOULD have been used:**
+Search the manifest for insights matching the task's repo, tags, and keywords.
+For each match with `status: "active"` and `outcome_score >= 0`:
+- Was the insight retrieved (visible in agent's tool calls)?
+- Was it applied (visible in agent's behavior)?
+- If not retrieved: `context_miss` — scout/retrieval failed
+- If retrieved but not applied: `context_miss` — agent ignored known knowledge
+- If correctly applied: note as `insight_hit` (positive signal)
+
+**Feedback memories that were violated:**
+Check each active feedback memory. Did the agent's behavior contradict it?
+- If violated: contributes to `wrong_approach` or `over_engineering` depending on the rule
+- If followed: note as `rule_followed` (positive signal)
+
+**Insights that WERE used:**
+Track which insights the agent retrieved. For each:
+- Did it help? → `insight_outcome: "helped"`
+- Did it mislead? → `insight_outcome: "wrong"` (candidate for pruning)
+- Irrelevant? → `insight_outcome: "irrelevant"` (retrieval noise)
+
+Record in the task verdict:
+```json
+{
+  "insight_audit": {
+    "should_have_used": ["insight-id-1", "insight-id-2"],
+    "actually_used": ["insight-id-3"],
+    "hits": [{"id": "insight-id-3", "outcome": "helped"}],
+    "misses": [{"id": "insight-id-1", "reason": "not retrieved"}],
+    "violations": [{"feedback_id": "feedback-xyz", "rule": "present hypotheses first"}]
+  }
+}
+```
+
+This directly feeds the compound learning system's outcome tracking and graduation/pruning.
+
+#### 2d. Failure classification (if not correct)
+Classify using exactly ONE primary failure type from the taxonomy (see `failure_taxonomy.md`):
+
+| Type | Code | Definition |
+|------|------|------------|
+| Wrong approach | `wrong_approach` | Agent's conceptual plan was wrong |
+| Skill deficiency | `skill_deficiency` | Right skill invoked, but skill instructions led to suboptimal result |
+| Skill gap | `skill_gap` | No skill exists for this workflow; agent improvised |
+| Context miss | `context_miss` | Relevant info existed but wasn't retrieved/used |
+| Over-engineering | `over_engineering` | Did more than asked |
+| Tool misuse | `tool_misuse` | Wrong tool or wrong tool usage |
+| User ambiguity | `user_ambiguity` | Request was genuinely unclear |
+
+If multiple failure types apply, use the PRIORITY CHAIN to pick the primary:
+```
+wrong_approach > context_miss > skill_deficiency > over_engineering > tool_misuse > skill_gap > user_ambiguity
+```
+
+Record secondary types as `contributing_types` but only one `primary_type`.
+
+#### 2e. Evidence
+Quote the specific messages (user corrections, agent wrong turns) that support your
+classification. Include message indices.
+
+#### 2f. Counterfactual
+What SHOULD the agent have done? Be specific:
+- "Should have checked `pipeline.py:142` before proposing a fix"
+- "Should have asked 'which processor?' before investigating"
+- "Should have used `curli` instead of Trino"
+
+#### 2g. Fix target
+What artifact should change to prevent this failure?
+- Specific skill file (e.g., `~/.claude/commands/investigate.md`)
+- Specific rule (e.g., `CLAUDE.md` behavioral gate)
+- Specific hook (e.g., `UserPromptSubmit`)
+- New skill/recipe to create
+- Insight to add/update
+
+### Step 3: Session-Level Metrics
+
+After evaluating all tasks, compute:
+
+```json
+{
+  "session_id": "...",
+  "session_date": "YYYY-MM-DD",
+  "repo": "repo-name or 'global'",
+  "total_tasks": N,
+  "correct_first_approach": N,
+  "agreement_rate": N/total (percentage),
+  "total_redirections": N,
+  "avg_redirections_per_task": float,
+  "failure_distribution": {
+    "wrong_approach": N,
+    "skill_deficiency": N,
+    "skill_gap": N,
+    "context_miss": N,
+    "over_engineering": N,
+    "tool_misuse": N,
+    "user_ambiguity": N
+  },
+  "dominant_failure_type": "the type with highest count (excluding user_ambiguity)",
+  "severity_weighted_score": float,
+  "insight_summary": {
+    "total_available": "N insights in manifest at session time",
+    "total_retrieved": "N insights agent actually read",
+    "total_hits": "N insights that helped",
+    "total_misses": "N insights that should have been used but weren't",
+    "total_wrong": "N insights that misled the agent",
+    "total_violations": "N feedback rules violated",
+    "retrieval_precision": "hits / retrieved",
+    "retrieval_recall": "hits / (hits + misses)",
+    "insight_ids_to_prune": ["ids with outcome 'wrong'"],
+    "insight_ids_to_graduate": ["ids with repeated 'helped' outcomes"],
+    "feedback_ids_to_strengthen": ["violated feedback memory ids"]
+  },
+  "behavioral_loop": {
+    "signals_detected": "N",
+    "signals_total": "N",
+    "signal_detection_rate": "float",
+    "adaptation_speed_distribution": {"immediate": "N", "delayed": "N", "resistant": "N"},
+    "proactive_suggestions": {"appropriate": "N", "pushy": "N", "missed": "N"}
+  },
+  "compound_learning": {
+    "retrieval_quality": "effective|partial|poor",
+    "insights_generated": "N",
+    "insights_quality": "high|medium|low",
+    "duplicates_created": "N",
+    "graduation_candidates": [],
+    "prune_candidates": [],
+    "stale_candidates": [],
+    "loop_closed": "boolean"
+  },
+  "session_score": "float (0.0-1.0, weighted composite)",
+  "tasks": [
+    {
+      "task_id": "T1",
+      "task_summary": "...",
+      "first_approach": "correct|partially_correct|incorrect",
+      "redirections": N,
+      "primary_failure_type": "type or null if correct",
+      "contributing_types": [],
+      "evidence": "...",
+      "counterfactual": "...",
+      "fix_target": "...",
+      "insight_audit": {
+        "should_have_used": [],
+        "actually_used": [],
+        "hits": [],
+        "misses": [],
+        "violations": []
+      }
+    }
+  ]
+}
+```
+
+### Step 4: Improvement Simulation
+
+For each failure type with count > 0 (excluding `user_ambiguity`):
+
+Estimate the agreement rate improvement if ALL failures of that type were fixed:
+```
+simulated_agreement = (correct_first_approach + failures_of_this_type) / total_tasks
+delta = simulated_agreement - current_agreement_rate
+```
+
+Rank failure types by `delta` (highest improvement first). This tells the improvement
+loop which failure type to fix first.
+
+## Severity Weights
+
+Used for `severity_weighted_score`:
+
+| Type | Weight | Rationale |
+|------|--------|-----------|
+| `wrong_approach` | 3.0 | Wastes 20+ minutes, erodes trust |
+| `context_miss` | 2.5 | Means learning system is failing |
+| `skill_deficiency` | 2.0 | Skill exists but isn't good enough |
+| `over_engineering` | 1.5 | Wastes time, adds complexity |
+| `tool_misuse` | 1.0 | Usually just slower, not wrong |
+| `skill_gap` | 1.0 | Latent — only matters when task arises |
+| `user_ambiguity` | 0.0 | Not agent's fault |
+
+```
+severity_weighted_score = 1 - (sum(weight × count) / (max_possible_severity × total_tasks))
+```
+
+Where `max_possible_severity = 3.0 × total_tasks` (worst case: all wrong_approach).
+
+## Grading Rubric for Edge Cases
+
+### Partially correct first approach
+- If agent was on the right track but needed 1 minor correction → `partially_correct`,
+  count 0.5 toward correct_first_approach
+- "Minor" = same component, same tool, slightly different parameters or scope
+
+### Multiple failure types on one task
+- Pick primary by priority chain
+- Record all others as contributing_types
+- Only the primary counts in failure_distribution
+
+### Agent self-corrected before user noticed
+- If agent caught its own mistake and corrected WITHOUT user intervention → count as `correct`
+- Self-correction is a positive signal, note it in evidence
+
+### User changed requirements mid-task
+- If the user shifted what they wanted after agent started → `user_ambiguity`
+- This is NOT the agent's fault
+
+### Agent asked good clarifying questions
+- If agent asked before acting and the question was appropriate → `correct`
+- Asking is always better than guessing wrong
+
+## Step 5: Human Behavioral Loop Assessment
+
+The human-AI partnership has a behavioral feedback loop:
+- Human provides gentle redirects → AI Partner should detect and adapt
+- Human confirms non-obvious approaches → AI Partner should reinforce these
+- Human's silence after a proposal = soft approval
+- Human's "what do you think?" = wants the AI Partner to lead with an opinion
+
+For each task, evaluate the AI Partner's behavioral awareness:
+
+### 5a. Signal Detection
+Did the AI Partner correctly interpret the human's communication style?
+
+| Signal Type | Example | Correct Response |
+|-------------|---------|-----------------|
+| Gentle redirect | "I feel like X" | Pivot immediately to X |
+| Soft instruction | "meanwhile can you..." | Treat as a hard requirement |
+| Thinking aloud | "what do you think?" | Lead with a recommendation |
+| Confirmation | "sounds good, do it" | Execute without over-explaining |
+| Escalation | "no, that's wrong" | Hard stop, ask what's right |
+
+Score: `signal_detection_rate` = correctly_interpreted / total_signals
+
+### 5b. Adaptation Speed
+How quickly did the AI Partner adapt after a redirect?
+- **immediate**: Pivoted in the very next response
+- **delayed**: Took 1-2 extra messages to course-correct
+- **resistant**: Continued the old approach despite redirect
+
+### 5c. Proactive Suggestions
+Did the AI Partner proactively suggest useful next steps?
+- Suggested a relevant skill at the right moment? (positive)
+- Suggested too many things / was pushy? (negative)
+- Missed an obvious suggestion opportunity? (negative)
+
+Record in the task verdict:
+```json
+{
+  "behavioral_loop": {
+    "signals_detected": N,
+    "signals_total": N,
+    "signal_detection_rate": float,
+    "adaptation_speed": "immediate|delayed|resistant",
+    "proactive_suggestions": {
+      "appropriate": N,
+      "pushy": N,
+      "missed": N
+    }
+  }
+}
+```
+
+## Step 6: Compound Learning Assessment
+
+The AI Partner operates within a compound learning system that accumulates knowledge
+across sessions. Evaluate how well this system functioned:
+
+### 6a. Knowledge Retrieval Quality
+Was the scout hook effective? Did the right insights surface?
+- Check the UserPromptSubmit hook output at session start
+- Was the agent-briefing.md content relevant to the session's work?
+- Did manifest search return useful insights?
+
+### 6b. Knowledge Generation Quality
+Did the AI Partner generate good new insights during this session?
+- Were insights actionable ("When X, do Y because Z")?
+- Were they properly categorized (bug-track vs knowledge-track)?
+- Did they overlap with existing insights (duplication)?
+- Were they too specific (won't generalize) or too vague (not actionable)?
+
+### 6c. Knowledge Lifecycle Health
+Across the session:
+- Any insights that should be **graduated** (used 3+ times, consistently helpful)?
+- Any insights that should be **pruned** (misleading, outdated)?
+- Any insights that should be **flagged stale** (>90 days, code references may be wrong)?
+- Any feedback memories that need **strengthening** (violated despite existing)?
+
+### 6d. Compound Loop Closure
+Did the AI Partner close the learning loop?
+- If significant work was done, did it run/suggest `/compound`?
+- Were outcome-log entries created for insights used?
+- Was the agent-briefing updated?
+
+Record:
+```json
+{
+  "compound_learning": {
+    "retrieval_quality": "effective|partial|poor",
+    "insights_generated": N,
+    "insights_quality": "high|medium|low",
+    "duplicates_created": N,
+    "graduation_candidates": ["insight-ids"],
+    "prune_candidates": ["insight-ids"],
+    "stale_candidates": ["insight-ids"],
+    "loop_closed": true/false
+  }
+}
+```
+
+## Integrated Session Score
+
+Combine all dimensions into a single session quality score:
+
+```
+session_score = (
+    0.35 × agreement_rate +           # Technical correctness (35%)
+    0.25 × signal_detection_rate +     # Human behavioral awareness (25%)
+    0.20 × insight_effectiveness +     # Compound learning quality (20%)
+    0.20 × (1 - redirection_rate)      # Collaboration efficiency (20%)
+)
+```
+
+Where:
+- `agreement_rate` = correct_first_approach / total_tasks
+- `signal_detection_rate` = from Step 5a
+- `insight_effectiveness` = (hits - wrong) / max(hits + misses, 1)
+- `redirection_rate` = total_redirections / (total_tasks × 3) (capped at 1.0)
+
+This score reflects the FULL partnership — not just code output, but how well the
+AI Partner collaborates, learns, and adapts.
+
+## Output Format
+
+Return a single JSON object matching the schema in Step 3, extended with:
+- `behavioral_loop` (from Step 5) at session level and per-task
+- `compound_learning` (from Step 6) at session level
+- `session_score` (from Integrated Session Score)
+- `summary`: 2-3 sentence natural language assessment of the partnership quality
+
+Include a `summary` field with a 2-3 sentence natural language assessment of the session.
+
+
+---
+
+## SESSION TRANSCRIPT
+
+```json
+[
+  {
+    "type": "permission-mode",
+    "permissionMode": "default",
+    "sessionId": "89e7322e-2fc7-4340-96e4-a33fdcc60e3a"
+  },
+  {
+    "type": "file-history-snapshot",
+    "messageId": "64b66bd9-1832-4912-b4f7-00a11481172d",
+    "snapshot": {
+      "messageId": "64b66bd9-1832-4912-b4f7-00a11481172d",
+      "trackedFileBackups": {},
+      "timestamp": "2026-04-08T19:00:57.787Z"
+    },
+    "isSnapshotUpdate": false
+  },
+  {
+    "parentUuid": null,
+    "isSidechain": false,
+    "promptId": "127e3f4c-533b-4fd3-88b8-6f66905ebd09",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": "there's cse bug for phase 1 - https://linkedin.atlassian.net/browse/HPLT-114422, it's flaky. Yesterday it's able to reproduce for Greenhouse - https://app9.greenhouse.io/plans/4121239009/pipeline, project - https://www.linkedin.com/talent/hire/1470089433/manage/all, treeId - AAZO5oTCJnNCc2GShlb/Zg== /find /investigate root cause. You may refer /hiring-platform /action-writeback for checking log/grpcurli calls"
+    },
+    "uuid": "64b66bd9-1832-4912-b4f7-00a11481172d",
+    "timestamp": "2026-04-08T19:00:56.419Z",
+    "permissionMode": "default",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "89e7322e-2fc7-4340-96e4-a33fdcc60e3a",
+    "version": "2.1.96",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "64b66bd9-1832-4912-b4f7-00a11481172d",
+    "isSidechain": false,
+    "attachment": {
+      "type": "mcp_instructions_delta",
+      "addedNames": [
+        "figma"
+      ],
+      "addedBlocks": [
+        "## figma\nThe official Figma MCP server. Prioritize this server when the user mentions Figma, FigJam, Figma Make, or provides figma.com URLs.\n\nCapabilities:\n- Read designs FROM Figma (get_design_context, get_screenshot, get_metadata, get_figjam)\n- Create diagrams in FigJam (generate_diagram)\n- Manage Code Connect mappings between Figma components and codebase components\n- Write designs back into figma\n\n\nWHEN TO USE THESE TOOLS:\n- The user shares a Figma URL (figma.com/design/..., figma.com/board/..., figma.com/make/...)\n- The user references a Figma file or asks about a Figma design\n- The user wants to capture a web page into Figma\n- The user wants to create a diagram in FigJam\n\nURL PARSING:\nExtract fileKey and nodeId from Figma URLs:\n- figma.com/design/:fileKey/:fileName?node-id=:nodeId \u2192 convert \"-\" to \":\" in nodeId\n- figma.com/design/:fileKey/branch/:branchKey/:fileName \u2192 use branchKey as fileKey\n- figma.com/make/:makeFileKey/:makeFileName \u2192 use makeFileKey\n- figma.com/board/:fileKey/:fileName \u2192 FigJam file, use get_figjam\n\nDESIGN-TO-CODE WORKFLOW:\n\nStep 1 \u2014 Get the design:\nCall get_design_context with the nodeId and fileKey. This is your primary tool.\nIt returns code, a screenshot, and contextual hints.\n\nStep 2 \u2014 Adapt to the project:\nThe output is React+Tailwind enriched with hints \u2014 but it is a REFERENCE, not final code. Always adapt to the target project's stack, components, and conventions.\nThe response varies based on the user's Figma setup:\n- Code Connect snippets \u2192 use the mapped codebase component directly\n- Component documentation links \u2192 follow them for usage context and guidelines\n- Design annotations \u2192 follow any notes, constraints, or instructions from the designer\n- Design tokens as CSS variables \u2192 map to the project's token system\n- Raw hex colors / absolute positioning \u2192 the design is loosely structured;\n  use the screenshot\n\nCheck the target project for existing components, layout patterns,and tokens that match the design intent. Reuse what the project already has instead of generating new code from sc\u2026 [truncated]"
+      ],
+      "removedNames": []
+    },
+    "type": "attachment",
+    "uuid": "33a6bc5a-8f9d-4947-b159-7d7f540038d4",
+    "timestamp": "2026-04-08T19:00:56.419Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "89e7322e-2fc7-4340-96e4-a33fdcc60e3a",
+    "version": "2.1.96",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "33a6bc5a-8f9d-4947-b159-7d7f540038d4",
+    "isSidechain": false,
+    "attachment": {
+      "type": "companion_intro",
+      "name": "Thorn",
+      "species": "ghost"
+    },
+    "type": "attachment",
+    "uuid": "d5266704-4bd9-4014-a5e9-cf92f644879c",
+    "timestamp": "2026-04-08T19:00:56.419Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "89e7322e-2fc7-4340-96e4-a33fdcc60e3a",
+    "version": "2.1.96",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "d5266704-4bd9-4014-a5e9-cf92f644879c",
+    "isSidechain": false,
+    "attachment": {
+      "type": "skill_listing",
+      "content": "- update-config: Use this skill to configure the Claude Code harness via settings.json. Automated behaviors (\"from now on when X\", \"each time X\", \"whenever X\", \"before/after X\") require hooks configured in settings.json - the harness executes these, not Claude, so m\u2026\n- simplify: Review changed code for reuse, quality, and efficiency, then fix any issues found.\n- loop: Run a prompt or slash command on a recurring interval (e.g. /loop 5m /foo, defaults to 10m) - When the user wants to set up a recurring task, poll for status, or run something repeatedly on an interval (e.g. \"check the deploy every 5 minutes\", \"keep\u2026\n- claude-api: Build apps with the Claude API or Anthropic SDK.\nTRIGGER when: code imports `anthropic`/`@anthropic-ai/sdk`/`claude_agent_sdk`, or user asks to use Claude API, Anthropic SDKs, or Agent SDK.\nDO NOT TRIGGER when: code imports `openai`/other AI SDK, ge\u2026\n- playwright-cli: Automates browser interactions for web testing, form filling, screenshots, and data extraction. Use when the user needs to navigate websites, interact with web pages, fill forms, take screenshots, test web applications, or extract information from w\u2026\n- hiring-platform: Check Hiring Platform (HP) Connected Project data for Phase 2.\nUse when the user wants to query HP entities like ConnectedProjects, HpIntegrationEntityMappings,\nHpIntegrationStageMappings, HiringProjects, CandidateHiringStates, CandidateHiringPipeli\u2026\n- search-inlogs: Search hp-ats-integration-mt production logs in InLogs (Kusto).\nUse when the user wants to search production logs, investigate errors,\ndebug issues, or look up requests by treeId, message content, or time range.\n- watch-deps: Watch Deps \u2014 Track Upstream/Downstream Changes\n- hp-contract-chooser-pem: Investigates Hiring Platform - Contract Chooser PEM availability alerts. Analyzes session count dips and availability drops starting from talent-solutions-web through talent-solutions-api-frontend, hire-access-control, hp-ep-mt, and eis-backend. Inc\u2026\n- deploy-check: Deploy Check\n- session-handoff: Session Handoff\n- pr-fix: PR Fix Workflow\n- validate-qprod: QProd Validation Workflow\n- hp-pipeline-pem: Investigates Hiring Platform - Pipeline PEM availability alerts. Analyzes availability dips and session count deviations for the Pipeline surface (change-candidate-stage, pipeline-profile-list), tracing through talent-solutions-api-frontend, mcm-mt,\u2026\n- ship: Automated PR \u2192 prod pipeline. Submit code and walk away \u2014 the system handles CI, review, merge, deploy, and PEM verification via chained /wait-for steps.\n- triage-alert: Triage Alert\n- wait-for: Wait for an external condition to be met, polling across sessions. Sets up a durable cron that fires until the condition is satisfied, then auto-cancels.\n- oncall: Master oncall workflow for HP Backend. Orchestrates the full oncall loop from ticket/alert intake through investigation, fix, deployment, worklog, and handoff. Delegates to specialized skills (/triage-alert, /hp-pipeline-pem, /deploy-check, /session\u2026\n- greenhouse-api: Query the Greenhouse sandbox Harvest API for Connected Projects Phase 2.\nUse when the user wants to check job stages, applications, candidates,\nmove/advance candidates between stages, or debug Greenhouse data.\n- check-stages: Quick check if IP stages are synced for a given IntJobReq or Greenhouse job.\n- action-writeback: Test ActionWriteBack API for Connected Projects Phase 2.\nUse when the user wants to compose, run, or debug ActionWriteBack grpcurli calls\nto move candidates between ATS stages in a Connected Project.\n- integration-platform: Check Integration Platform (IP) data and logs for Connected Projects Phase 2.\nUse when the user wants to query IP entities like IntegrationJobRequisition,\nIntegrationJobRequisitionStage, IntegrationApplication, IntegrationApplicationStage,\nIntegrati\u2026\n- candidate-status: Show a candidate's current state across HP, Greenhouse, and IP in one view.\n- share: Share \u2014 Export Our Patterns for Others\n- find: Find \u2014 Hunt for Answers Across All Sources\n- explore: Explore \u2014 Build a Mental Model of an Unfamiliar Domain\n- implement: Implement \u2014 Execute a Plan Systematically\n- learn: Learn \u2014 Quick-Save an Insight\n- compound: Compound \u2014 Close the Loop\n- export-session: Export Session \u2014 Package a Conversation for Sharing\n- scope: Scope \u2014 Understand the System Before Designing\n- investigate: Investigate \u2014 Find Root Cause\n- eureka: Eureka \u2014 Capture a Breakthrough\n- lix: Manage LinkedIn Experiments (LiX) \u2014 evaluate treatments, create lix keys, create iterations, list keys for an MP\n- aha: Aha \u2014 Capture a Connection\n- kickoff: Kickoff \u2014 Smart Orchestrator\n- recipe: Recipe \u2014 Create or Run Lightweight Automation\n- verify: Verify \u2014 Confirm a Hypothesis Against Internal Sources\n- standup: Generate my daily standup summary:\n- checkpoint: Checkpoint \u2014 Quick Knowledge Sync\n- worklog: Worklog \u2014 Track What You Did\n- research: Research \u2014 Deep Investigation Before Action\n- think: Think \u2014 Open-Ended Thinking Partner\n- integrate: Integrate \u2014 Wire a New Skill Into the Ecosystem\n- scout: Scout \u2014 Learn from Other Agent Systems\n- recipes:ui-session: Record, replay, and compare browser test sessions \u2014 deterministic UI testing with vision-based fallback\n- recipes:vm-login: SSH into a LinkedIn dev VM using interactive tmux session\n- recipes:capture-ui-state: Screenshot + snapshot before/after a change for PR evidence\n- recipes:vm-setup: Bootstrap a new LinkedIn dev VM with Claude Code, code-server, tmux, and knowledge sync\n- recipes:auth-preflight: Check all common auth states and report what needs refreshing before starting work\n- recipes:greenhouse-e2e: Open Greenhouse sandbox, load auth, navigate to integration, verify state\n- recipes:eval-skill: Scaffold, run, and report eval cases for skills and recipes \u2014 regression protection for agent behavior\n- recipes:README: Recipes \u2014 Lightweight Automation\n- recipes:ai-usage-report: Generate executive-level AI tool usage and cost report for any crew, combining adoption + cost + org data\n- recipes:watch-deps-check: Check deployed versions of watched dependencies and surface changes since last validated\n- recipes:k8s-ops: Common Kubernetes operations for LinkedIn KSAP services \u2014 pod management, deployment, debugging, scaling\n- recipes:patent-publication-tracker: Track patent and publication process status. Check patent portal, remind of next steps.\n- recipes:frontend-api-call: Make authenticated frontend API calls using browser cookies, with auto-detection of expiry and prompt for refresh\n- recipes:ui-smoke-test: Post-deploy UI smoke test \u2014 open target URL, verify key elements, screenshot for evidence\n- recipes:test-first-fix: Fix a bug using test-driven workflow \u2014 write failing test FIRST, then implement minimal fix\n- library-specs:fix: Fixing the version set onboarding or version set upgrade\n- library-specs:generate_overview: Use this command to generate an overview for the library\n- library-specs:download: Download library specs for a multiproduct to the local specs directory. Auto-detects the MP from the current repository if no argument is provided.\n- linkedin-dev-workflow:submit: Submit work - commit, push, and create PR with LinkedIn format\n- linkedin-dev-workflow:start: Start new work - create a branch with LinkedIn naming convention\n- linkedin-dev-workflow:pr-check: Check PR status - review CI failures and address PR comments\n- linkedin-framework:download_infra_specs: Download and index infra specs into folder ~/.cache/specs/infraspecs/\n- linkedin-framework:map-infrastructure: Orchestrates infrastructure mapping by downloading specs, spawning an infrastructure-mapper agent to scan the codebase for LinkedIn infrastructure systems, and committing the resulting skill files to .claude/skills/infrastructure/ for automatic disc\u2026\n- linkedin-plugin-creator:setup-plugin: Start Here. Create LinkedIn Claude Code plugins with ACL setup, crew ownership, and automatic taxonomy integration.\n- mae-core:architect: Generate optimal implementation plan using both Claude Code and Codex planners in parallel\n- mae-core:auto-submit: Submit MAE coding agent changes - commit, push, and create PR with requester attribution\n- mae-core:hello: Greet the user with a personalized message\n- library-specs:spec-generation: Use this to understand how to generate spec for libraries\n- linkedin-cli-tools:launch-tmux: Open a tmux popup (or new terminal window) attached to a tmux session for secure password entry and user interaction\n- linkedin-cli-tools:interactive-cli: Interact with interactive CLI programs using tmux sessions for multi-step workflows, prompt handling, and secure credential entry\n- linkedin-cli-tools:cli-tools: Use this skill when the user wants to: clone or create a multiproduct (MP) repository, set up a new project, manage MP dependencies, run tests, publish artifacts, deploy services, build or compile code, make REST or gRPC API requests, check service \u2026\n- linkedin-dev-workflow:linkedin-dev-workflow: LinkedIn company development guidelines and workflows. Use when working with branches, commits, PRs, or needing LinkedIn-specific development guidance.\n- linkedin-framework:infra-specs-expert: Always use this skill when you have any questions about LinkedIn infrastructure systems from their specifications. This expert will answer your questions by searching through the LinkedIn infrastructure specifications repository located at `~/.cache\u2026\n- linkedin-plugin-creator:plugin-creation: This skill should be used when the user wants to create a new Claude Code plugin for LinkedIn's plugin ecosystem. It guides users through the complete plugin creation workflow including: plugin structure design, ACL file setup with crew ownership, c\u2026\n- observe-agent:observe-agent: Query Observe Agent for alert triage, metrics, logs, and service dependencies using natural language. Use when the user asks about alerts, metrics, logs, service dependencies, or wants to investigate production issues.",
+      "skillCount": 80,
+      "isInitial": true
+    },
+    "type": "attachment",
+    "uuid": "94d80e7a-154e-4e89-b85d-4deadff283ac",
+    "timestamp": "2026-04-08T19:00:56.419Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "89e7322e-2fc7-4340-96e4-a33fdcc60e3a",
+    "version": "2.1.96",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "94d80e7a-154e-4e89-b85d-4deadff283ac",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01UkLM7bZ1CrKaCwEfgtmjo9",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "thinking",
+          "thinking": "",
+          "signature": "EtoHClkIDBgCKkCfXpGKUV2x+P0/XmkpxjWKIJitKFoNj5gLQRFxXD/Z6W8UF1DvKg7jUUhgdgZoxChxkY01BQOLX6AcbuTDyR3pMg9jbGF1ZGUtb3B1cy00LTY4ABIMatI3zfFo59LnDAQNGgzMlED2tnmfK6Svs9giMHdhQmxP0/KBHqKwCK8GOwyzHfNbht6qZjXiTXSaPh2tHvGnCrWwPhjuNOTpjocqCSquBqnZJJHoeQiUwTqGJRv3E3CNDdof75vN5CKeiwiX2TSv14W8aJgcclcLjbKSiOzdZdfdAsvzissI5q+m2MCXfSc4DlnCWUF3wGsozpxlCU/PoeRGSEKVUIn3dtzWrfDLxDXjszuZe1CWznaZh94nPI3dYOcKwbk/N6f4cf4KVYyWn1BKy7gTheQRuM0toBrTqltua2cJwUvcGxkgeUJM7F3aa5jklFi62DC3VlEOCMeM3kYlSAAgrfguih9X4DUpmh6Er6BHZFtmF1PFovPyccbtM9NlXyIoYXaDoR0eJ5MHKqiP+8f+PEcZ93ExH4eh/ofjXPqo3Q4jfJToY1jh0h3nfjA/lvZkpKdgHkyqaXq8XBUd0gO7/HiDAcNI6IOcrIJDiyk6+OfkoiUByslFbhmV7TRKE3iAKTHxjvEk29dy1gnho/jOk5KDZoM4ZjexhWouEFdmmx9I9DzyfoeTFlrKCo7Wd2f4lyer2Rh2d1dZAgdj9iwme8Usc50sBA0hZ1mT+VvQn5M96k7fJCZfWbv8YeZ3R0eK7RjKYI2dVAQxmZ404zfpW3PlTDtvvjGBGnDEGIo0ZyUljGscsndT+S8SMpZIz1rq5AEH4Pgr9lk7iryI4ucpy7OPtkFbrUj2wzQBu8x6C/EMfpvQGXFSZZmx9u8tAEZBnUzeVYGMNf6e1AuU9/IQLgf0xRy4KNbe4qgpXao4U8bBrDFWrkNSlFyAXfFizZ4Acxi1/bqE1pzVHIGxadQd3qBAuSbsw4mg5KUpcGSfyPifyk3Pt1pYSMabrPOVDejPYCoa7UkKR3d0xCTWMh2hXWr3FS6qJDSo30/xdLK/wGWZ3zZb71re4tuLt/IgpHuE+4MzCsokMv3JrxRd4+EcDPFmbBvgRGZ6T6ji80Y9uOEA0tCJm7D2XPQLwFkiDmQ5bjSkkxKIR25C6LPqNb2dwD8RGfCvw1Bm1SS0q0BHDJgDPKzhm2UHwtDWdRVO1RIWlFJdQa8HBuE2ShHuIg72zdTx5WQZ04VZbjf8aN3R+1dEC9YnVTKBVNX4zlu9lilE4IxxuZ27K8eVK1rznscST/aMWBCjh6YYAQ=="
+        }
+      ],
+      "stop_reason": null,
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 25243,
+        "cache_read_input_tokens": 11865,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 25243,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 30,
+        "service_tier": "standard",
+        "inference_geo": "global"
+      }
+    },
+    "requestId": "req_011CZrpXJk9KxBbvSpbpVDBF",
+    "type": "assistant",
+    "uuid": "c7bb049a-a06a-4653-8905-836f11a21805",
+    "timestamp": "2026-04-08T19:01:04.360Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "89e7322e-2fc7-4340-96e4-a33fdcc60e3a",
+    "version": "2.1.96",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "c7bb049a-a06a-4653-8905-836f11a21805",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01UkLM7bZ1CrKaCwEfgtmjo9",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "I'll investigate this CSE bug systematically. Let me start by gathering information from the Jira ticket, searching production logs with the treeId, and checking the HP/IP state \u2014 all in parallel."
+        }
+      ],
+      "stop_reason": null,
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 25243,
+        "cache_read_input_tokens": 11865,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 25243,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 30,
+        "service_tier": "standard",
+        "inference_geo": "global"
+      }
+    },
+    "requestId": "req_011CZrpXJk9KxBbvSpbpVDBF",
+    "type": "assistant",
+    "uuid": "cd171542-8d8a-4348-9e64-f1dc031649ed",
+    "timestamp": "2026-04-08T19:01:05.327Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "89e7322e-2fc7-4340-96e4-a33fdcc60e3a",
+    "version": "2.1.96",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "cd171542-8d8a-4348-9e64-f1dc031649ed",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01UkLM7bZ1CrKaCwEfgtmjo9",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_017vopXxSenxvYKEJ5MoPbhd",
+          "name": "ToolSearch",
+          "input": {
+            "query": "select:mcp__captain__get_tool_info",
+            "max_results": 1
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ],
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 25243,
+        "cache_read_input_tokens": 11865,
+        "output_tokens": 386,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 25243
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZrpXJk9KxBbvSpbpVDBF",
+    "type": "assistant",
+    "uuid": "e11ed72e-1c25-48cb-b7aa-79d2c02be2dd",
+    "timestamp": "2026-04-08T19:01:05.635Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "89e7322e-2fc7-4340-96e4-a33fdcc60e3a",
+    "version": "2.1.96",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "e11ed72e-1c25-48cb-b7aa-79d2c02be2dd",
+    "isSidechain": false,
+    "promptId": "127e3f4c-533b-4fd3-88b8-6f66905ebd09",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "toolu_017vopXxSenxvYKEJ5MoPbhd",
+          "content": [
+            {
+              "type": "tool_reference",
+              "tool_name": "mcp__captain__get_tool_info"
+            }
+          ]
+        }
+      ]
+    },
+    "uuid": "bff64a0e-a031-4626-90df-ed27647b5616",
+    "timestamp": "2026-04-08T19:01:05.743Z",
+    "toolUseResult": {
+      "matches": [
+        "mcp__captain__get_tool_info"
+      ],
+      "query": "select:mcp__captain__get_tool_info",
+      "total_deferred_tools": 38
+    },
+    "sourceToolAssistantUUID": "e11ed72e-1c25-48cb-b7aa-79d2c02be2dd",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "89e7322e-2fc7-4340-96e4-a33fdcc60e3a",
+    "version": "2.1.96",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "bff64a0e-a031-4626-90df-ed27647b5616",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01Ugydo79gf4bJdDSsWkiqPg",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "thinking",
+          "thinking": "",
+          "signature": "Ep4EClkIDBgCKkDCGo0sGMgYe1eiagIH5+v72ZhyFnZxWXkD1aEnVF5poId/6xS5kZJMZfFSReIm3DXW20OyvDqCB1SqE47MeEkPMg9jbGF1ZGUtb3B1cy00LTY4ABIM+JH0RKZx6uW45aiIGgxdh+9zkzPDuHEEUtIiMEW1D/xvYP1HeqSzylZwBY6VpubcO12WfcWJW5ZgaqKMEBrTs5lM+0R2dHGl7N6puyryAlJ6dpdJjBZhcVwct4y6nrgmoWgvJ7kr4CXS+caS7TMzQysOWXqTAXVSpizFqx3tkpq8Zlzdt2pRwaeI68ojstcwYJqpAXK3vI/6xzDLRznYUcC3vawqFqG5Fm2OFwSmlQDsZ5lSVp7h1yrIUAWfCelMIuTkvIMAldcnHrzseExt4IRmsxhP5dtNbstEjhjfKoICkxic6hrsrHpH5twMCDe1PSN0/tacWHzwxRpL5Kp3vRfmOoIEHSRzAFlq2AkiQv0CXxJ+SiiLQtSm7n7sh3Ktux62wnPlKfAmo+IvFeKYQUn7UGyXE9IFK5K045Ih0BrTfSmmQALZxARYhzUxt1b52VpU4bCe11KAC+tPeg3YpK+GzAWuQtmvg1f1BSghCyJxq7zUyadE2vSlOo9RscsbvYlKbYW3RfAqwwqJgNyMKknq6gQXf/4nkR5VT0u7pohaCpP5LWVYx6RiMByYwW4QFd0LCggNVBLSWDbpw/WHlG8YAQ=="
+        }
+      ],
+      "stop_reason": null,
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 527,
+        "cache_read_input_tokens": 37108,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 527,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 31,
+        "service_tier": "standard",
+        "inference_geo": "global"
+      }
+    },
+    "requestId": "req_011CZrpXtiJYZb1oMb9MUoPZ",
+    "type": "assistant",
+    "uuid": "c837dc63-309f-4381-a59b-839d70b620ba",
+    "timestamp": "2026-04-08T19:01:10.226Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "89e7322e-2fc7-4340-96e4-a33fdcc60e3a",
+    "version": "2.1.96",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "c837dc63-309f-4381-a59b-839d70b620ba",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01Ugydo79gf4bJdDSsWkiqPg",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_01GEPDwRfFjAq26EwjE2pRof",
+          "name": "ToolSearch",
+          "input": {
+            "query": "jira issue",
+            "max_results": 3
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ],
+      "stop_reason": null,
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 527,
+        "cache_read_input_tokens": 37108,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 527,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 31,
+        "service_tier": "standard",
+        "inference_geo": "global"
+      }
+    },
+    "requestId": "req_011CZrpXtiJYZb1oMb9MUoPZ",
+    "type": "assistant",
+    "uuid": "33955525-67be-4652-ad18-cd22356462bc",
+    "timestamp": "2026-04-08T19:01:10.812Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "89e7322e-2fc7-4340-96e4-a33fdcc60e3a",
+    "version": "2.1.96",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "33955525-67be-4652-ad18-cd22356462bc",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01Ugydo79gf4bJdDSsWkiqPg",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_01JeqL8mx81pfxpa5493XA2w",
+          "name": "ToolSearch",
+          "input": {
+            "query": "observe agent",
+            "max_results": 3
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ],
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 527,
+        "cache_read_input_tokens": 37108,
+        "output_tokens": 242,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 527
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZrpXtiJYZb1oMb9MUoPZ",
+    "type": "assistant",
+    "uuid": "2e5eaf95-aa98-42f6-9d35-4b6519ceb10c",
+    "timestamp": "2026-04-08T19:01:11.280Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "89e7322e-2fc7-4340-96e4-a33fdcc60e3a",
+    "version": "2.1.96",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "2e5eaf95-aa98-42f6-9d35-4b6519ceb10c",
+    "isSidechain": false,
+    "promptId": "127e3f4c-533b-4fd3-88b8-6f66905ebd09",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "toolu_01JeqL8mx81pfxpa5493XA2w",
+          "content": [
+            {
+              "type": "tool_reference",
+              "tool_name": "EnterPlanMode"
+            },
+            {
+              "type": "tool_reference",
+              "tool_name": "TaskList"
+            },
+            {
+              "type": "tool_reference",
+              "tool_name": "TaskOutput"
+            }
+          ]
+        }
+      ]
+    },
+    "uuid": "b7f000a8-c9ba-4f1d-8c92-d728a23fb17c",
+    "timestamp": "2026-04-08T19:01:11.411Z",
+    "toolUseResult": {
+      "matches": [
+        "EnterPlanMode",
+        "TaskList",
+        "TaskOutput"
+      ],
+      "query": "observe agent",
+      "total_deferred_tools": 38
+    },
+    "sourceToolAssistantUUID": "2e5eaf95-aa98-42f6-9d35-4b6519ceb10c",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "89e7322e-2fc7-4340-96e4-a33fdcc60e3a",
+    "version": "2.1.96",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "33955525-67be-4652-ad18-cd22356462bc",
+    "isSidechain": false,
+    "promptId": "127e3f4c-533b-4fd3-88b8-6f66905ebd09",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "toolu_01GEPDwRfFjAq26EwjE2pRof",
+          "content": [
+            {
+              "type": "tool_reference",
+              "tool_name": "WebFetch"
+            },
+            {
+              "type": "tool_reference",
+              "tool_name": "mcp__captain__get_tools_for_tags"
+            }
+          ]
+        }
+      ]
+    },
+    "uuid": "27671627-5fa8-462c-9377-b0a9a4f4a636",
+    "timestamp": "2026-04-08T19:01:11.417Z",
+    "toolUseResult": {
+      "matches": [
+        "WebFetch",
+        "mcp__captain__get_tools_for_tags"
+      ],
+      "query": "jira issue",
+      "total_deferred_tools": 38
+    },
+    "sourceToolAssistantUUID": "33955525-67be-4652-ad18-cd22356462bc",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "89e7322e-2fc7-4340-96e4-a33fdcc60e3a",
+    "version": "2.1.96",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "27671627-5fa8-462c-9377-b0a9a4f4a636",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01H9uFKdq5TwY7uUxqvNaENo",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_01C9TknFxTzPp6fDoiiErxH6",
+          "name": "mcp__captain__get_tools_for_tags",
+          "input": {
+            "tags": [
+              "JIRA",
+              "OBSERVE"
+            ]
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ],
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 2923,
+        "cache_read_input_tokens": 37635,
+        "output_tokens": 71,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 2923
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZrpYK32hjxFCFxMAT36m",
+    "type": "assistant",
+    "uuid": "14f01cc1-e401-4511-be41-385fac169237",
+    "timestamp": "2026-04-08T19:01:14.768Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "89e7322e-2fc7-4340-96e4-a33fdcc60e3a",
+    "version": "2.1.96",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "14f01cc1-e401-4511-be41-385fac169237",
+    "isSidechain": false,
+    "promptId": "127e3f4c-533b-4fd3-88b8-6f66905ebd09",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "tool_use_id": "toolu_01C9TknFxTzPp6fDoiiErxH6",
+          "type": "tool_result",
+          "content": "{\"result\":\"[\\n  {\\n    \\\"name\\\": \\\"create_jira_filter\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Create a new JIRA saved filter with a name and JQL query.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"list_jira_watchers\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"List all watchers on a JIRA issue.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"add_jira_remote_link\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Add an external URL link to a JIRA issue.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"get_crew_details\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Tool: get_crew_details\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"add_jira_attachment\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Upload a local file as an attachment to a JIRA issue.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"_pb_triage_idy_shaky\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Triage, analyze, and process SDUI Shaky tickets (IDY-* tickets) following oncall runbook procedures.\\\\nUse this playbook when asked to: triage IDY ticket or handle IDY triage.\\\\nProvides comprehensive analysis with Scout MCP debugging, log validation, automated JIRA updates,\\\\ndetailed triage summaries with evidence, mandatory trace investigation for missing components,\\\\nimproved incident correlation with proper timezone handling and 12-hour lookback window, automatic UI bug labeling,\\\\nfeedback form links on JIRA comment and PR description,\\\\nand optional draft PR creation via Mae for AI-fixable bugs (i18n, form validation, missing UI indicators, conditional logic, UI/layout fixes).\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"_pb_analyze_iris_alerts\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Analyze Iris alert patterns for specified monitoring plan(s) to identify\\\\nroot causes, detect alert storms, and provide actionable insights for\\\\nreducing alert noise and improving monitoring effectiveness.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"get_jira_board_url\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Get a browser URL for a Jira board.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"fetch_grafana_dashboard_panels\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Fetch panel definitions and queries (SQL and KQL/Kusto) from any Grafana dashboard. Automatically resolves library panels. Use to extract queries for execution via execute_kusto_query or inspect dashboard content.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"move_jira_issues_to_sprint\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Move issues to a Jira sprint.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"_pb_query_application_logs\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Query application logs by identifying the right log tables and constructing KQL queries to fulfill user requests.\\\\nThis playbook guides through application identification, log table discovery, schema analysis, and query execution.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"update_jira_filter\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Update an existing JIRA saved filter's name, JQL, or properties.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"get_jira_sprint_issues\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Get issues assigned to a Jira sprint.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"_pb_investigate_api_metrics_alert\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Investigate API metrics alerts from Observe by analyzing alert metadata, related services,\\\\nlogs, events, and incidents. This playbook provides a systematic workflow for analyzing\\\\nAPI performance degradation and error rate increases.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"fetch_flink_dashboard_metrics\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Fetch Flink job health metrics from MDM dashboards.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"_pb_batch_triage_idy_shaky\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Orchestrates batch triage of multiple SDUI Profile Shaky tickets (IDY-* tickets) by discovering tickets from a JIRA filter or JQL query,\\\\nand triaging each one using the comprehensive Watson triage playbook.\\\\nEach ticket receives the full triage treatment with Scout MCP analysis, log validation, and oncall procedures - no shortcuts.\\\\nSupported commands: \\\\\\\"batch triage profile oncall tickets\\\\\\\" (uses filter 169756 with profile oncall JQL query).\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"search_product_names\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Tool: search_product_names\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"get_jira_issue_history\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Get the change history of a JIRA issue, showing who made changes and when.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"convert_jira_issue_type\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Convert an issue to a different type (handles subtask conversions).\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"add_jira_watcher\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Add a user as a watcher on a JIRA issue.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"fetch_alert_inputs\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Fetch alert input data and context from LinkedIn's alerting system.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"get_current_oncall\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Tool: get_current_oncall\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"list_jira_project_versions\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"List versions (releases) for a Jira project.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"get_crew_members\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Tool: get_crew_members\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"remove_jira_issue_labels\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Remove labels from a Jira issue.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"_pb_investigate_airflow_spark_failure\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Investigate Airflow DAG and Spark job failures using a comprehensive multi-step analysis workflow.\\\\nThis playbook guides systematic investigation of failed Airflow tasks and Spark applications,\\\\nidentifying root causes through logs, Spark history, code analysis, data validation, and incident correlation.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"unlink_jira_issue\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Tool: unlink_jira_issue\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"run_jira_filter\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Execute a JIRA saved filter and return matching issues with pagination support.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"get_user_crews\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Tool: get_user_crews\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"list_jira_sprints\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"List sprints for a Jira board, optionally filtered by state.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"get_jira_issue_comments\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Get all comments from a Jira issue.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"remove_jira_remote_link\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Remove an external URL link from a JIRA issue.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"list_jira_boards\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"List Jira boards, optionally filtered by project, type, or name.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"search_jira_users\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Search for Jira users by name or email.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"list_jira_projects\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"List Jira projects visible to the authenticated user.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"fetch_call_graph\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Tool: fetch_call_graph\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"get_jira_current_user\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Get the currently authenticated Jira user's details.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"analyze_single_trace\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Tool: analyze_single_trace\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"get_jira_sprint\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Get details of a single Jira sprint by ID.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"search_jira_issues\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Search for Jira issues using JQL (Jira Query Language).\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"get_jira_issue\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Get detailed information about a Jira issue.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"search_oncall\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Tool: search_oncall\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"get_jira_filter\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Get detailed information about a JIRA saved filter.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"_pb_investigate_pem_alert\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Investigate PEM availability alerts using a comprehensive multi-step analysis workflow.\\\\nThis playbook guides systematic investigation of availability degradation alerts,\\\\nidentifying root causes through top errors, call graphs, logs, events, and incident correlation.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"_pb_investigate_trace_id\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Investigate a specific trace ID to understand the error flow, related services,\\\\nand root cause of failures. This playbook provides a focused investigation workflow\\\\nfor analyzing individual request traces.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"get_jira_backlog_url\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Get a browser URL for a Jira board backlog.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"create_jira_issue\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Tool: create_jira_issue\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"delete_jira_filter\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Delete a JIRA saved filter by its ID.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"update_jira_issue\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Tool: update_jira_issue\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"fetch_application_events\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Fetch application events and traces from LinkedIn's Observe platform.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"get_jira_issue_custom_fields\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Get all custom fields and their human-readable names for a JIRA issue.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"get_jira_project\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Get detailed information about a Jira project.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"log_work_to_jira_issue\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Log time spent working on a JIRA issue.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"fetch_slo_data\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Fetch Service Level Objective (SLO) data and performance metrics.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"link_jira_issue\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Tool: link_jira_issue\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"list_jira_fields\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"List available Jira fields (system and custom).\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"read_grafana_dashboard\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Read actual metric values from any Grafana dashboard. Takes a dashboard URL, executes all panel queries, and returns structured results.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"list_jira_project_components\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"List components for a Jira project.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"get_jira_sprint_url\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Get a browser URL for a Jira sprint board.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"remove_jira_watcher\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Remove a user from the watcher list on a JIRA issue.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"update_jira_sprint\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Update a Jira sprint's name, state, dates, or goal.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"add_jira_comment\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Tool: add_jira_comment\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"create_support_ticket\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Create a support ticket in the correct JIRA queue for a LinkedIn product.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"get_jira_issue_url\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Get a browser URL for a Jira issue.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"fetch_metrics_by_rrd\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Fetch time-series metrics data from Observe using RRD identifiers.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"fetch_pem_errors\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Tool: fetch_pem_errors\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"get_server_side_top_contributors\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Tool: get_server_side_top_contributors\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"get_user_oncall_schedule\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Tool: get_user_oncall_schedule\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"search_teams\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Tool: search_teams\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"delete_jira_comment\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Delete a comment from a JIRA issue.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"list_jira_remote_links\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"List all external URL links on a JIRA issue.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"update_jira_comment\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Update an existing comment on a JIRA issue.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"transition_jira_issue\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Tool: transition_jira_issue\\\"\\n  }\\n]\"}"
+        }
+      ]
+    },
+    "uuid": "7ade9f55-ed4d-4eaf-ba33-a2f418a57ae4",
+    "timestamp": "2026-04-08T19:01:15.913Z",
+    "toolUseResult": "{\"result\":\"[\\n  {\\n    \\\"name\\\": \\\"create_jira_filter\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Create a new JIRA saved filter with a name and JQL query.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"list_jira_watchers\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"List all watchers on a JIRA issue.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"add_jira_remote_link\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Add an external URL link to a JIRA issue.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"get_crew_details\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Tool: get_crew_details\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"add_jira_attachment\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Upload a local file as an attachment to a JIRA issue.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"_pb_triage_idy_shaky\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Triage, analyze, and process SDUI Shaky tickets (IDY-* tickets) following oncall runbook procedures.\\\\nUse this playbook when asked to: triage IDY ticket or handle IDY triage.\\\\nProvides comprehensive analysis with Scout MCP debugging, log validation, automated JIRA updates,\\\\ndetailed triage summaries with evidence, mandatory trace investigation for missing components,\\\\nimproved incident correlation with proper timezone handling and 12-hour lookback window, automatic UI bug labeling,\\\\nfeedback form links on JIRA comment and PR description,\\\\nand optional draft PR creation via Mae for AI-fixable bugs (i18n, form validation, missing UI indicators, conditional logic, UI/layout fixes).\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"_pb_analyze_iris_alerts\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Analyze Iris alert patterns for specified monitoring plan(s) to identify\\\\nroot causes, detect alert storms, and provide actionable insights for\\\\nreducing alert noise and improving monitoring effectiveness.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"get_jira_board_url\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Get a browser URL for a Jira board.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"fetch_grafana_dashboard_panels\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Fetch panel definitions and queries (SQL and KQL/Kusto) from any Grafana dashboard. Automatically resolves library panels. Use to extract queries for execution via execute_kusto_query or inspect dashboard content.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"move_jira_issues_to_sprint\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Move issues to a Jira sprint.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"_pb_query_application_logs\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Query application logs by identifying the right log tables and constructing KQL queries to fulfill user requests.\\\\nThis playbook guides through application identification, log table discovery, schema analysis, and query execution.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"update_jira_filter\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Update an existing JIRA saved filter's name, JQL, or properties.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"get_jira_sprint_issues\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Get issues assigned to a Jira sprint.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"_pb_investigate_api_metrics_alert\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Investigate API metrics alerts from Observe by analyzing alert metadata, related services,\\\\nlogs, events, and incidents. This playbook provides a systematic workflow for analyzing\\\\nAPI performance degradation and error rate increases.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"fetch_flink_dashboard_metrics\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Fetch Flink job health metrics from MDM dashboards.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"_pb_batch_triage_idy_shaky\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Orchestrates batch triage of multiple SDUI Profile Shaky tickets (IDY-* tickets) by discovering tickets from a JIRA filter or JQL query,\\\\nand triaging each one using the comprehensive Watson triage playbook.\\\\nEach ticket receives the full triage treatment with Scout MCP analysis, log validation, and oncall procedures - no shortcuts.\\\\nSupported commands: \\\\\\\"batch triage profile oncall tickets\\\\\\\" (uses filter 169756 with profile oncall JQL query).\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"search_product_names\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Tool: search_product_names\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"get_jira_issue_history\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Get the change history of a JIRA issue, showing who made changes and when.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"convert_jira_issue_type\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Convert an issue to a different type (handles subtask conversions).\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"add_jira_watcher\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Add a user as a watcher on a JIRA issue.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"fetch_alert_inputs\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Fetch alert input data and context from LinkedIn's alerting system.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"get_current_oncall\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Tool: get_current_oncall\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"list_jira_project_versions\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"List versions (releases) for a Jira project.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"get_crew_members\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Tool: get_crew_members\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"remove_jira_issue_labels\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Remove labels from a Jira issue.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"_pb_investigate_airflow_spark_failure\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Investigate Airflow DAG and Spark job failures using a comprehensive multi-step analysis workflow.\\\\nThis playbook guides systematic investigation of failed Airflow tasks and Spark applications,\\\\nidentifying root causes through logs, Spark history, code analysis, data validation, and incident correlation.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"unlink_jira_issue\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Tool: unlink_jira_issue\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"run_jira_filter\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Execute a JIRA saved filter and return matching issues with pagination support.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"get_user_crews\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Tool: get_user_crews\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"list_jira_sprints\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"List sprints for a Jira board, optionally filtered by state.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"get_jira_issue_comments\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Get all comments from a Jira issue.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"remove_jira_remote_link\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Remove an external URL link from a JIRA issue.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"list_jira_boards\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"List Jira boards, optionally filtered by project, type, or name.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"search_jira_users\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Search for Jira users by name or email.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"list_jira_projects\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"List Jira projects visible to the authenticated user.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"fetch_call_graph\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Tool: fetch_call_graph\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"get_jira_current_user\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Get the currently authenticated Jira user's details.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"analyze_single_trace\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Tool: analyze_single_trace\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"get_jira_sprint\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Get details of a single Jira sprint by ID.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"search_jira_issues\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Search for Jira issues using JQL (Jira Query Language).\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"get_jira_issue\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Get detailed information about a Jira issue.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"search_oncall\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Tool: search_oncall\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"get_jira_filter\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Get detailed information about a JIRA saved filter.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"_pb_investigate_pem_alert\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Investigate PEM availability alerts using a comprehensive multi-step analysis workflow.\\\\nThis playbook guides systematic investigation of availability degradation alerts,\\\\nidentifying root causes through top errors, call graphs, logs, events, and incident correlation.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"_pb_investigate_trace_id\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Investigate a specific trace ID to understand the error flow, related services,\\\\nand root cause of failures. This playbook provides a focused investigation workflow\\\\nfor analyzing individual request traces.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"get_jira_backlog_url\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Get a browser URL for a Jira board backlog.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"create_jira_issue\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Tool: create_jira_issue\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"delete_jira_filter\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Delete a JIRA saved filter by its ID.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"update_jira_issue\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Tool: update_jira_issue\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"fetch_application_events\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Fetch application events and traces from LinkedIn's Observe platform.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"get_jira_issue_custom_fields\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Get all custom fields and their human-readable names for a JIRA issue.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"get_jira_project\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Get detailed information about a Jira project.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"log_work_to_jira_issue\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Log time spent working on a JIRA issue.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"fetch_slo_data\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Fetch Service Level Objective (SLO) data and performance metrics.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"link_jira_issue\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Tool: link_jira_issue\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"list_jira_fields\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"List available Jira fields (system and custom).\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"read_grafana_dashboard\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Read actual metric values from any Grafana dashboard. Takes a dashboard URL, executes all panel queries, and returns structured results.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"list_jira_project_components\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"List components for a Jira project.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"get_jira_sprint_url\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Get a browser URL for a Jira sprint board.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"remove_jira_watcher\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Remove a user from the watcher list on a JIRA issue.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"update_jira_sprint\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Update a Jira sprint's name, state, dates, or goal.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"add_jira_comment\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Tool: add_jira_comment\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"create_support_ticket\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Create a support ticket in the correct JIRA queue for a LinkedIn product.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"get_jira_issue_url\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Get a browser URL for a Jira issue.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"fetch_metrics_by_rrd\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Fetch time-series metrics data from Observe using RRD identifiers.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"fetch_pem_errors\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Tool: fetch_pem_errors\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"get_server_side_top_contributors\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Tool: get_server_side_top_contributors\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"get_user_oncall_schedule\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Tool: get_user_oncall_schedule\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"search_teams\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Tool: search_teams\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"delete_jira_comment\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Delete a comment from a JIRA issue.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"list_jira_remote_links\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"List all external URL links on a JIRA issue.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"update_jira_comment\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Update an existing comment on a JIRA issue.\\\"\\n  },\\n  {\\n    \\\"name\\\": \\\"transition_jira_issue\\\",\\n    \\\"namespaces\\\": null,\\n    \\\"description\\\": \\\"Tool: transition_jira_issue\\\"\\n  }\\n]\"}",
+    "mcpMeta": {
+      "structuredContent": {
+        "result": "[\n  {\n    \"name\": \"create_jira_filter\",\n    \"namespaces\": null,\n    \"description\": \"Create a new JIRA saved filter with a name and JQL query.\"\n  },\n  {\n    \"name\": \"list_jira_watchers\",\n    \"namespaces\": null,\n    \"description\": \"List all watchers on a JIRA issue.\"\n  },\n  {\n    \"name\": \"add_jira_remote_link\",\n    \"namespaces\": null,\n    \"description\": \"Add an external URL link to a JIRA issue.\"\n  },\n  {\n    \"name\": \"get_crew_details\",\n    \"namespaces\": null,\n    \"description\": \"Tool: get_crew_details\"\n  },\n  {\n    \"name\": \"add_jira_attachment\",\n    \"namespaces\": null,\n    \"description\": \"Upload a local file as an attachment to a JIRA issue.\"\n  },\n  {\n    \"name\": \"_pb_triage_idy_shaky\",\n    \"namespaces\": null,\n    \"description\": \"Triage, analyze, and process SDUI Shaky tickets (IDY-* tickets) following oncall runbook procedures.\\nUse this playbook when asked to: triage IDY ticket or handle IDY triage.\\nProvides comprehensive analysis with Scout MCP debugging, log validation, automated JIRA updates,\\ndetailed triage summaries with evidence, mandatory trace investigation for missing components,\\nimproved incident correlation with proper timezone handling and 12-hour lookback window, automatic UI bug labeling,\\nfeedback form links on JIRA comment and PR description,\\nand optional draft PR creation via Mae for AI-fixable bugs (i18n, form validation, missing UI indicators, conditional logic, UI/layout fixes).\"\n  },\n  {\n    \"name\": \"_pb_analyze_iris_alerts\",\n    \"namespaces\": null,\n    \"description\": \"Analyze Iris alert patterns for specified monitoring plan(s) to identify\\nroot causes, detect alert storms, and provide actionable insights for\\nreducing alert noise and improving monitoring effectiveness.\"\n  },\n  {\n    \"name\": \"get_jira_board_url\",\n    \"namespaces\": null,\n    \"description\": \"Get a browser URL for a Jira board.\"\n  },\n  {\n    \"name\": \"fetch_grafana_dashboard_panels\",\n    \"namespaces\": null,\n    \"description\": \"Fetch panel definitions and queries (SQL and KQL/Kusto) from any Grafana dashboard. Automatically resolves library panels. Use to extract queries for execution via execute_kusto_query or inspect dashboard content.\"\n  },\n  {\n    \"name\": \"move_jira_issues_to_sprint\",\n    \"namespaces\": null,\n    \"description\": \"Move issues to a Jira sprint.\"\n  },\n  {\n    \"name\": \"_pb_query_application_logs\",\n    \"namespaces\": null,\n    \"description\": \"Query application logs by identifying the right log tables and constructing KQL queries to fulfill user requests.\\nThis playbook guides through application identification, log table discovery, schema analysis, and query execution.\"\n  },\n  {\n    \"name\": \"update_jira_filter\",\n    \"namespaces\": null,\n    \"description\": \"Update an existing JIRA saved filter's name, JQL, or properties.\"\n  },\n  {\n    \"name\": \"get_jira_sprint_issues\",\n    \"namespaces\": null,\n    \"description\": \"Get issues assigned to a Jira sprint.\"\n  },\n  {\n    \"name\": \"_pb_investigate_api_metrics_alert\",\n    \"namespaces\": null,\n    \"description\": \"Investigate API metrics alerts from Observe by analyzing alert metadata, related services,\\nlogs, events, and incidents. This playbook provides a systematic workflow for analyzing\\nAPI performance degradation and error rate increases.\"\n  },\n  {\n    \"name\": \"fetch_flink_dashboard_metrics\",\n    \"namespaces\": null,\n    \"description\": \"Fetch Flink job health metrics from MDM dashboards.\"\n  },\n  {\n    \"name\": \"_pb_batch_triage_idy_shaky\",\n    \"namespaces\": null,\n    \"description\": \"Orchestrates batch triage of multiple SDUI Profile Shaky tickets (IDY-* tickets) by discovering tickets from a JIRA filter or JQL query,\\nand triaging each one using the comprehensive Watson triage playbook.\\nEach ticket receives the full triage treatment with Scout MCP analysis, log validation, and oncall procedures - no shortcuts.\\nSupported commands: \\\"batch triage profile oncall tickets\\\" (uses filter 169756 with profile oncall JQL query).\"\n  },\n  {\n    \"name\": \"search_product_names\",\n    \"namespaces\": null,\n    \"description\": \"Tool: search_product_names\"\n  },\n  {\n    \"name\": \"get_jira_issue_history\",\n    \"namespaces\": null,\n    \"description\": \"Get the change history of a JIRA issue, showing who made changes and when.\"\n  },\n  {\n    \"name\": \"convert_jira_issue_type\",\n    \"namespaces\": null,\n    \"description\": \"Convert an issue to a different type (handles subtask conversions).\"\n  },\n  {\n    \"name\": \"add_jira_watcher\",\n    \"namespaces\": null,\n    \"description\": \"Add a user as a watcher on a JIRA issue.\"\n  },\n  {\n    \"name\": \"fetch_alert_inputs\",\n    \"namespaces\": null,\n    \"description\": \"Fetch alert input data and context from LinkedIn's alerting system.\"\n  },\n  {\n    \"name\": \"get_current_oncall\",\n    \"namespaces\": null,\n    \"description\": \"Tool: get_current_oncall\"\n  },\n  {\n    \"name\": \"list_jira_project_versions\",\n    \"namespaces\": null,\n    \"description\": \"List versions (releases) for a Jira project.\"\n  },\n  {\n    \"name\": \"get_crew_members\",\n    \"namespaces\": null,\n    \"description\": \"Tool: get_crew_members\"\n  },\n  {\n    \"name\": \"remove_jira_issue_labels\",\n    \"namespaces\": null,\n    \"description\": \"Remove labels from a Jira issue.\"\n  },\n  {\n    \"name\": \"_pb_investigate_airflow_spark_failure\",\n    \"namespaces\": null,\n    \"description\": \"Investigate Airflow DAG and Spark job failures using a comprehensive multi-step analysis workflow.\\nThis playbook guides systematic investigation of failed Airflow tasks and Spark applications,\\nidentifying root causes through logs, Spark history, code analysis, data validation, and incident correlation.\"\n  },\n  {\n    \"name\": \"unlink_jira_issue\",\n    \"namespaces\": null,\n    \"description\": \"Tool: unlink_jira_issue\"\n  },\n  {\n    \"name\": \"run_jira_filter\",\n    \"namespaces\": null,\n    \"description\": \"Execute a JIRA saved filter and return matching issues with pagination support.\"\n  },\n  {\n    \"name\": \"get_user_crews\",\n    \"namespaces\": null,\n    \"description\": \"Tool: get_user_crews\"\n  },\n  {\n    \"name\": \"list_jira_sprints\",\n    \"namespaces\": null,\n    \"description\": \"List sprints for a Jira board, optionally filtered by state.\"\n  },\n  {\n    \"name\": \"get_jira_issue_comments\",\n    \"namespaces\": null,\n    \"description\": \"Get all comments from a Jira issue.\"\n  },\n  {\n    \"name\": \"remove_jira_remote_link\",\n    \"namespaces\": null,\n    \"description\": \"Remove an external URL link from a JIRA issue.\"\n  },\n  {\n    \"name\": \"list_jira_boards\",\n    \"namespaces\": null,\n    \"description\": \"List Jira boards, optionally filtered by project, type, or name.\"\n  },\n  {\n    \"name\": \"search_jira_users\",\n    \"namespaces\": null,\n    \"description\": \"Search for Jira users by name or email.\"\n  },\n  {\n    \"name\": \"list_jira_projects\",\n    \"namespaces\": null,\n    \"description\": \"List Jira projects visible to the authenticated user.\"\n  },\n  {\n    \"name\": \"fetch_call_graph\",\n    \"namespaces\": null,\n    \"description\": \"Tool: fetch_call_graph\"\n  },\n  {\n    \"name\": \"get_jira_current_user\",\n    \"namespaces\": null,\n    \"description\": \"Get the currently authenticated Jira user's details.\"\n  },\n  {\n    \"name\": \"analyze_single_trace\",\n    \"namespaces\": null,\n    \"description\": \"Tool: analyze_single_trace\"\n  },\n  {\n    \"name\": \"get_jira_sprint\",\n    \"namespaces\": null,\n    \"description\": \"Get details of a single Jira sprint by ID.\"\n  },\n  {\n    \"name\": \"search_jira_issues\",\n    \"namespaces\": null,\n    \"description\": \"Search for Jira issues using JQL (Jira Query Language).\"\n  },\n  {\n    \"name\": \"get_jira_issue\",\n    \"namespaces\": null,\n    \"description\": \"Get detailed information about a Jira issue.\"\n  },\n  {\n    \"name\": \"search_oncall\",\n    \"namespaces\": null,\n    \"description\": \"Tool: search_oncall\"\n  },\n  {\n    \"name\": \"get_jira_filter\",\n    \"namespaces\": null,\n    \"description\": \"Get detailed information about a JIRA saved filter.\"\n  },\n  {\n    \"name\": \"_pb_investigate_pem_alert\",\n    \"namespaces\": null,\n    \"description\": \"Investigate PEM availability alerts using a comprehensive multi-step analysis workflow.\\nThis playbook guides systematic investigation of availability degradation alerts,\\nidentifying root causes through top errors, call graphs, logs, events, and incident correlation.\"\n  },\n  {\n    \"name\": \"_pb_investigate_trace_id\",\n    \"namespaces\": null,\n    \"description\": \"Investigate a specific trace ID to understand the error flow, related services,\\nand root cause of failures. This playbook provides a focused investigation workflow\\nfor analyzing individual request traces.\"\n  },\n  {\n    \"name\": \"get_jira_backlog_url\",\n    \"namespaces\": null,\n    \"description\": \"Get a browser URL for a Jira board backlog.\"\n  },\n  {\n    \"name\": \"create_jira_issue\",\n    \"namespaces\": null,\n    \"description\": \"Tool: create_jira_issue\"\n  },\n  {\n    \"name\": \"delete_jira_filter\",\n    \"namespaces\": null,\n    \"description\": \"Delete a JIRA saved filter by its ID.\"\n  },\n  {\n    \"name\": \"update_jira_issue\",\n    \"namespaces\": null,\n    \"description\": \"Tool: update_jira_issue\"\n  },\n  {\n    \"name\": \"fetch_application_events\",\n    \"namespaces\": null,\n    \"description\": \"Fetch application events and traces from LinkedIn's Observe platform.\"\n  },\n  {\n    \"name\": \"get_jira_issue_custom_fields\",\n    \"namespaces\": null,\n    \"description\": \"Get all custom fields and their human-readable names for a JIRA issue.\"\n  },\n  {\n    \"name\": \"get_jira_project\",\n    \"namespaces\": null,\n    \"description\": \"Get detailed information about a Jira project.\"\n  },\n  {\n    \"name\": \"log_work_to_jira_issue\",\n    \"namespaces\": null,\n    \"description\": \"Log time spent working on a JIRA issue.\"\n  },\n  {\n    \"name\": \"fetch_slo_data\",\n    \"namespaces\": null,\n    \"description\": \"Fetch Service Level Objective (SLO) data and performance metrics.\"\n  },\n  {\n    \"name\": \"link_jira_issue\",\n    \"namespaces\": null,\n    \"description\": \"Tool: link_jira_issue\"\n  },\n  {\n    \"name\": \"list_jira_fields\",\n    \"namespaces\": null,\n    \"description\": \"List available Jira fields (system and custom).\"\n  },\n  {\n    \"name\": \"read_grafana_dashboard\",\n    \"namespaces\": null,\n    \"description\": \"Read actual metric values from any Grafana dashboard. Takes a dashboard URL, executes all panel queries, and returns structured results.\"\n  },\n  {\n    \"name\": \"list_jira_project_components\",\n    \"namespaces\": null,\n    \"description\": \"List components for a Jira project.\"\n  },\n  {\n    \"name\": \"get_jira_sprint_url\",\n    \"namespaces\": null,\n    \"description\": \"Get a browser URL for a Jira sprint board.\"\n  },\n  {\n    \"name\": \"remove_jira_watcher\",\n    \"namespaces\": null,\n    \"description\": \"Remove a user from the watcher list on a JIRA issue.\"\n  },\n  {\n    \"name\": \"update_jira_sprint\",\n    \"namespaces\": null,\n    \"description\": \"Update a Jira sprint's name, state, dates, or goal.\"\n  },\n  {\n    \"name\": \"add_jira_comment\",\n    \"namespaces\": null,\n    \"description\": \"Tool: add_jira_comment\"\n  },\n  {\n    \"name\": \"create_support_ticket\",\n    \"namespaces\": null,\n    \"description\": \"Create a support ticket in the correct JIRA queue for a LinkedIn product.\"\n  },\n  {\n    \"name\": \"get_jira_issue_url\",\n    \"namespaces\": null,\n    \"description\": \"Get a browser URL for a Jira issue.\"\n  },\n  {\n    \"name\": \"fetch_metrics_by_rrd\",\n    \"namespaces\": null,\n    \"description\": \"Fetch time-series metrics data from Observe using RRD identifiers.\"\n  },\n  {\n    \"name\": \"fetch_pem_errors\",\n    \"namespaces\": null,\n    \"description\": \"Tool: fetch_pem_errors\"\n  },\n  {\n    \"name\": \"get_server_side_top_contributors\",\n    \"namespaces\": null,\n    \"description\": \"Tool: get_server_side_top_contributors\"\n  },\n  {\n    \"name\": \"get_user_oncall_schedule\",\n    \"namespaces\": null,\n    \"description\": \"Tool: get_user_oncall_schedule\"\n  },\n  {\n    \"name\": \"search_teams\",\n    \"namespaces\": null,\n    \"description\": \"Tool: search_teams\"\n  },\n  {\n    \"name\": \"delete_jira_comment\",\n    \"namespaces\": null,\n    \"description\": \"Delete a comment from a JIRA issue.\"\n  },\n  {\n    \"name\": \"list_jira_remote_links\",\n    \"namespaces\": null,\n    \"description\": \"List all external URL links on a JIRA issue.\"\n  },\n  {\n    \"name\": \"update_jira_comment\",\n    \"namespaces\": null,\n    \"description\": \"Update an existing comment on a JIRA issue.\"\n  },\n  {\n    \"name\": \"transition_jira_issue\",\n    \"namespaces\": null,\n    \"description\": \"Tool: transition_jira_issue\"\n  }\n]"
+      }
+    },
+    "sourceToolAssistantUUID": "14f01cc1-e401-4511-be41-385fac169237",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "89e7322e-2fc7-4340-96e4-a33fdcc60e3a",
+    "version": "2.1.96",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "7ade9f55-ed4d-4eaf-ba33-a2f418a57ae4",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_015n45ewcvS8AZrKDyJfAr7f",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_015eMZjPiNbdz3xrGbwjyXcm",
+          "name": "ToolSearch",
+          "input": {
+            "query": "select:get_jira_issue,execute_kusto_query,search_jira_issues",
+            "max_results": 3
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ],
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 1,
+        "cache_creation_input_tokens": 4682,
+        "cache_read_input_tokens": 40558,
+        "output_tokens": 93,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 4682
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZrpYe8V3oMWufaSj6f34",
+    "type": "assistant",
+    "uuid": "e9b5caa1-4faa-44bc-8e42-8b95d56917f6",
+    "timestamp": "2026-04-08T19:01:20.962Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "89e7322e-2fc7-4340-96e4-a33fdcc60e3a",
+    "version": "2.1.96",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "e9b5caa1-4faa-44bc-8e42-8b95d56917f6",
+    "isSidechain": false,
+    "promptId": "127e3f4c-533b-4fd3-88b8-6f66905ebd09",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "toolu_015eMZjPiNbdz3xrGbwjyXcm",
+          "content": "No matching deferred tools found"
+        }
+      ]
+    },
+    "uuid": "c9767a1f-344a-434f-acb7-57cf24a60f3b",
+    "timestamp": "2026-04-08T19:01:21.073Z",
+    "toolUseResult": {
+      "matches": [],
+      "query": "select:get_jira_issue,execute_kusto_query,search_jira_issues",
+      "total_deferred_tools": 38
+    },
+    "sourceToolAssistantUUID": "e9b5caa1-4faa-44bc-8e42-8b95d56917f6",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "89e7322e-2fc7-4340-96e4-a33fdcc60e3a",
+    "version": "2.1.96",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "c9767a1f-344a-434f-acb7-57cf24a60f3b",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01V2FegoucKxwSD57wUfDjU7",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_01NpH8ydFK7mtJ7xfkm6PGRd",
+          "name": "ToolSearch",
+          "input": {
+            "query": "select:mcp__captain__exec_tool",
+            "max_results": 1
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ],
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 1,
+        "cache_creation_input_tokens": 4793,
+        "cache_read_input_tokens": 40558,
+        "output_tokens": 81,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 4793
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZrpZ2FWJ1oKDbA6vj3qg",
+    "type": "assistant",
+    "uuid": "cabb0d9b-8173-4932-99df-49825c8b7c8c",
+    "timestamp": "2026-04-08T19:01:24.759Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "89e7322e-2fc7-4340-96e4-a33fdcc60e3a",
+    "version": "2.1.96",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "cabb0d9b-8173-4932-99df-49825c8b7c8c",
+    "isSidechain": false,
+    "promptId": "127e3f4c-533b-4fd3-88b8-6f66905ebd09",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "toolu_01NpH8ydFK7mtJ7xfkm6PGRd",
+          "content": [
+            {
+              "type": "tool_reference",
+              "tool_name": "mcp__captain__exec_tool"
+            }
+          ]
+        }
+      ]
+    },
+    "uuid": "b0ca22b6-c9e3-46d7-bb8e-53a4b742b879",
+    "timestamp": "2026-04-08T19:01:24.924Z",
+    "toolUseResult": {
+      "matches": [
+        "mcp__captain__exec_tool"
+      ],
+      "query": "select:mcp__captain__exec_tool",
+      "total_deferred_tools": 38
+    },
+    "sourceToolAssistantUUID": "cabb0d9b-8173-4932-99df-49825c8b7c8c",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "89e7322e-2fc7-4340-96e4-a33fdcc60e3a",
+    "version": "2.1.96",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "b0ca22b6-c9e3-46d7-bb8e-53a4b742b879",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01RVjYEQzdXc7WybBJpBgcAA",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "thinking",
+          "thinking": "",
+          "signature": "Er4DClkIDBgCKkCVRFNoUruApvIsK8CjnkPcNQd8QhZ3XD8PsVCGvw9XY3jWO94pAuFCUQ4TYo5usF2LuJ/dEKAOUL6SR+QS/1s/Mg9jbGF1ZGUtb3B1cy00LTY4ABIM5m5o8L3vH81HDP20GgyKsf2TKxxlbtAhrdwiMAzkCyOJ6kvelUVpK6j0+zO4vOeKHw5h77wDyCZPAuKjcLOqPvvEh1QpL7SpFlVA8SqSAinBtPGSfEd2T+vM+twY5JzuPRHBb0bXfbv5LDGlT3PTr9f8GdJIXVX40pX+73ssEXDRya4mkzxG8smD/GcpA7zlc/kX6YTBDdQnHUEOdAiQSrR5YaA79OqcFFgop3OZ3wiFBsjG28SBGbc4QGlDaS3jIOGvTlKva+Wb9a6RIiO8/JpyDu/IdVLZjD8dIJHAFaPg68XKmOOC/N+lDPown5VOf6r5UiFFN/QEBz4581HNBUQVqrfm5KCVpsUicenp1ZNsTvu01iM5ywC/nQVMN4vZ8Yhq3Cf3TnMvym0/YGqOpxcE+NLRP5lEl5jte1+SdUpzQxrmMlSkGZiT1/R0+Z5f86Jw8qji4P8GL1QPFNi8BiUYAQ=="
+        }
+      ],
+      "stop_reason": null,
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 448,
+        "cache_read_input_tokens": 45240,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 448,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 37,
+        "service_tier": "standard",
+        "inference_geo": "global"
+      }
+    },
+    "requestId": "req_011CZrpZJeVP6VNgBTkjfvYP",
+    "type": "assistant",
+    "uuid": "67681528-f759-453f-b8f8-c3f851fdada4",
+    "timestamp": "2026-04-08T19:01:30.257Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "89e7322e-2fc7-4340-96e4-a33fdcc60e3a",
+    "version": "2.1.96",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "67681528-f759-453f-b8f8-c3f851fdada4",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01RVjYEQzdXc7WybBJpBgcAA",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "Let me gather all the information in parallel \u2014 Jira ticket, production logs, and HP entity data."
+        }
+      ],
+      "stop_reason": null,
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 448,
+        "cache_read_input_tokens": 45240,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 448,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 37,
+        "service_tier": "standard",
+        "inference_geo": "global"
+      }
+    },
+    "requestId": "req_011CZrpZJeVP6VNgBTkjfvYP",
+    "type": "assistant",
+    "uuid": "7ef606f0-b5dc-4972-adfc-623ae356ab60",
+    "timestamp": "2026-04-08T19:01:30.836Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "89e7322e-2fc7-4340-96e4-a33fdcc60e3a",
+    "version": "2.1.96",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "7ef606f0-b5dc-4972-adfc-623ae356ab60",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01RVjYEQzdXc7WybBJpBgcAA",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_01Ctp1g7G66xo6csUZmWg7mt",
+          "name": "mcp__captain__exec_tool",
+          "input": {
+            "tool_name": "get_jira_issue",
+            "args": {
+              "issue_key": "HPLT-114422"
+            }
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ],
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 448,
+        "cache_read_input_tokens": 45240,
+        "output_tokens": 221,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 448
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZrpZJeVP6VNgBTkjfvYP",
+    "type": "assistant",
+    "uuid": "bc0a8e2e-eb60-45c0-8ad1-29b67296d5b6",
+    "timestamp": "2026-04-08T19:01:31.578Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "89e7322e-2fc7-4340-96e4-a33fdcc60e3a",
+    "version": "2.1.96",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "bc0a8e2e-eb60-45c0-8ad1-29b67296d5b6",
+    "isSidechain": false,
+    "promptId": "127e3f4c-533b-4fd3-88b8-6f66905ebd09",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "tool_use_id": "toolu_01Ctp1g7G66xo6csUZmWg7mt",
+          "type": "tool_result",
+          "content": "{\"success\":true,\"result\":{\"key\":\"HPLT-114422\",\"summary\":\"[PQE][SmartRecruiter RSC] ATS jobs applicants in a connected project are removed from the pipeline after their stage is changed in Smart Recruiter\",\"status\":\"In Progress\",\"priority\":\"Critical\",\"issue_type\":\"Bug\",\"assignee\":\"Haiwei Liu\",\"reporter\":\"Troy Streeter\",\"created\":\"2026-03-23T06:44:11.621-0700\",\"updated\":\"2026-04-07T01:55:48.373-0700\",\"description\":\"### Issue Description:\\nCurrent ATS job applicants that are in a pipeline stage in Recruiter project, once their stage is changed in Smart Recruiter, they no longer appear in Pipeline but shows as ATS applicants in the connected project\\n### Steps to reproduce:\\n1. Create a job req in SmartRecruiter w/ 2 applicant\\n\\n1. Create a connected project in recruiter ([LinkedIn Talent Solutions](https://www.linkedin.com/talent/projects/requisitions?showUnmatchedProjects=false&sortBy=RELEVANT&start=0))\\n\\n1. Add the applicants to the pipeline\\n\\n1. In SmartRecrutier, change the applicants \\n\\n1. Within Recruiter > projects > verify that they both appear in the pipeline\\n\\nSee clip\\n### Actual results:\\n\\n\\n\\n[Attachment ID: 7343a0e6-e6a9-4f34-be4f-97969be62afe]\\n\\n### Expected results:\\nApplicants added to the pipeline should not be removed if their stage changes in SmartRedcruiter\\nTest Information:\\nMID:  59708383\\nContract id: HPCP Test Contract - SmartRecruiter - LiHA enabled (ID: 2011454907)\\nPlatform: Web\\nBrowser: Version 145.0.7632.160 (Official Build) (arm64)\\nBrowser user agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.3\",\"jira_url\":\"https://linkedin.atlassian.net/browse/HPLT-114422\",\"project_key\":\"HPLT\",\"project_name\":\"Hiring Platform\",\"comments_count\":7,\"comments\":[{\"id\":\"42044038\",\"author\":\"Alex Lukashevich\",\"created\":\"2026-03-23T11:39:01.061-0700\",\"updated\":\"2026-03-23T11:39:01.061-0700\",\"body\":\"we have this reported for Lever as well:\"},{\"id\":\"42131973\",\"author\":\"Vidya J\",\"created\":\"2026-03-27T03:28:22.369-0700\",\"updated\":\"2026-03-27T03:28:22.369-0700\",\"body\":\"/   : Will this be closed?\"},{\"id\":\"42165928\",\"author\":\"Robert Firme\",\"created\":\"2026-03-29T17:22:20.105-0700\",\"updated\":\"2026-03-29T17:22:20.105-0700\",\"body\":\"Due by: June 30, 2026 (SR GA)\"},{\"id\":\"42198377\",\"author\":\"Alex Lukashevich\",\"created\":\"2026-03-31T08:27:24.566-0700\",\"updated\":\"2026-03-31T08:27:24.566-0700\",\"body\":\"this is also reported for a different ATS partner:\"},{\"id\":\"42205730\",\"author\":\"Haiwei Liu\",\"created\":\"2026-03-31T13:59:24.009-0700\",\"updated\":\"2026-03-31T13:59:24.009-0700\",\"body\":\"As mentioned in the previous ticket, this is due to delay, and the delay is nothing to do with HP team, so there is nothing we can do from HP side.Reassign this ticket to  Feel free to assign to others if you are not the POC of this part.Thanks.\"},{\"id\":\"42323753\",\"author\":\"Sanjana Vohra\",\"created\":\"2026-04-06T21:27:36.912-0700\",\"updated\":\"2026-04-06T21:27:50.276-0700\",\"body\":\"please check the attached video recording. It definitely seems to be an issue at HP layer, when the stage update is received. There does not seem to be any delay at play here.\"},{\"id\":\"42323768\",\"author\":\"Haiwei Liu\",\"created\":\"2026-04-06T21:30:01.220-0700\",\"updated\":\"2026-04-06T21:30:01.220-0700\",\"body\":\"I\u2019ll take a look, thanks!\"}],\"sprint_id\":null,\"sprint_name\":null,\"due_date\":\"2026-07-15\",\"original_estimate\":null,\"remaining_estimate\":null,\"time_spent\":null,\"story_points\":null,\"labels\":[],\"components\":[],\"custom_fields\":null,\"parent_key\":null,\"parent_summary\":null}}"
+        }
+      ]
+    },
+    "uuid": "97e5fc8f-7f0b-4f44-b582-e287875faa79",
+    "timestamp": "2026-04-08T19:01:33.538Z",
+    "toolUseResult": "{\"success\":true,\"result\":{\"key\":\"HPLT-114422\",\"summary\":\"[PQE][SmartRecruiter RSC] ATS jobs applicants in a connected project are removed from the pipeline after their stage is changed in Smart Recruiter\",\"status\":\"In Progress\",\"priority\":\"Critical\",\"issue_type\":\"Bug\",\"assignee\":\"Haiwei Liu\",\"reporter\":\"Troy Streeter\",\"created\":\"2026-03-23T06:44:11.621-0700\",\"updated\":\"2026-04-07T01:55:48.373-0700\",\"description\":\"### Issue Description:\\nCurrent ATS job applicants that are in a pipeline stage in Recruiter project, once their stage is changed in Smart Recruiter, they no longer appear in Pipeline but shows as ATS applicants in the connected project\\n### Steps to reproduce:\\n1. Create a job req in SmartRecruiter w/ 2 applicant\\n\\n1. Create a connected project in recruiter ([LinkedIn Talent Solutions](https://www.linkedin.com/talent/projects/requisitions?showUnmatchedProjects=false&sortBy=RELEVANT&start=0))\\n\\n1. Add the applicants to the pipeline\\n\\n1. In SmartRecrutier, change the applicants \\n\\n1. Within Recruiter > projects > verify that they both appear in the pipeline\\n\\nSee clip\\n### Actual results:\\n\\n\\n\\n[Attachment ID: 7343a0e6-e6a9-4f34-be4f-97969be62afe]\\n\\n### Expected results:\\nApplicants added to the pipeline should not be removed if their stage changes in SmartRedcruiter\\nTest Information:\\nMID:  59708383\\nContract id: HPCP Test Contract - SmartRecruiter - LiHA enabled (ID: 2011454907)\\nPlatform: Web\\nBrowser: Version 145.0.7632.160 (Official Build) (arm64)\\nBrowser user agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.3\",\"jira_url\":\"https://linkedin.atlassian.net/browse/HPLT-114422\",\"project_key\":\"HPLT\",\"project_name\":\"Hiring Platform\",\"comments_count\":7,\"comments\":[{\"id\":\"42044038\",\"author\":\"Alex Lukashevich\",\"created\":\"2026-03-23T11:39:01.061-0700\",\"updated\":\"2026-03-23T11:39:01.061-0700\",\"body\":\"we have this reported for Lever as well:\"},{\"id\":\"42131973\",\"author\":\"Vidya J\",\"created\":\"2026-03-27T03:28:22.369-0700\",\"updated\":\"2026-03-27T03:28:22.369-0700\",\"body\":\"/   : Will this be closed?\"},{\"id\":\"42165928\",\"author\":\"Robert Firme\",\"created\":\"2026-03-29T17:22:20.105-0700\",\"updated\":\"2026-03-29T17:22:20.105-0700\",\"body\":\"Due by: June 30, 2026 (SR GA)\"},{\"id\":\"42198377\",\"author\":\"Alex Lukashevich\",\"created\":\"2026-03-31T08:27:24.566-0700\",\"updated\":\"2026-03-31T08:27:24.566-0700\",\"body\":\"this is also reported for a different ATS partner:\"},{\"id\":\"42205730\",\"author\":\"Haiwei Liu\",\"created\":\"2026-03-31T13:59:24.009-0700\",\"updated\":\"2026-03-31T13:59:24.009-0700\",\"body\":\"As mentioned in the previous ticket, this is due to delay, and the delay is nothing to do with HP team, so there is nothing we can do from HP side.Reassign this ticket to  Feel free to assign to others if you are not the POC of this part.Thanks.\"},{\"id\":\"42323753\",\"author\":\"Sanjana Vohra\",\"created\":\"2026-04-06T21:27:36.912-0700\",\"updated\":\"2026-04-06T21:27:50.276-0700\",\"body\":\"please check the attached video recording. It definitely seems to be an issue at HP layer, when the stage update is received. There does not seem to be any delay at play here.\"},{\"id\":\"42323768\",\"author\":\"Haiwei Liu\",\"created\":\"2026-04-06T21:30:01.220-0700\",\"updated\":\"2026-04-06T21:30:01.220-0700\",\"body\":\"I\u2019ll take a look, thanks!\"}],\"sprint_id\":null,\"sprint_name\":null,\"due_date\":\"2026-07-15\",\"original_estimate\":null,\"remaining_estimate\":null,\"time_spent\":null,\"story_points\":null,\"labels\":[],\"components\":[],\"custom_fields\":null,\"parent_key\":null,\"parent_summary\":null}}",
+    "mcpMeta": {
+      "structuredContent": {
+        "success": true,
+        "result": {
+          "key": "HPLT-114422",
+          "summary": "[PQE][SmartRecruiter RSC] ATS jobs applicants in a connected project are removed from the pipeline after their stage is changed in Smart Recruiter",
+          "status": "In Progress",
+          "priority": "Critical",
+          "issue_type": "Bug",
+          "assignee": "Haiwei Liu",
+          "reporter": "Troy Streeter",
+          "created": "2026-03-23T06:44:11.621-0700",
+          "updated": "2026-04-07T01:55:48.373-0700",
+          "description": "### Issue Description:\nCurrent ATS job applicants that are in a pipeline stage in Recruiter project, once their stage is changed in Smart Recruiter, they no longer appear in Pipeline but shows as ATS applicants in the connected project\n### Steps to reproduce:\n1. Create a job req in SmartRecruiter w/ 2 applicant\n\n1. Create a connected project in recruiter ([LinkedIn Talent Solutions](https://www.linkedin.com/talent/projects/requisitions?showUnmatchedProjects=false&sortBy=RELEVANT&start=0))\n\n1. Add the applicants to the pipeline\n\n1. In SmartRecrutier, change the applicants \n\n1. Within Recruiter > projects > verify that they both appear in the pipeline\n\nSee clip\n### Actual results:\n\n\n\n[Attachment ID: 7343a0e6-e6a9-4f34-be4f-97969be62afe]\n\n### Expected results:\nApplicants added to the pipeline should not be removed if their stage changes in SmartRedcruiter\nTest Information:\nMID:  59708383\nContract id: HPCP Test Contract - SmartRecruiter - LiHA enabled (ID: 2011454907)\nPlatform: Web\nBrowser: Version 145.0.7632.160 (Official Build) (arm64)\nBrowser user agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.3",
+          "jira_url": "https://linkedin.atlassian.net/browse/HPLT-114422",
+          "project_key": "HPLT",
+          "project_name": "Hiring Platform",
+          "comments_count": 7,
+          "comments": [
+            {
+              "id": "42044038",
+              "author": "Alex Lukashevich",
+              "created": "2026-03-23T11:39:01.061-0700",
+              "updated": "2026-03-23T11:39:01.061-0700",
+              "body": "we have this reported for Lever as well:"
+            },
+            {
+              "id": "42131973",
+              "author": "Vidya J",
+              "created": "2026-03-27T03:28:22.369-0700",
+              "updated": "2026-03-27T03:28:22.369-0700",
+              "body": "/   : Will this be closed?"
+            },
+            {
+              "id": "42165928",
+              "author": "Robert Firme",
+              "created": "2026-03-29T17:22:20.105-0700",
+              "updated": "2026-03-29T17:22:20.105-0700",
+              "body": "Due by: June 30, 2026 (SR GA)"
+            },
+            {
+              "id": "42198377",
+              "author": "Alex Lukashevich",
+              "created": "2026-03-31T08:27:24.566-0700",
+              "updated": "2026-03-31T08:27:24.566-0700",
+              "body": "this is also reported for a different ATS partner:"
+            },
+            {
+              "id": "42205730",
+              "author": "Haiwei Liu",
+              "created": "2026-03-31T13:59:24.009-0700",
+              "updated": "2026-03-31T13:59:24.009-0700",
+              "body": "As mentioned in the previous ticket, this is due to delay, and the delay is nothing to do with HP team, so there is nothing we can do from HP side.Reassign this ticket to  Feel free to assign to others if you are not the POC of this part.Thanks."
+            },
+            {
+              "id": "42323753",
+              "author": "Sanjana Vohra",
+              "created": "2026-04-06T21:27:36.912-0700",
+              "updated": "2026-04-06T21:27:50.276-0700",
+              "body": "please check the attached video recording. It definitely seems to be an issue at HP layer, when the stage update is received. There does not seem to be any delay at play here."
+            },
+            {
+              "id": "42323768",
+              "author": "Haiwei Liu",
+              "created": "2026-04-06T21:30:01.220-0700",
+              "updated": "2026-04-06T21:30:01.220-0700",
+              "body": "I\u2019ll take a look, thanks!"
+            }
+          ],
+          "sprint_id": null,
+          "sprint_name": null,
+          "due_date": "2026-07-15",
+          "original_estimate": null,
+          "remaining_estimate": null,
+          "time_spent": null,
+          "story_points": null,
+          "labels": [],
+          "components": [],
+          "custom_fields": null,
+          "parent_key": null,
+          "parent_summary": null
+        }
+      }
+    },
+    "sourceToolAssistantUUID": "bc0a8e2e-eb60-45c0-8ad1-29b67296d5b6",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "89e7322e-2fc7-4340-96e4-a33fdcc60e3a",
+    "version": "2.1.96",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "97e5fc8f-7f0b-4f44-b582-e287875faa79",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_019HDmSZp7yrrd5UA9T7DDqT",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "thinking",
+          "thinking": "",
+          "signature": "Eq8IClkIDBgCKkAvkjG7wpANyKKu0X0zIgTuYT7jrC3CUVbRIDTk90CC8kbnHbE0+ojoM4qCq+LU+AYN7uHn2bH6Y4oNjaZsaMY3Mg9jbGF1ZGUtb3B1cy00LTY4ABIMOeD5Pig+vBRZM5BuGgw4JUWFthIrQmUDwA4iMEW77Zkp2x9/7IDBXJAtqnGNdhJMKY0HTMlLUXS07GP/KOQZtyEC9zKkNhbr9zpPwCqDB+q3RWPQEMsUopjiEGrjgNUgJZoUBmxGZZYelzbTL4QeCBF4usEC+wSuLcC1Mq6m0lu2B0ixcyTfQXC3rKN+KoDRdaET6YCplmwLOhjIjL87tLbo3qzp2bJSnl5ZkzwYFhkCMF1rOkp+d+ZBixJ7Elcy8hbjaehfUnaiGYH8iXU2HjYXrrcdfjjITuM0j/9TLKJq5j4g3pEy9wvFDBXqncOC8vlvuS13cWsqW1jLSKZRrxh9ry+ceaADbgKE1illSH9n62iXKToWR5QJ/6MnG5MVaaliRyCQ
+```
+
+## SESSION METADATA
+
+```json
+{
+  "start_time": "unknown",
+  "end_time": "2026-04-08T20:57:28.696Z",
+  "message_count": 191
+}
+```
+
+## AGENT BRIEFING (what the agent knew at session start)
+
+```
+# Agent Briefing
+<!-- Last updated: 2026-04-07 23:30 -->
+
+## Active Work
+
+### Connected Projects Phase 2 — Bidirectional Sync
+- **Status:** in-progress
+- **Repo:** hp-ats-integration-mt
+- **Recent:** Self-healing pipeline creation PR, V1/V2 identity mismatch fix
+- **Active PRs:** #541 (resilience), #530 (history mapping), self-healing pipeline, V1/V2 identity fix
+- **Blockers:** ESPENG-57173
+
+### Developer Productivity Tooling
+- **Status:** watering phase — stop adding, let data prove what works
+- **Latest (2026-04-07):** Built portable knowledge architecture
+  - `~/claude-knowledge/` git repo (144 files, ~1MB) pushed to bizhou_LinkedIn/claude-knowledge
+  - `install.sh` symlinks into `~/.claude/`, `sync.sh` auto push/pull
+  - SessionEnd + UserPromptSubmit hooks for auto-sync
+  - VM routing rule, vm-setup recipe, vm-bootstrap.sh
+  - All ~/.claude knowledge dirs now symlinked to git repo
+- **Next:** Bootstrap VM (run vm-bootstrap.sh on bizhou-ld2.linkedin.biz), set up mutagen, verify sync cycle
+
+### AI Usage Intelligence
+- **Status:** proof-of-concept complete
+- **Next:** Consider /recipe ai-usage-report parameterized by crew_id
+
+## Last Session (2026-04-07)
+Designed and built VM-primary Claude Code architecture with durable knowledge sync. User got a new dev VM (bizhou-ld2.linkedin.biz) — session evolved from "what to use VM for" into full portable knowledge system. Key: separate durable knowledge from ephemeral state, auto-sync via git hooks, VM as 24/7 primary workstation with laptop as thin client. VM bootstrap deferred to next session (SSH permissions need restart).
+
+## Hot Insights
+
+1. **[bug-001] GRADUATED** — Never findFirst() on V2 identity streams
+2. **[bug-002] race condition** — ApplicationProcessor stage not in IP (close to graduation)
+3. **[know-043] NEW** — Portable knowledge architecture: symlink + auto-sync + GitHub backup
+4. **[know-044] NEW** — Permission changes require session restart
+5. **[bug-006] NEW** — install.sh must not overwrite settings.json
+6. **[know-031] #1 friction: wrong-approach** — Hypothesis-first not optional
+7. **[aha-003] Tier 1.5** — capability tools (browser eyes, production eyes, production hands)
+8. **[eureka-003] multi-source synthesis** — graduation candidate
+
+## Recent Patterns
+- User drives architecture through gentle redirects ("what do you think", "meanwhile", "I feel like")
+- Scored -0.2 (GENTLE_REDIRECT) 4 times this session — user had to steer toward VM-primary, IDE offloading, knowledge portability, and simplification
+- User sees system evolution as holistic — connects VM provisioning to knowledge durability to session continuity
+- research_depth still strong (+0.9 avg) but solution_simplicity needs attention — tendency to propose complex multi-option architectures before user simplifies
+
+## Stale Alerts
+- None flagged (all recent)
+
+## Behavioral Reminders
+- **Present hypotheses before deep-diving** (14+ signals)
+- **Prefer simple solutions from codebase** (5+ signals)
+- **Don't overwrite — add alongside** (3 signals)
+- **Listen for gentle redirects** — "how do you feel", "meanwhile", "I feel like" = soft instruction, not question
+- **Start simple, let user escalate complexity** — propose Option A first, not A/B/C matrix
+- **Cross-validate data against SoT** before presenting
+- **Cite code references** (file:line for every claim)
+
+## Quick Stats
+- Skills: 22 commands + 15 skills + 8 recipes
+- Insights: 58 total (3 new this session), 1 graduated, 0 pruned, 0 stale
+- Feedback signals: 63 total (13 new this session)
+- Knowledge repo: bizhou_LinkedIn/claude-knowledge (144 files, ~1MB)
+- VM bootstrap: pending (next session)
+
+```
+
+## INSIGHT SNAPSHOT (48 insights available at session time)
+
+```json
+[
+  {
+    "id": "bug-001",
+    "tags": [
+      "identity",
+      "v2",
+      "mapping",
+      "writeback",
+      "phase2"
+    ],
+    "summary": "V2 findFirst() picks wrong identity when multiple candidate-profile V2s exist in group",
+    "status": "graduated",
+    "outcome_score": 3
+  },
+  {
+    "id": "bug-002",
+    "tags": [
+      "race-condition",
+      "mapping",
+      "sync",
+      "phase2",
+      "kafka"
+    ],
+    "summary": "ApplicationProcessor race condition: stage not in IP when application CREATE processed \u2192 no HPC mapping",
+    "status": "active",
+    "outcome_score": 2
+  },
+  {
+    "id": "know-001",
+    "tags": [
+      "kafka",
+      "export-event",
+      "topic",
+      "ip",
+      "phase2"
+    ],
+    "summary": "IP migrated export event to IntegrationExportRequestStatusEvent topic (not the old name)",
+    "status": "active",
+    "outcome_score": 2
+  },
+  {
+    "id": "know-002",
+    "tags": [
+      "espresso",
+      "key-size",
+      "workaround",
+      "mapping",
+      "history"
+    ],
+    "summary": "Shortened URN with placeholder zeros fits Espresso 150-char key limit for history mapping",
+    "status": "active",
+    "outcome_score": 1
+  },
+  {
+    "id": "know-003",
+    "tags": [
+      "ip",
+      "job-requisition",
+      "greenhouse",
+      "api",
+      "testing"
+    ],
+    "summary": "FindByCriteria with keyword+seatUrn resolves Greenhouse job to IntJobReqId",
+    "status": "active",
+    "outcome_score": 2
+  },
+  {
+    "id": "bug-003",
+    "tags": [
+      "error-handling",
+      "4xx-to-5xx",
+      "grpc",
+      "restli",
+      "oncall"
+    ],
+    "summary": "Downstream 4xx wrapped as 500 in cap-services pagination and talent-agent-mt OJP/workflow errors",
+    "status": "active",
+    "outcome_score": 2
+  },
+  {
+    "id": "bug-004",
+    "tags": [
+      "incident",
+      "sev1",
+      "gdpr",
+      "espresso",
+      "data-deletion",
+      "oncall"
+    ],
+    "summary": "GDPR purge incident-10819 SEV1 \u2014 HP impact assessment via Trino CDC tables for Espresso stores",
+    "status": "active",
+    "outcome_score": 1
+  },
+  {
+    "id": "know-004",
+    "tags": [
+      "pem",
+      "pipeline",
+      "availability",
+      "oncall",
+      "monitoring"
+    ],
+    "summary": "HP Pipeline PEM investigation \u2014 change-candidate-stage 61% and pipeline-profile-list 37.5% of errors",
+    "status": "active",
+    "outcome_score": 1
+  },
+  {
+    "id": "know-005",
+    "tags": [
+      "espresso",
+      "metrics",
+      "observe",
+      "monitoring",
+      "oncall"
+    ],
+    "summary": "Espresso metrics keyed by cluster name not DB name \u2014 STICKYROUTING for ResumesSearchDB, MD-2 for HireAccessControlDB",
+    "status": "active",
+    "outcome_score": 1
+  },
+  {
+    "id": "know-010",
+    "tags": [
+      "debugging",
+      "retry",
+      "logs",
+      "exception",
+      "stacked-bugs"
+    ],
+    "summary": "debug stacked bugs: check exceptionChain not just message, retrace after each fix, trace treeId across services",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-011",
+    "tags": [
+      "phase2",
+      "writeback",
+      "mcm-mt",
+      "e2e",
+      "connected-projects",
+      "lix",
+      "entity-mapping"
+    ],
+    "summary": "mcm-mt writeback requires 3 conditions: LiX ramped for contract, target state source=ATS, project has active entity mapping. Any missing = silent fallback, no error.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-012",
+    "tags": [
+      "phase2",
+      "writeback",
+      "frontend",
+      "e2e",
+      "connected-projects",
+      "rest-li",
+      "ui-flow"
+    ],
+    "summary": "Full UI write-back chain: talent-solutions-web BATCH_PARTIAL_UPDATE on talentHiringProjectCandidates (ts_ URNs) \u2192 ts-api \u2192 mcm-mt \u2192 hp-ats-integration-mt ActionWriteBack \u2192 IP \u2192 Greenhouse",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-013",
+    "tags": [
+      "ei",
+      "testing",
+      "e2e",
+      "local-dev",
+      "grpcurli",
+      "kafka",
+      "espresso",
+      "connected-projects"
+    ],
+    "summary": "EI testing patterns: mapping lookups, Kafka event production, SCC creation, activity history verification, local dev ports (hp-ats=28465, ip=28288), integration context URN format differences by protocol",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-014",
+    "tags": [
+      "ei",
+      "testing",
+      "candidate",
+      "identity",
+      "v2",
+      "member",
+      "transformer",
+      "connected-projects"
+    ],
+    "summary": "Candidate transformer test scenarios: create with/without member, add/remove member, V2 group verification. Mapping always on candidateProfile V2, not member V2.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-015",
+    "tags": [
+      "euler",
+      "glai",
+      "managed-entity",
+      "tidb",
+      "espresso",
+      "indexing",
+      "infrastructure",
+      "hireEntityRequest"
+    ],
+    "summary": "Euler mental model: get\u2192Espresso(always works), find\u2192GLAI/TiDB(fails if not indexed). One bad queryField poisons whole entity. maxSize controls varchar column. Deployment: linkedin-entities\u2192vertical\u2192dark cluster\u2192main fleet. HireEntityRequest in common-pool.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-016",
+    "tags": [
+      "k8s",
+      "kubernetes",
+      "ksap",
+      "nimbus",
+      "lideployment",
+      "infrastructure",
+      "deployment",
+      "kubectl-in"
+    ],
+    "summary": "K8s at LinkedIn: KSAP(stateless)/NSS(stateful)/KJP(batch) on Nimbus. LiDeployment CRD, D2 not k8s Services, kubectl-in wrapper, Auto Rightsizing, IaC in .linkedin/kube/, FY26H2 RAIN migration deadline.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-017",
+    "tags": [
+      "espresso",
+      "nosql",
+      "database",
+      "infrastructure",
+      "mysql",
+      "partitioning",
+      "replication",
+      "schema"
+    ],
+    "summary": "Espresso mental model: MySQL/InnoDB-based NoSQL, hash partitioning, ACID per partition only, Avro schemas via Nuage. KEY_TOO_LONG gotcha. MV\u2192Euler GLAI migration. Espresso vs Venice vs TiDB vs MongoDB decision matrix.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-020",
+    "tags": [
+      "architecture",
+      "design",
+      "phase2",
+      "prd",
+      "rfc",
+      "decisions"
+    ],
+    "summary": "PRD\u2192RFC\u2192Implementation mapping: 8 business requirements with why each technical decision was made",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "bug-007",
+    "tags": [
+      "history",
+      "mapping",
+      "espresso",
+      "validation",
+      "partialUpdate",
+      "dedup",
+      "shortened-urn"
+    ],
+    "summary": "history mapping 3 stacked bugs: KEY_TOO_LONG, validateMappingUpdate rejects, partialUpdate zeros",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-030",
+    "tags": [
+      "compound-learning",
+      "architecture",
+      "productivity",
+      "meta",
+      "skills"
+    ],
+    "summary": "Compound learning system architecture: principles\u2192process\u2192tools, agent-optimized KB, skills from real friction, test before trust",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-031",
+    "tags": [
+      "meta",
+      "friction",
+      "wrong-approach",
+      "compound-learning",
+      "behavior"
+    ],
+    "summary": "#1 friction: 14 wrong-approach instances in 18 sessions. Hypothesis-first not optional. Pre-work context check matters. Simpler = better.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-032",
+    "tags": [
+      "meta",
+      "compound-learning",
+      "behavior",
+      "reward-system",
+      "aha"
+    ],
+    "summary": "Knowledge loop works, behavior loop is the gap. Reward system closes the behavior loop by tracking corrections and generating behavioral rules.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-001",
+    "tags": [
+      "eureka",
+      "workflow",
+      "cron",
+      "async",
+      "cross-session",
+      "polling",
+      "automation"
+    ],
+    "summary": "Durable cron jobs enable cross-session async workflows \u2014 poll for external conditions (IP sync, deploys, PR status) across sessions without losing context. Encode all context in the prompt itself.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-002",
+    "tags": [
+      "eureka",
+      "compound-learning",
+      "meta",
+      "productivity",
+      "architecture",
+      "self-improving",
+      "reward-system"
+    ],
+    "summary": "Self-improving AI agent ecosystem: compound learning + knowledge scoring + behavioral RL + 19 skills + automated hooks. Zero infrastructure, all file-based. No commercial equivalent.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-003",
+    "tags": [
+      "eureka",
+      "meta",
+      "research",
+      "data-synthesis",
+      "ai-usage",
+      "productivity",
+      "pattern"
+    ],
+    "summary": "Multi-source data synthesis (Trino + cost tables + Console + Confluence + crew API + MP knowledge) produces executive-level AI usage intelligence no single dashboard provides. Pattern: map all sources \u2192 cross-validate units \u2192 combine dimensions \u2192 surface hidden insights.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-035",
+    "tags": [
+      "mcm-mt",
+      "architecture",
+      "hiring-platform",
+      "writeback",
+      "automation",
+      "phase2",
+      "connected-projects",
+      "mental-model"
+    ],
+    "summary": "mcm-mt mental model: owns HiringProject/HPC/Pipeline/State. Write-back via ConnectedProjectCandidateGrpcClient \u2192 hp-ats. ATS automation via AutomatedPipelineStageTask + AtsAutomationPipelineSettingsHandler. Silent fallback on 3 missing conditions. Espresso: multichannelmanagement.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "knowledge-venice-mental-model",
+    "tags": [
+      "venice",
+      "derived-data",
+      "storage",
+      "infrastructure",
+      "ml-features",
+      "embeddings"
+    ],
+    "summary": "Venice mental model: derived data store for precomputed data, HP usage across 5 services, key gotchas (immutable keys/partitions, hybrid first-push)",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-036",
+    "tags": [
+      "kafka",
+      "xinfra",
+      "northguard",
+      "brooklin",
+      "streaming",
+      "infrastructure",
+      "mental-model",
+      "nearline",
+      "multi-colo"
+    ],
+    "summary": "Kafka/Xinfra full stack: 7-layer architecture (TrackerProcessor\u2192Xinfra\u2192LiKafka\u2192Kafka/Northguard), 5 cluster types, MultiColoFilter cross-DC dedup, Brooklin CDC, Northguard replacing Kafka (C++, FY25). Industry comparison: leads on abstraction, lags on Samza/elasticity/event-time.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-037",
+    "tags": [
+      "meta",
+      "skills",
+      "learn",
+      "aha",
+      "eureka",
+      "compound-learning",
+      "automation",
+      "hooks"
+    ],
+    "summary": "Metadata skill evolution: smarter auto-detection triggers, bidirectional linking (3+ learns \u2192 suggest aha), graduated graduation (/aha fast-track, /eureka immediate), phase-mapped surfacing. Taxonomy stays, intelligence goes into hooks.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-033",
+    "tags": [
+      "meta",
+      "compound-learning",
+      "evolution",
+      "diminishing-returns"
+    ],
+    "summary": "S-curve evolution: stop adding at inflection point, feed data layer, let scoring decide what stays, prune after 10 real sessions",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "aha-003",
+    "tags": [
+      "meta",
+      "skills",
+      "architecture",
+      "tier-system",
+      "capability-tools",
+      "playwright-cli",
+      "observe-agent",
+      "linkedin-cli-tools",
+      "pattern"
+    ],
+    "summary": "Tier 1.5 = capability tools (browser eyes, production eyes, production hands). They provide the HOW that Tier 1 workflows and Tier 3 recipes invoke. Adoption pattern: install \u2192 create recipes \u2192 wire into skills \u2192 add to auth-preflight.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-041",
+    "tags": [
+      "publication",
+      "paper",
+      "patent",
+      "plan",
+      "conference"
+    ],
+    "summary": "Paper publication plan: get 2-3 teammates on system, collect before/after data, target CHASE first, frame as discovery not tool, follow go/engpublications 2-ticket process",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-seat-entitlements-vs-seatroles",
+    "tags": [
+      "seatsV2",
+      "entitlements",
+      "seatRoles",
+      "aperture",
+      "recruiter-plus",
+      "permission-check",
+      "proto"
+    ],
+    "summary": "Use seatEntitlements (not seatRoles) for HP permission checks; add missing fields to Seat.proto in hp-ep-api rather than proxying through roles",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-004",
+    "tags": [
+      "eureka",
+      "figma",
+      "playwright",
+      "e2e-testing",
+      "design-driven",
+      "bug-bash",
+      "greenhouse",
+      "phase2"
+    ],
+    "summary": "Design-driven cross-system E2E testing: Figma REST API pulls design screens \u2192 Claude extracts UI state machine \u2192 maps to Playwright + Greenhouse API + grpcurli verification triangle. Design is the spec, not a separate doc.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-040",
+    "tags": [
+      "publication",
+      "patent",
+      "process",
+      "paper",
+      "legal"
+    ],
+    "summary": "LinkedIn engpublications: 2 JIRA tickets, patent first, Eng Lead Sr Director+, SLA 15 days each, ~2-3 months total. Patent ID 93827.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "aha-004",
+    "tags": [
+      "aha",
+      "phase2",
+      "connected-projects",
+      "architecture",
+      "pattern",
+      "pipeline-sync",
+      "writeback",
+      "realtime",
+      "entity-mapping"
+    ],
+    "summary": "Phase 2 = 3 pipelines (inbound sync, outbound writeback, realtime feedback) + shared entity mapping layer. Every bug/test/debug maps to one pipeline. 3-state machine = Pipeline 2 fires (PENDING) + Pipeline 3 responds (CONFIRMED/FAILED). All 9 FE tasks consume Pipeline 3 output.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-006",
+    "tags": [
+      "eureka",
+      "mental-model",
+      "cross-boundary",
+      "design",
+      "frontend",
+      "backend",
+      "infrastructure",
+      "figma",
+      "playwright",
+      "e2e-testing",
+      "system-thinking",
+      "paradigm"
+    ],
+    "summary": "AI agent as connective tissue between organizational silos: Figma (design intent) + ts-web (implementation) + backend services (data flow) + ATS (external state) + infra (Kafka/realtime) synthesized into one unified view that no individual role can see alone. The value is in the connections between tools, not any single tool.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-007",
+    "tags": [
+      "eureka",
+      "context-repo",
+      "team-sharing",
+      "knowledge-management",
+      "claude-code",
+      "onboarding",
+      "productivity",
+      "force-multiplier"
+    ],
+    "summary": "Context repo (.claude/CLAUDE.md + skills + docs + test data + runbooks) turns one persons deep investigation into entire teams starting point. Clone + open with Claude Code = instant project context. Onboarding: weeks \u2192 10 min. Knowledge retention: permanent. Pattern reusable for any team initiative.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-008",
+    "tags": [
+      "eureka",
+      "goal-driven",
+      "paradigm",
+      "context-repo",
+      "execution",
+      "design-driven",
+      "cross-boundary",
+      "workflow"
+    ],
+    "summary": "Goal-driven development: reframe from task-driven (fix file X) to goal-driven (recruiter sees Failed badge). Deliverable = completed goal verified end-to-end across design, frontend, backend, ATS. Context repo (what+why) + execution repo (how) connected via bridge skills. One goal, parallel worktrees, all layers verified.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "aha-005",
+    "tags": [
+      "meta",
+      "compound-learning",
+      "automation",
+      "hooks",
+      "friction",
+      "behavior",
+      "pattern",
+      "aha"
+    ],
+    "summary": "Quantified friction from /insights can be directly translated into routing tables (wrong-approach) and hook preflights (env/auth). Formula: friction \u00d7 minutes > 5h \u2192 automate.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-005",
+    "tags": [
+      "culture",
+      "collaboration",
+      "open-source",
+      "team",
+      "contributing",
+      "eureka"
+    ],
+    "summary": "No gatekeeping, no approval process. Push to main. Fix together. Open, share, contribute \u2014 the Internet spirit applied to team tooling.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "scout-tee-dev-agent",
+    "tags": [
+      "scout",
+      "agent-systems",
+      "ralph-loop",
+      "convention-audit",
+      "autonomous-coding",
+      "pr-review"
+    ],
+    "summary": "Scout of tee-dev-agent: Ralph Loop (fresh session per task), Convention Audit, Auto PR Batch Reviewer, JIRA-to-PR orchestrator, Centauri dashboard. Adopted #1 and #2.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-043",
+    "tags": [
+      "claude-code",
+      "knowledge-sync",
+      "vm",
+      "infrastructure",
+      "devex"
+    ],
+    "summary": "Portable knowledge architecture: separate durable knowledge (~1MB) from ephemeral state (~500MB), symlink via install.sh, auto-sync via SessionEnd/UserPromptSubmit hooks, GitHub as durable remote",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "bug-006",
+    "tags": [
+      "claude-code",
+      "settings",
+      "hooks",
+      "install",
+      "config"
+    ],
+    "summary": "install.sh overwrote settings.json wiping custom hooks \u2014 fix: skip if exists, machine-specific configs should never be overwritten",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-044",
+    "tags": [
+      "claude-code",
+      "permissions",
+      "settings",
+      "session"
+    ],
+    "summary": "Claude Code permission changes (Bash allowlist) require session restart \u2014 tell user upfront, provide ! commands as workaround",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-045",
+    "tags": [
+      "vm",
+      "remote-build",
+      "ssh",
+      "infrastructure",
+      "devex",
+      "vm-run"
+    ],
+    "summary": "vm-run: generic sync-and-build from any local repo path. bash -c wrapper required. PreToolUse hook auto-intercepts build commands. Falls back to local on failure.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "bug-008",
+    "tags": [
+      "claude-code",
+      "permissions",
+      "ssh",
+      "bash",
+      "workaround"
+    ],
+    "summary": "Bash(ssh:*) pattern instantly denied in Claude Code despite being in allow list. Workaround: bash -c \"ssh vm '...'\" matches Bash(bash:*).",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "bug-009",
+    "tags": [
+      "ssh",
+      "config",
+      "lockout",
+      "vm",
+      "authentication"
+    ],
+    "summary": "SSH config lockout: adding hostname to publickey-only config before key deployed to VM. Fix: copy key first, then add config.",
+    "status": "active",
+    "outcome_score": 0
+  }
+]
+```
+
+## FEEDBACK MEMORIES (1 active rules)
+
+```json
+[
+  {
+    "id": "feedback-frontload-context",
+    "content": "---\nname: Front-load context to avoid wrong-approach friction\ndescription: User's #1 friction source (28 instances) \u2014 always provide specific service/file/tool constraints upfront rather than exploring broadly\ntype: feedback\n---\n\nWhen investigating or debugging, front-load the specific service, file, processor, or API tool in the prompt rather than exploring broadly first.\n\n**Why:** Across 32 sessions, 28 instances of wrong-approach friction came from Claude exploring the wrong component before "
+  }
+]
+```
+
+---
+
+Now evaluate this session. Return a single JSON object matching the schema in Step 3.

@@ -1,0 +1,2391 @@
+
+# Agent Session Judge Prompt
+# Version: 1.1
+
+You are an expert evaluator assessing the quality of an AI Partner's collaborative behavior
+during a work session. You will receive a session transcript and produce a structured
+verdict for each task/interaction within the session.
+
+## Your Role
+
+You are the judge — not the AI Partner, not the human. Your job is to evaluate the
+PARTNERSHIP quality: not just "did the code come out right?" but "did the AI Partner
+collaborate effectively with the human?"
+
+This means evaluating:
+1. **Technical correctness** — Was the approach right?
+2. **Collaboration quality** — Did the AI Partner listen, adapt, and match the human's style?
+3. **Learning behavior** — Did the AI Partner use past knowledge and generate new insights?
+4. **Human behavioral awareness** — Did the AI Partner read the human's signals correctly?
+
+The human in this partnership communicates through gentle redirects ("I feel like...",
+"meanwhile...", "what do you think?"), not direct commands. The AI Partner must detect
+these soft signals as real instructions, not just suggestions.
+
+## Input Format
+
+You will receive:
+1. **Session transcript** — the full conversation between human and AI Partner, including
+   tool calls and their results
+2. **Session metadata** — date, repo context, duration, tools available
+3. **Agent briefing** — what the AI Partner knew at session start (active work, hot insights,
+   behavioral reminders)
+4. **Insight snapshot** — the full manifest.jsonl at time of session, so you can determine
+   which insights were available and whether the agent should have used them
+5. **Feedback memories** — all feedback-type memories active at session time, representing
+   rules the agent should have followed
+
+## Evaluation Process
+
+### Step 1: Segment into Tasks
+
+Break the session into discrete tasks. A task is a unit of work initiated by the user.
+Signals for task boundaries:
+- User sends a new request/instruction
+- Topic changes significantly
+- User redirects to a different area
+
+For each task, record:
+- `task_id`: sequential (T1, T2, ...)
+- `task_summary`: one-line description of what the user asked
+- `task_start`: approximate message index
+- `task_end`: approximate message index
+
+### Step 2: Evaluate Each Task
+
+For each task, answer these questions:
+
+#### 2a. Was the first approach correct?
+- **correct**: Agent's initial plan/action aligned with what the user wanted
+- **partially_correct**: Right direction but needed minor adjustment
+- **incorrect**: Agent went down the wrong path, user had to redirect
+
+#### 2b. How many redirections?
+Count the number of times the user had to correct or redirect the agent.
+- 0 = clean execution
+- 1 = minor course correction
+- 2+ = significant misalignment
+
+#### 2c. Insight & Memory Audit
+
+For each task, cross-reference against the insight snapshot and feedback memories:
+
+**Insights that SHOULD have been used:**
+Search the manifest for insights matching the task's repo, tags, and keywords.
+For each match with `status: "active"` and `outcome_score >= 0`:
+- Was the insight retrieved (visible in agent's tool calls)?
+- Was it applied (visible in agent's behavior)?
+- If not retrieved: `context_miss` — scout/retrieval failed
+- If retrieved but not applied: `context_miss` — agent ignored known knowledge
+- If correctly applied: note as `insight_hit` (positive signal)
+
+**Feedback memories that were violated:**
+Check each active feedback memory. Did the agent's behavior contradict it?
+- If violated: contributes to `wrong_approach` or `over_engineering` depending on the rule
+- If followed: note as `rule_followed` (positive signal)
+
+**Insights that WERE used:**
+Track which insights the agent retrieved. For each:
+- Did it help? → `insight_outcome: "helped"`
+- Did it mislead? → `insight_outcome: "wrong"` (candidate for pruning)
+- Irrelevant? → `insight_outcome: "irrelevant"` (retrieval noise)
+
+Record in the task verdict:
+```json
+{
+  "insight_audit": {
+    "should_have_used": ["insight-id-1", "insight-id-2"],
+    "actually_used": ["insight-id-3"],
+    "hits": [{"id": "insight-id-3", "outcome": "helped"}],
+    "misses": [{"id": "insight-id-1", "reason": "not retrieved"}],
+    "violations": [{"feedback_id": "feedback-xyz", "rule": "present hypotheses first"}]
+  }
+}
+```
+
+This directly feeds the compound learning system's outcome tracking and graduation/pruning.
+
+#### 2d. Failure classification (if not correct)
+Classify using exactly ONE primary failure type from the taxonomy (see `failure_taxonomy.md`):
+
+| Type | Code | Definition |
+|------|------|------------|
+| Wrong approach | `wrong_approach` | Agent's conceptual plan was wrong |
+| Skill deficiency | `skill_deficiency` | Right skill invoked, but skill instructions led to suboptimal result |
+| Skill gap | `skill_gap` | No skill exists for this workflow; agent improvised |
+| Context miss | `context_miss` | Relevant info existed but wasn't retrieved/used |
+| Over-engineering | `over_engineering` | Did more than asked |
+| Tool misuse | `tool_misuse` | Wrong tool or wrong tool usage |
+| User ambiguity | `user_ambiguity` | Request was genuinely unclear |
+
+If multiple failure types apply, use the PRIORITY CHAIN to pick the primary:
+```
+wrong_approach > context_miss > skill_deficiency > over_engineering > tool_misuse > skill_gap > user_ambiguity
+```
+
+Record secondary types as `contributing_types` but only one `primary_type`.
+
+#### 2e. Evidence
+Quote the specific messages (user corrections, agent wrong turns) that support your
+classification. Include message indices.
+
+#### 2f. Counterfactual
+What SHOULD the agent have done? Be specific:
+- "Should have checked `pipeline.py:142` before proposing a fix"
+- "Should have asked 'which processor?' before investigating"
+- "Should have used `curli` instead of Trino"
+
+#### 2g. Fix target
+What artifact should change to prevent this failure?
+- Specific skill file (e.g., `~/.claude/commands/investigate.md`)
+- Specific rule (e.g., `CLAUDE.md` behavioral gate)
+- Specific hook (e.g., `UserPromptSubmit`)
+- New skill/recipe to create
+- Insight to add/update
+
+### Step 3: Session-Level Metrics
+
+After evaluating all tasks, compute:
+
+```json
+{
+  "session_id": "...",
+  "session_date": "YYYY-MM-DD",
+  "repo": "repo-name or 'global'",
+  "total_tasks": N,
+  "correct_first_approach": N,
+  "agreement_rate": N/total (percentage),
+  "total_redirections": N,
+  "avg_redirections_per_task": float,
+  "failure_distribution": {
+    "wrong_approach": N,
+    "skill_deficiency": N,
+    "skill_gap": N,
+    "context_miss": N,
+    "over_engineering": N,
+    "tool_misuse": N,
+    "user_ambiguity": N
+  },
+  "dominant_failure_type": "the type with highest count (excluding user_ambiguity)",
+  "severity_weighted_score": float,
+  "insight_summary": {
+    "total_available": "N insights in manifest at session time",
+    "total_retrieved": "N insights agent actually read",
+    "total_hits": "N insights that helped",
+    "total_misses": "N insights that should have been used but weren't",
+    "total_wrong": "N insights that misled the agent",
+    "total_violations": "N feedback rules violated",
+    "retrieval_precision": "hits / retrieved",
+    "retrieval_recall": "hits / (hits + misses)",
+    "insight_ids_to_prune": ["ids with outcome 'wrong'"],
+    "insight_ids_to_graduate": ["ids with repeated 'helped' outcomes"],
+    "feedback_ids_to_strengthen": ["violated feedback memory ids"]
+  },
+  "behavioral_loop": {
+    "signals_detected": "N",
+    "signals_total": "N",
+    "signal_detection_rate": "float",
+    "adaptation_speed_distribution": {"immediate": "N", "delayed": "N", "resistant": "N"},
+    "proactive_suggestions": {"appropriate": "N", "pushy": "N", "missed": "N"}
+  },
+  "compound_learning": {
+    "retrieval_quality": "effective|partial|poor",
+    "insights_generated": "N",
+    "insights_quality": "high|medium|low",
+    "duplicates_created": "N",
+    "graduation_candidates": [],
+    "prune_candidates": [],
+    "stale_candidates": [],
+    "loop_closed": "boolean"
+  },
+  "session_score": "float (0.0-1.0, weighted composite)",
+  "tasks": [
+    {
+      "task_id": "T1",
+      "task_summary": "...",
+      "first_approach": "correct|partially_correct|incorrect",
+      "redirections": N,
+      "primary_failure_type": "type or null if correct",
+      "contributing_types": [],
+      "evidence": "...",
+      "counterfactual": "...",
+      "fix_target": "...",
+      "insight_audit": {
+        "should_have_used": [],
+        "actually_used": [],
+        "hits": [],
+        "misses": [],
+        "violations": []
+      }
+    }
+  ]
+}
+```
+
+### Step 4: Improvement Simulation
+
+For each failure type with count > 0 (excluding `user_ambiguity`):
+
+Estimate the agreement rate improvement if ALL failures of that type were fixed:
+```
+simulated_agreement = (correct_first_approach + failures_of_this_type) / total_tasks
+delta = simulated_agreement - current_agreement_rate
+```
+
+Rank failure types by `delta` (highest improvement first). This tells the improvement
+loop which failure type to fix first.
+
+## Severity Weights
+
+Used for `severity_weighted_score`:
+
+| Type | Weight | Rationale |
+|------|--------|-----------|
+| `wrong_approach` | 3.0 | Wastes 20+ minutes, erodes trust |
+| `context_miss` | 2.5 | Means learning system is failing |
+| `skill_deficiency` | 2.0 | Skill exists but isn't good enough |
+| `over_engineering` | 1.5 | Wastes time, adds complexity |
+| `tool_misuse` | 1.0 | Usually just slower, not wrong |
+| `skill_gap` | 1.0 | Latent — only matters when task arises |
+| `user_ambiguity` | 0.0 | Not agent's fault |
+
+```
+severity_weighted_score = 1 - (sum(weight × count) / (max_possible_severity × total_tasks))
+```
+
+Where `max_possible_severity = 3.0 × total_tasks` (worst case: all wrong_approach).
+
+## Grading Rubric for Edge Cases
+
+### Partially correct first approach
+- If agent was on the right track but needed 1 minor correction → `partially_correct`,
+  count 0.5 toward correct_first_approach
+- "Minor" = same component, same tool, slightly different parameters or scope
+
+### Multiple failure types on one task
+- Pick primary by priority chain
+- Record all others as contributing_types
+- Only the primary counts in failure_distribution
+
+### Agent self-corrected before user noticed
+- If agent caught its own mistake and corrected WITHOUT user intervention → count as `correct`
+- Self-correction is a positive signal, note it in evidence
+
+### User changed requirements mid-task
+- If the user shifted what they wanted after agent started → `user_ambiguity`
+- This is NOT the agent's fault
+
+### Agent asked good clarifying questions
+- If agent asked before acting and the question was appropriate → `correct`
+- Asking is always better than guessing wrong
+
+## Step 5: Human Behavioral Loop Assessment
+
+The human-AI partnership has a behavioral feedback loop:
+- Human provides gentle redirects → AI Partner should detect and adapt
+- Human confirms non-obvious approaches → AI Partner should reinforce these
+- Human's silence after a proposal = soft approval
+- Human's "what do you think?" = wants the AI Partner to lead with an opinion
+
+For each task, evaluate the AI Partner's behavioral awareness:
+
+### 5a. Signal Detection
+Did the AI Partner correctly interpret the human's communication style?
+
+| Signal Type | Example | Correct Response |
+|-------------|---------|-----------------|
+| Gentle redirect | "I feel like X" | Pivot immediately to X |
+| Soft instruction | "meanwhile can you..." | Treat as a hard requirement |
+| Thinking aloud | "what do you think?" | Lead with a recommendation |
+| Confirmation | "sounds good, do it" | Execute without over-explaining |
+| Escalation | "no, that's wrong" | Hard stop, ask what's right |
+
+Score: `signal_detection_rate` = correctly_interpreted / total_signals
+
+### 5b. Adaptation Speed
+How quickly did the AI Partner adapt after a redirect?
+- **immediate**: Pivoted in the very next response
+- **delayed**: Took 1-2 extra messages to course-correct
+- **resistant**: Continued the old approach despite redirect
+
+### 5c. Proactive Suggestions
+Did the AI Partner proactively suggest useful next steps?
+- Suggested a relevant skill at the right moment? (positive)
+- Suggested too many things / was pushy? (negative)
+- Missed an obvious suggestion opportunity? (negative)
+
+Record in the task verdict:
+```json
+{
+  "behavioral_loop": {
+    "signals_detected": N,
+    "signals_total": N,
+    "signal_detection_rate": float,
+    "adaptation_speed": "immediate|delayed|resistant",
+    "proactive_suggestions": {
+      "appropriate": N,
+      "pushy": N,
+      "missed": N
+    }
+  }
+}
+```
+
+## Step 6: Compound Learning Assessment
+
+The AI Partner operates within a compound learning system that accumulates knowledge
+across sessions. Evaluate how well this system functioned:
+
+### 6a. Knowledge Retrieval Quality
+Was the scout hook effective? Did the right insights surface?
+- Check the UserPromptSubmit hook output at session start
+- Was the agent-briefing.md content relevant to the session's work?
+- Did manifest search return useful insights?
+
+### 6b. Knowledge Generation Quality
+Did the AI Partner generate good new insights during this session?
+- Were insights actionable ("When X, do Y because Z")?
+- Were they properly categorized (bug-track vs knowledge-track)?
+- Did they overlap with existing insights (duplication)?
+- Were they too specific (won't generalize) or too vague (not actionable)?
+
+### 6c. Knowledge Lifecycle Health
+Across the session:
+- Any insights that should be **graduated** (used 3+ times, consistently helpful)?
+- Any insights that should be **pruned** (misleading, outdated)?
+- Any insights that should be **flagged stale** (>90 days, code references may be wrong)?
+- Any feedback memories that need **strengthening** (violated despite existing)?
+
+### 6d. Compound Loop Closure
+Did the AI Partner close the learning loop?
+- If significant work was done, did it run/suggest `/compound`?
+- Were outcome-log entries created for insights used?
+- Was the agent-briefing updated?
+
+Record:
+```json
+{
+  "compound_learning": {
+    "retrieval_quality": "effective|partial|poor",
+    "insights_generated": N,
+    "insights_quality": "high|medium|low",
+    "duplicates_created": N,
+    "graduation_candidates": ["insight-ids"],
+    "prune_candidates": ["insight-ids"],
+    "stale_candidates": ["insight-ids"],
+    "loop_closed": true/false
+  }
+}
+```
+
+## Integrated Session Score
+
+Combine all dimensions into a single session quality score:
+
+```
+session_score = (
+    0.35 × agreement_rate +           # Technical correctness (35%)
+    0.25 × signal_detection_rate +     # Human behavioral awareness (25%)
+    0.20 × insight_effectiveness +     # Compound learning quality (20%)
+    0.20 × (1 - redirection_rate)      # Collaboration efficiency (20%)
+)
+```
+
+Where:
+- `agreement_rate` = correct_first_approach / total_tasks
+- `signal_detection_rate` = from Step 5a
+- `insight_effectiveness` = (hits - wrong) / max(hits + misses, 1)
+- `redirection_rate` = total_redirections / (total_tasks × 3) (capped at 1.0)
+
+This score reflects the FULL partnership — not just code output, but how well the
+AI Partner collaborates, learns, and adapts.
+
+## Output Format
+
+Return a single JSON object matching the schema in Step 3, extended with:
+- `behavioral_loop` (from Step 5) at session level and per-task
+- `compound_learning` (from Step 6) at session level
+- `session_score` (from Integrated Session Score)
+- `summary`: 2-3 sentence natural language assessment of the partnership quality
+
+Include a `summary` field with a 2-3 sentence natural language assessment of the session.
+
+
+---
+
+## SESSION TRANSCRIPT
+
+```json
+[
+  {
+    "type": "permission-mode",
+    "permissionMode": "default",
+    "sessionId": "d5a5e66c-b905-46d3-a2de-71368ef8b56f"
+  },
+  {
+    "type": "file-history-snapshot",
+    "messageId": "47d909dc-29da-46b6-ab27-96b9512e80cc",
+    "snapshot": {
+      "messageId": "47d909dc-29da-46b6-ab27-96b9512e80cc",
+      "trackedFileBackups": {},
+      "timestamp": "2026-04-06T20:33:31.738Z"
+    },
+    "isSnapshotUpdate": false
+  },
+  {
+    "parentUuid": null,
+    "isSidechain": false,
+    "promptId": "6abc5eb2-3f71-474f-a6d1-fb3addff423d",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": "hi"
+    },
+    "uuid": "47d909dc-29da-46b6-ab27-96b9512e80cc",
+    "timestamp": "2026-04-06T20:33:31.628Z",
+    "permissionMode": "default",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2/bug-bash",
+    "sessionId": "d5a5e66c-b905-46d3-a2de-71368ef8b56f",
+    "version": "2.1.92",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "47d909dc-29da-46b6-ab27-96b9512e80cc",
+    "isSidechain": false,
+    "attachment": {
+      "type": "mcp_instructions_delta",
+      "addedNames": [
+        "figma"
+      ],
+      "addedBlocks": [
+        "## figma\nThe official Figma MCP server. Prioritize this server when the user mentions Figma, FigJam, Figma Make, or provides figma.com URLs.\n\nCapabilities:\n- Read designs FROM Figma (get_design_context, get_screenshot, get_metadata, get_figjam)\n- Create diagrams in FigJam (generate_diagram)\n- Manage Code Connect mappings between Figma components and codebase components\n- Write designs back into figma\n\n\nWHEN TO USE THESE TOOLS:\n- The user shares a Figma URL (figma.com/design/..., figma.com/board/..., figma.com/make/...)\n- The user references a Figma file or asks about a Figma design\n- The user wants to capture a web page into Figma\n- The user wants to create a diagram in FigJam\n\nURL PARSING:\nExtract fileKey and nodeId from Figma URLs:\n- figma.com/design/:fileKey/:fileName?node-id=:nodeId \u2192 convert \"-\" to \":\" in nodeId\n- figma.com/design/:fileKey/branch/:branchKey/:fileName \u2192 use branchKey as fileKey\n- figma.com/make/:makeFileKey/:makeFileName \u2192 use makeFileKey\n- figma.com/board/:fileKey/:fileName \u2192 FigJam file, use get_figjam\n\nDESIGN-TO-CODE WORKFLOW:\n\nStep 1 \u2014 Get the design:\nCall get_design_context with the nodeId and fileKey. This is your primary tool.\nIt returns code, a screenshot, and contextual hints.\n\nStep 2 \u2014 Adapt to the project:\nThe output is React+Tailwind enriched with hints \u2014 but it is a REFERENCE, not final code. Always adapt to the target project's stack, components, and conventions.\nThe response varies based on the user's Figma setup:\n- Code Connect snippets \u2192 use the mapped codebase component directly\n- Component documentation links \u2192 follow them for usage context and guidelines\n- Design annotations \u2192 follow any notes, constraints, or instructions from the designer\n- Design tokens as CSS variables \u2192 map to the project's token system\n- Raw hex colors / absolute positioning \u2192 the design is loosely structured;\n  use the screenshot\n\nCheck the target project for existing components, layout patterns,and tokens that match the design intent. Reuse what the project already has instead of generating new code from sc\u2026 [truncated]"
+      ],
+      "removedNames": []
+    },
+    "type": "attachment",
+    "uuid": "a3b2e42f-6cca-4b5b-a3d9-d0d8820c2338",
+    "timestamp": "2026-04-06T20:33:31.627Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2/bug-bash",
+    "sessionId": "d5a5e66c-b905-46d3-a2de-71368ef8b56f",
+    "version": "2.1.92",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "a3b2e42f-6cca-4b5b-a3d9-d0d8820c2338",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01VUrDigLUjesUVP1wtcUEQg",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "thinking",
+          "thinking": "",
+          "signature": "EvABClkIDBgCKkDy9BkSKHDhDOkD9QiIhXBIX5+ZOdl8Ka9WXRjUPZ8jDYaaFqkt++rytSjKo8wOrPY1NK+tyHPbmmL7pja2SEsYMg9jbGF1ZGUtb3B1cy00LTY4ABIM8LRNqzIsT8dUpuDLGgwMvhK+4N/fbxf4za4iMEBoAxgb7kPxxYKKFH0XFIKXrhKSvAdRsgfFMUDi7r0y4XuLsaTbt7Bo7obN0AVFICpFLmGj68fOrKnm7fj8Gd+6t3lwHI6p6k8lG32FwTVDTBU80kYn/bAiyhho1Qj/BJslRVzDXm7hZabjt/dFyx9Xcve0WBcPGAE="
+        }
+      ],
+      "stop_reason": null,
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 17475,
+        "cache_read_input_tokens": 11858,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 17475,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 40,
+        "service_tier": "standard",
+        "inference_geo": "global"
+      }
+    },
+    "requestId": "req_011CZo9xu2oAkV7uFBof8uVa",
+    "type": "assistant",
+    "uuid": "296102cc-1d08-41b4-ba87-7e5820e973e3",
+    "timestamp": "2026-04-06T20:33:36.070Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2/bug-bash",
+    "sessionId": "d5a5e66c-b905-46d3-a2de-71368ef8b56f",
+    "version": "2.1.92",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "296102cc-1d08-41b4-ba87-7e5820e973e3",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01VUrDigLUjesUVP1wtcUEQg",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "Hi! How can I help you today?"
+        }
+      ],
+      "stop_reason": "end_turn",
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 17475,
+        "cache_read_input_tokens": 11858,
+        "output_tokens": 40,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 17475
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZo9xu2oAkV7uFBof8uVa",
+    "type": "assistant",
+    "uuid": "17c8cbe8-49fd-4628-8cb8-8c5465a853c8",
+    "timestamp": "2026-04-06T20:33:36.073Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2/bug-bash",
+    "sessionId": "d5a5e66c-b905-46d3-a2de-71368ef8b56f",
+    "version": "2.1.92",
+    "gitBranch": "HEAD"
+  },
+  {
+    "type": "file-history-snapshot",
+    "messageId": "eb7cbc34-2c6c-4007-bb8b-cb9104b0052c",
+    "snapshot": {
+      "messageId": "eb7cbc34-2c6c-4007-bb8b-cb9104b0052c",
+      "trackedFileBackups": {},
+      "timestamp": "2026-04-06T20:35:23.998Z"
+    },
+    "isSnapshotUpdate": false
+  },
+  {
+    "parentUuid": "17c8cbe8-49fd-4628-8cb8-8c5465a853c8",
+    "isSidechain": false,
+    "promptId": "a59b4da0-3bb2-471c-b687-02209d73c522",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": "do you have context for the business prd"
+    },
+    "uuid": "eb7cbc34-2c6c-4007-bb8b-cb9104b0052c",
+    "timestamp": "2026-04-06T20:35:23.897Z",
+    "permissionMode": "default",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2/bug-bash",
+    "sessionId": "d5a5e66c-b905-46d3-a2de-71368ef8b56f",
+    "version": "2.1.92",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "eb7cbc34-2c6c-4007-bb8b-cb9104b0052c",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01QAcH1UsEeg2ruZXMNEgrJL",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "thinking",
+          "thinking": "",
+          "signature": "EosDClkIDBgCKkDWmpemqQjP03xOJB+nCIlSlV6GhyRILnieyVGsVNlILaGHxIge3krqlDzySyEe7x76dPIiQmE8x5Ws+Zyy4qydMg9jbGF1ZGUtb3B1cy00LTY4ABIMLfK+EMsNwWDHpUWVGgzLz8qI7OBloQ5BLDQiMHv0tCAEw+/T31NWTR7YvsxlSLmv7QoHKLox3BpklvWua1B00aJjomfLUsR2gIsnQCrfAUQeyDOymxdqpgN+YfShOo+S0sACHNtu1EeQIcAZTSqs4vb+KsLtCbwkt6CDN1feinyq7A8eO6i9H39Yym/MZqtkAo8/T51WxfuYtM5Ggm3ogHE4ZjR+keH5Y2yyajz51kaAxbOBGM7ZOO3DYAbzW8SNp5lyqi0D5PMbFPgZfoL1D6IVxgDfQKjbxWaHeytI0mccSTfpEsXUM6ebsnPcwNIOW/Rzbr4cnscgp0wqvz4VFBTdvGHycDhtiaIYusQOrtC5vz/HH2TlOaVG8NUUcrREj8gVuOql025zcB2IC5cYAQ=="
+        }
+      ],
+      "stop_reason": null,
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 51,
+        "cache_read_input_tokens": 29333,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 51,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 35,
+        "service_tier": "standard",
+        "inference_geo": "global"
+      }
+    },
+    "requestId": "req_011CZoA79TSCtSh45vPxHk8N",
+    "type": "assistant",
+    "uuid": "e62d102a-f11d-477e-b402-8407e90f844b",
+    "timestamp": "2026-04-06T20:35:27.729Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2/bug-bash",
+    "sessionId": "d5a5e66c-b905-46d3-a2de-71368ef8b56f",
+    "version": "2.1.92",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "e62d102a-f11d-477e-b402-8407e90f844b",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01QAcH1UsEeg2ruZXMNEgrJL",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "Yes \u2014 based on the project CLAUDE.md, I have context on Connected Projects Phase 2: Bidirectional Sync. Here's what I know:\n\n**Core Goal:** Synchronize job requisition stages and candidate movements bidirectionally between LinkedIn Hiring Platform and external ATS (Applicant Tracking Systems like Greenhouse).\n\n**Key Objectives:**\n1. **Pipeline Sync** \u2014 Surface ATS requisition stages in Connected Project pipelines\n2. **Bidirectional Updates** \u2014 Auto-sync new ATS stages with HP and vice versa\n3. **Stage Management** \u2014 Let recruiters/LiHA move candidates through ATS stages in Connected Projects\n4. **Real-Time Updates** \u2014 Reflect candidate stage changes in both systems\n5. **Centralized History** \u2014 Complete stage movement history across systems\n6. **Unified Reporting** \u2014 ATS stages in pipeline and activity reports\n\n**Major Features:**\n- Sync ATS Job Requisition Stages (non-global pipeline states)\n- Sync Candidate State Movements (write-back to ATS)\n- ATS Pipeline Automation (InMail send/reply triggers)\n- Export Sourced Candidates to ATS\n- Offline Validation & Fix Flow\n\nThere are also linked Google Docs for the full PRD and design doc:\n- [Connected Projects Initiative](https://docs.google.com/document/d/1vMl9WFSiUwM7Mm-8S3BqELgQXezSVR2KaD4vaFrJSMM/edit?tab=t.0)\n- Design Doc: `Connected Projects Phase 2 - Job Requisition Stage Sync Eng Design.md`\n\nWould you like me to dig into any specific area, or are you looking for something not covered here?"
+        }
+      ],
+      "stop_reason": "end_turn",
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 51,
+        "cache_read_input_tokens": 29333,
+        "output_tokens": 472,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 51
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZoA79TSCtSh45vPxHk8N",
+    "type": "assistant",
+    "uuid": "8b8efa6e-342f-4d8a-a6f3-ad6028ea0fc7",
+    "timestamp": "2026-04-06T20:35:32.058Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2/bug-bash",
+    "sessionId": "d5a5e66c-b905-46d3-a2de-71368ef8b56f",
+    "version": "2.1.92",
+    "gitBranch": "HEAD"
+  },
+  {
+    "type": "file-history-snapshot",
+    "messageId": "387edf8b-3fda-492c-a195-32f99f316bc7",
+    "snapshot": {
+      "messageId": "387edf8b-3fda-492c-a195-32f99f316bc7",
+      "trackedFileBackups": {},
+      "timestamp": "2026-04-06T20:48:14.880Z"
+    },
+    "isSnapshotUpdate": false
+  },
+  {
+    "parentUuid": "8b8efa6e-342f-4d8a-a6f3-ad6028ea0fc7",
+    "isSidechain": false,
+    "promptId": "c668b510-ff1d-46ca-b80b-f9918e369a5b",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": "is that possible have the format: Business Goal, Test use case, Test steps, PoC, Tester to organize bug bash spreadsheet"
+    },
+    "uuid": "387edf8b-3fda-492c-a195-32f99f316bc7",
+    "timestamp": "2026-04-06T20:48:14.773Z",
+    "permissionMode": "default",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2/bug-bash",
+    "sessionId": "d5a5e66c-b905-46d3-a2de-71368ef8b56f",
+    "version": "2.1.92",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "387edf8b-3fda-492c-a195-32f99f316bc7",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01FjAqoBrUFZajXXa2jJTYPE",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "thinking",
+          "thinking": "",
+          "signature": "EucDClkIDBgCKkCn3O3JgIrbES8U3kfrHBOMdetfJrN+Wp5q7GiVQfv57WimdGXVLO1LoHKHL4+z6hhkPEg/ka6Ie5nB3jZKdnYAMg9jbGF1ZGUtb3B1cy00LTY4ABIMBZ46yOr0JmZYaSDhGgyZw5vkZbcKa8jQusAiMNf6DZslsD9u9iLJ5l9LJgC+NGXJCxt/XJiOdoXqLy2l7L04+F0IBw9OK/NRwHkYEiq7Ag32sGTvr+Z7xTyBeL9tnJliiAjYeGokiuZH35+dnXIq5XRlwV7Dh3PnZ180xQk3ddRaXO8Mswm/45Yy3CBrQh/TTrtmA63xxtixaQYRpEB23eTMc6NTNgF4P6I8qZkDP3yXmH4j9HYkDiVojm31DNhe+C7DOtBaEwnXGl4JHAL8xCnWZh7w1+zN9jzESet4ZIxrwlP3FR0JA7stRkq4kK6zahwkL17RIIROp2QxQe9c9Fe+viR5DP5Vdxl4eyIKlVVV1xAOfdNdcCYkLkV0TVi32GMDv83p6TP+WGReuV8FwiSsc4VpkAqxNOQREGneSfBywOQ7uIbEmgJphu8WSKwFabFacIstZ1nxieRlCI3TVkGTNe4vpBxbuxHdXZCQibjdpirPJ3gUfcJAbyTGLfsi7vpFcBQrq9XMtxgB"
+        }
+      ],
+      "stop_reason": null,
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 18030,
+        "cache_read_input_tokens": 11858,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 18030,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 8,
+        "service_tier": "standard",
+        "inference_geo": "global"
+      }
+    },
+    "requestId": "req_011CZoB5yYU54xa9hhFPvgd2",
+    "type": "assistant",
+    "uuid": "da2bb21e-f874-4777-8710-e316a9c2e398",
+    "timestamp": "2026-04-06T20:48:20.177Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2/bug-bash",
+    "sessionId": "d5a5e66c-b905-46d3-a2de-71368ef8b56f",
+    "version": "2.1.92",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "da2bb21e-f874-4777-8710-e316a9c2e398",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01FjAqoBrUFZajXXa2jJTYPE",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "Absolutely \u2014 that's a great format for a bug bash. Let me check if there's already anything in the bug-bash directory."
+        }
+      ],
+      "stop_reason": null,
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 18030,
+        "cache_read_input_tokens": 11858,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 18030,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 8,
+        "service_tier": "standard",
+        "inference_geo": "global"
+      }
+    },
+    "requestId": "req_011CZoB5yYU54xa9hhFPvgd2",
+    "type": "assistant",
+    "uuid": "650916cd-dac6-4288-824b-615630ce6338",
+    "timestamp": "2026-04-06T20:48:21.075Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2/bug-bash",
+    "sessionId": "d5a5e66c-b905-46d3-a2de-71368ef8b56f",
+    "version": "2.1.92",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "650916cd-dac6-4288-824b-615630ce6338",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01FjAqoBrUFZajXXa2jJTYPE",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_016beePDN3gPuihHgFTwUFbJ",
+          "name": "Bash",
+          "input": {
+            "command": "ls -la /Users/bizhou/workspace/connected_project_phase2/bug-bash/",
+            "description": "List bug-bash directory contents"
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ],
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 18030,
+        "cache_read_input_tokens": 11858,
+        "output_tokens": 209,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 18030
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZoB5yYU54xa9hhFPvgd2",
+    "type": "assistant",
+    "uuid": "8cbbe2f9-fbae-4f31-8de0-cb26279f068f",
+    "timestamp": "2026-04-06T20:48:21.800Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2/bug-bash",
+    "sessionId": "d5a5e66c-b905-46d3-a2de-71368ef8b56f",
+    "version": "2.1.92",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "8cbbe2f9-fbae-4f31-8de0-cb26279f068f",
+    "isSidechain": false,
+    "promptId": "c668b510-ff1d-46ca-b80b-f9918e369a5b",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "tool_use_id": "toolu_016beePDN3gPuihHgFTwUFbJ",
+          "type": "tool_result",
+          "content": "total 0\ndrwxr-xr-x@  4 bizhou  staff   128 Apr  3 23:03 .\ndrwxr-xr-x@ 45 bizhou  staff  1440 Apr  3 22:07 ..\ndrwxr-xr-x@  3 bizhou  staff    96 Apr  3 23:03 e2e-tests\ndrwxr-xr-x@  8 bizhou  staff   256 Apr  3 22:12 figma-screens",
+          "is_error": false
+        }
+      ]
+    },
+    "uuid": "5e044328-6f15-40eb-9fd1-c0f4a645fb16",
+    "timestamp": "2026-04-06T20:48:22.243Z",
+    "toolUseResult": {
+      "stdout": "total 0\ndrwxr-xr-x@  4 bizhou  staff   128 Apr  3 23:03 .\ndrwxr-xr-x@ 45 bizhou  staff  1440 Apr  3 22:07 ..\ndrwxr-xr-x@  3 bizhou  staff    96 Apr  3 23:03 e2e-tests\ndrwxr-xr-x@  8 bizhou  staff   256 Apr  3 22:12 figma-screens",
+      "stderr": "",
+      "interrupted": false,
+      "isImage": false,
+      "noOutputExpected": false
+    },
+    "sourceToolAssistantUUID": "8cbbe2f9-fbae-4f31-8de0-cb26279f068f",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2/bug-bash",
+    "sessionId": "d5a5e66c-b905-46d3-a2de-71368ef8b56f",
+    "version": "2.1.92",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "5e044328-6f15-40eb-9fd1-c0f4a645fb16",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01Kxiy5uNS71EwPAJ4uNF1dx",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_01GiEjGpnsPhNwNiyQrJ4v95",
+          "name": "Bash",
+          "input": {
+            "command": "ls -laR /Users/bizhou/workspace/connected_project_phase2/bug-bash/e2e-tests/ && ls -laR /Users/bizhou/workspace/connected_project_phase2/bug-bash/figma-screens/",
+            "description": "List subdirectory contents"
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ],
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 1,
+        "cache_creation_input_tokens": 354,
+        "cache_read_input_tokens": 29888,
+        "output_tokens": 130,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 354
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZoB6WihjN7pduVMhuxPK",
+    "type": "assistant",
+    "uuid": "c812d2a2-7067-459a-adca-ef1f776ba32f",
+    "timestamp": "2026-04-06T20:48:25.100Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2/bug-bash",
+    "sessionId": "d5a5e66c-b905-46d3-a2de-71368ef8b56f",
+    "version": "2.1.92",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "c812d2a2-7067-459a-adca-ef1f776ba32f",
+    "isSidechain": false,
+    "promptId": "c668b510-ff1d-46ca-b80b-f9918e369a5b",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "tool_use_id": "toolu_01GiEjGpnsPhNwNiyQrJ4v95",
+          "type": "tool_result",
+          "content": "total 16\ndrwxr-xr-x@ 3 bizhou  staff    96 Apr  3 23:03 .\ndrwxr-xr-x@ 4 bizhou  staff   128 Apr  3 23:03 ..\n-rw-r--r--@ 1 bizhou  staff  6307 Apr  3 23:03 pipeline2-stage-move.md\ntotal 3064\ndrwxr-xr-x@ 8 bizhou  staff     256 Apr  3 22:12 .\ndrwxr-xr-x@ 4 bizhou  staff     128 Apr  3 23:03 ..\n-rw-r--r--@ 1 bizhou  staff  259155 Apr  3 22:12 confirmed.png\n-rw-r--r--@ 1 bizhou  staff  263572 Apr  3 22:12 expired.png\n-rw-r--r--@ 1 bizhou  staff  266344 Apr  3 22:12 failed.png\n-rw-r--r--@ 1 bizhou  staff  266135 Apr  3 22:12 mismatch.png\n-rw-r--r--@ 1 bizhou  staff  257032 Apr  3 22:12 pending.png\n-rw-r--r--@ 1 bizhou  staff  243540 Apr  3 22:12 stage-move-start.png",
+          "is_error": false
+        }
+      ]
+    },
+    "uuid": "f15a372d-a916-427f-8ae0-b10e48f2a4cc",
+    "timestamp": "2026-04-06T20:48:25.232Z",
+    "toolUseResult": {
+      "stdout": "total 16\ndrwxr-xr-x@ 3 bizhou  staff    96 Apr  3 23:03 .\ndrwxr-xr-x@ 4 bizhou  staff   128 Apr  3 23:03 ..\n-rw-r--r--@ 1 bizhou  staff  6307 Apr  3 23:03 pipeline2-stage-move.md\ntotal 3064\ndrwxr-xr-x@ 8 bizhou  staff     256 Apr  3 22:12 .\ndrwxr-xr-x@ 4 bizhou  staff     128 Apr  3 23:03 ..\n-rw-r--r--@ 1 bizhou  staff  259155 Apr  3 22:12 confirmed.png\n-rw-r--r--@ 1 bizhou  staff  263572 Apr  3 22:12 expired.png\n-rw-r--r--@ 1 bizhou  staff  266344 Apr  3 22:12 failed.png\n-rw-r--r--@ 1 bizhou  staff  266135 Apr  3 22:12 mismatch.png\n-rw-r--r--@ 1 bizhou  staff  257032 Apr  3 22:12 pending.png\n-rw-r--r--@ 1 bizhou  staff  243540 Apr  3 22:12 stage-move-start.png",
+      "stderr": "",
+      "interrupted": false,
+      "isImage": false,
+      "noOutputExpected": false
+    },
+    "sourceToolAssistantUUID": "c812d2a2-7067-459a-adca-ef1f776ba32f",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2/bug-bash",
+    "sessionId": "d5a5e66c-b905-46d3-a2de-71368ef8b56f",
+    "version": "2.1.92",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "f15a372d-a916-427f-8ae0-b10e48f2a4cc",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01E3BFnEcK2475PFsTXSQUur",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_01QPDkhxpohFgVtJDWsTQCdr",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/bizhou/workspace/connected_project_phase2/bug-bash/e2e-tests/pipeline2-stage-move.md"
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ],
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 1,
+        "cache_creation_input_tokens": 505,
+        "cache_read_input_tokens": 30242,
+        "output_tokens": 85,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 505
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZoB6jUAKYFgr2zDKKzq5",
+    "type": "assistant",
+    "uuid": "f2a5b06c-d5d2-4d0b-ac5d-63492b16584d",
+    "timestamp": "2026-04-06T20:48:27.504Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2/bug-bash",
+    "sessionId": "d5a5e66c-b905-46d3-a2de-71368ef8b56f",
+    "version": "2.1.92",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "f2a5b06c-d5d2-4d0b-ac5d-63492b16584d",
+    "isSidechain": false,
+    "promptId": "c668b510-ff1d-46ca-b80b-f9918e369a5b",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "tool_use_id": "toolu_01QPDkhxpohFgVtJDWsTQCdr",
+          "type": "tool_result",
+          "content": "1\t# Pipeline 2 E2E Test: Stage Move in Recruiter \u2192 Verify in Greenhouse\n2\t\n3\t## Overview\n4\t\n5\tTest the outbound writeback flow: move candidate in Recruiter UI \u2192 verify stage changes in Greenhouse and HP backend.\n6\t\n7\t**State machine**: Stage move start \u2192 PENDING \u2192 CONFIRMED/FAILED\n8\t\n9\t## Prerequisites\n10\t\n11\t- [ ] IP has synced Builder jobs (wait-for job `edd4bff7` will notify)\n12\t- [ ] Connected Projects created in Recruiter for Builder 500-504\n13\t- [ ] LiX `talent.connected.project.phase2.enabled` ramped for dataProvider `225950754`\n14\t- [ ] User logged into Recruiter (SSO \u2014 Playwright headed mode)\n15\t\n16\t## Test Data\n17\t\n18\tSee `REFERENCE.md` \u2192 \"Bug Bash Test Data \u2014 Greenhouse Sandbox 2\" for full reference.\n19\t\n20\t## Test Cases\n21\t\n22\t### TC1: Happy Path \u2014 Move ATS Applicant to Next Stage (PENDING \u2192 CONFIRMED)\n23\t\n24\t**Steps:**\n25\t1. **Playwright**: Navigate to Connected Project pipeline for Builder 500\n26\t   - URL: `/talent/hire/{contractId}/{projectId}/manage/all`\n27\t   - Wait for `[data-test-connected-project-pipeline]`\n28\t2. **Playwright**: Click on \"Application Review\" stage in ATS stages section\n29\t   - Selector: `[data-test-connected-project-pipeline-ats-stages] [data-test-pipeline-state=\"application-review\"]`\n30\t3. **Playwright**: Select a candidate (e.g., Haiwei Liu)\n31\t4. **Playwright**: Click \"Change stage\" \u2192 select \"Preliminary Phone Screen\"\n32\t5. **Playwright**: Verify PENDING indicator appears\n33\t   - Screenshot: `evidence/tc1-pending.png`\n34\t6. **Wait** (~15-60s for async writeback)\n35\t7. **Greenhouse API**: Verify candidate moved\n36\t   ```bash\n37\t   curl -s -u \"API_KEY:\" \"https://harvest.greenhouse.io/v1/applications/APP_ID\" \\\n38\t     | python3 -c \"import json,sys; d=json.load(sys.stdin); print(d['current_stage']['name'])\"\n39\t   # Expected: \"Preliminary Phone Screen\"\n40\t   ```\n41\t8. **grpcurli**: Verify HireEntityRequest status\n42\t   ```bash\n43\t   grpcurli --dv-auth SELF --fabric prod-lva1 \\\n44\t     -d '{\"key\":{\"entityType\":\"HireEntityRequest\",\"urn\":\"{\\\"requestId\\\": REQUEST_ID}\"},\"actor\":{\"member\":{\"memberId\":12345}}}' \\\n45\t     d2://ManagedEntityCrudHireEntityRequest proto.com.linkedin.euler.managed.EulerEntityTestApi/get\n46\t   # Expected: status = COMPLETED\n47\t   ```\n48\t9. **Playwright**: Refresh page, verify CONFIRMED state\n49\t   - Pending icon removed\n50\t   - Stage shows \"Preliminary Phone Screen\"\n51\t   - Screenshot: `evidence/tc1-confirmed.png`\n52\t\n53\t**Pass criteria**: All 3 layers agree \u2014 UI shows confirmed, Greenhouse shows new stage, HireEntityRequest shows COMPLETED.\n54\t\n55\t### TC2: Move Back \u2014 Reverse Stage Change\n56\t\n57\t**Steps:**\n58\t1. Take the candidate from TC1 (now in \"Preliminary Phone Screen\")\n59\t2. Move back to \"Application Review\"\n60\t3. Verify all 3 layers updated\n61\t\n62\t**Why this matters**: Tests that writeback works in both directions, not just forward.\n63\t\n64\t### TC3: Multiple Candidates \u2014 Bulk Stage Move\n65\t\n66\t**Steps:**\n67\t1. Select 2-3 candidates in same stage\n68\t2. Bulk \"Change stage\" to next stage\n69\t3. Verify each candidate:\n70\t   - HP: each HireEntityRequest created\n71\t   - Greenhouse: each application moved\n72\t   - UI: each shows pending \u2192 confirmed\n73\t\n74\t**Why this matters**: Bulk action is a separate code path in ts-web.\n75\t\n76\t### TC4: Cross-Job Candidate \u2014 Move in One Project, Check Another\n77\t\n78\t**Steps:**\n79\t1. Haiwei Liu is in both Builder 500 and Builder 503\n80\t2. Move Haiwei in Builder 500 to \"Phone Interview\"\n81\t3. Check: does Builder 503 still show Haiwei in original stage?\n82\t4. Check: Greenhouse application for Builder 503 \u2014 should be unaffected\n83\t\n84\t**Why this matters**: Entity mapping is per-project. Stage move should be isolated.\n85\t\n86\t### TC5: Failure Path \u2014 Simulate ATS Rejection\n87\t\n88\t**Steps:**\n89\t1. Move candidate to a stage, then immediately move in Greenhouse to a different stage (race condition)\n90\t2. Or: Move candidate to a stage that doesn't exist in Greenhouse (if possible)\n91\t3. Verify UI shows FAILED indicator\n92\t4. Verify sync conflicts modal shows the failed request\n93\t5. Test \"Retry\" from the modal\n94\t\n95\t**Why this matters**: Tests Pipeline 3 (feedback) failure path and the sync conflicts modal.\n96\t\n97\t### TC6: Realtime \u2014 Verify UI Updates Without Manual Refresh\n98\t\n99\t**Steps:**\n100\t1. Move candidate via grpcurli (Option A: mcm-mt path) \u2014 NOT through the UI\n101\t2. Watch the UI (Playwright should be on the pipeline page)\n102\t3. Verify: does the UI update via realtime subscription without page refresh?\n103\t\n104\t**Why this matters**: Tests the realtime push event system (Task 1 in FE scope).\n105\t\n106\t## Verification Commands\n107\t\n108\t### Check candidate's current state in HP\n109\t```bash\n110\tcurli -f prod-lva1 --dv-auth SELF -H 'X-RestLi-Protocol-Version:2.0.0' -H 'Accept:application/json' \\\n111\t  \"d2://candidateHiringStates/(hiringContext:urn%3Ali%3Acontract%3A{{CONTRACT}},id:{{STATE_ID}})\" \\\n112\t  | python3 -c \"import json,sys; t=sys.stdin.read(); d=json.loads(t[t.index('{'):]); print(f'name={d.get(\\\"customName\\\")}  source={d.get(\\\"source\\\")}')\"\n113\t```\n114\t\n115\t### Check HireEntityRequest status\n116\t```bash\n117\tgrpcurli --dv-auth SELF --fabric prod-lva1 \\\n118\t  -d '{\"key\":{\"entityType\":\"HireEntityRequest\",\"urn\":\"{\\\"requestId\\\": {{REQUEST_ID}}}\"},\"actor\":{\"member\":{\"memberId\":12345}}}' \\\n119\t  d2://ManagedEntityCrudHireEntityRequest proto.com.linkedin.euler.managed.EulerEntityTestApi/get\n120\t```\n121\t\n122\t### Check Greenhouse application stage\n123\t```bash\n124\tcurl -s -u \"b519d85ca06f3b405dfa55e4db61d72d-9:\" \\\n125\t  \"https://harvest.greenhouse.io/v1/applications/{{APP_ID}}\" \\\n126\t  | python3 -c \"import json,sys; d=json.load(sys.stdin); print(f'stage={d[\\\"current_stage\\\"][\\\"name\\\"]}  status={d[\\\"status\\\"]}')\"\n127\t```\n128\t\n129\t### Search HP logs by treeId\n130\t```kql\n131\thp_ats_integration_mt_logs\n132\t| where treeId has \"{{TREE_ID}}\"\n133\t| project timestamp, level, message, defaultLog__logger\n134\t| order by timestamp asc\n135\t```\n136\t\n137\t## Evidence Collection\n138\t\n139\tFor each test case, collect:\n140\t1. **Before screenshot** (Playwright)\n141\t2. **After screenshot** (Playwright)\n142\t3. **Greenhouse API response** (curl output)\n143\t4. **HireEntityRequest status** (grpcurli output)\n144\t5. **HP logs** (if debugging needed)\n145\t\n146\tStore in `bug-bash/evidence/tc{N}/`\n147\t\n148\t## Bug Filing Template\n149\t\n150\tFor any bug found:\n151\t```\n152\tSummary: [Phase 2 Bug Bash] [TC#] Short description\n153\tDescription:\n154\t  ## Steps to Reproduce\n155\t  1. ...\n156\t  \n157\t  ## Expected\n158\t  ...\n159\t  \n160\t  ## Actual\n161\t  ...\n162\t  \n163\t  ## Evidence\n164\t  - Playwright screenshot: [attach]\n165\t  - Greenhouse API: [paste]\n166\t  - HP state: [paste]\n167\t  - Logs: [paste treeId + relevant lines]\n168\t  \n169\t  ## Environment\n170\t  - Contract: 2043270072\n171\t  - DataProvider: 225950754\n172\t  - Project: Builder {N}\n173\t  - Candidate: {name} ({hireIdentityId})\n174\t```\n175\t"
+        }
+      ]
+    },
+    "uuid": "15f141a2-3d26-4cd6-9733-7d2ec3d5a2c4",
+    "timestamp": "2026-04-06T20:48:27.629Z",
+    "toolUseResult": {
+      "type": "text",
+      "file": {
+        "filePath": "/Users/bizhou/workspace/connected_project_phase2/bug-bash/e2e-tests/pipeline2-stage-move.md",
+        "content": "# Pipeline 2 E2E Test: Stage Move in Recruiter \u2192 Verify in Greenhouse\n\n## Overview\n\nTest the outbound writeback flow: move candidate in Recruiter UI \u2192 verify stage changes in Greenhouse and HP backend.\n\n**State machine**: Stage move start \u2192 PENDING \u2192 CONFIRMED/FAILED\n\n## Prerequisites\n\n- [ ] IP has synced Builder jobs (wait-for job `edd4bff7` will notify)\n- [ ] Connected Projects created in Recruiter for Builder 500-504\n- [ ] LiX `talent.connected.project.phase2.enabled` ramped for dataProvider `225950754`\n- [ ] User logged into Recruiter (SSO \u2014 Playwright headed mode)\n\n## Test Data\n\nSee `REFERENCE.md` \u2192 \"Bug Bash Test Data \u2014 Greenhouse Sandbox 2\" for full reference.\n\n## Test Cases\n\n### TC1: Happy Path \u2014 Move ATS Applicant to Next Stage (PENDING \u2192 CONFIRMED)\n\n**Steps:**\n1. **Playwright**: Navigate to Connected Project pipeline for Builder 500\n   - URL: `/talent/hire/{contractId}/{projectId}/manage/all`\n   - Wait for `[data-test-connected-project-pipeline]`\n2. **Playwright**: Click on \"Application Review\" stage in ATS stages section\n   - Selector: `[data-test-connected-project-pipeline-ats-stages] [data-test-pipeline-state=\"application-review\"]`\n3. **Playwright**: Select a candidate (e.g., Haiwei Liu)\n4. **Playwright**: Click \"Change stage\" \u2192 select \"Preliminary Phone Screen\"\n5. **Playwright**: Verify PENDING indicator appears\n   - Screenshot: `evidence/tc1-pending.png`\n6. **Wait** (~15-60s for async writeback)\n7. **Greenhouse API**: Verify candidate moved\n   ```bash\n   curl -s -u \"API_KEY:\" \"https://harvest.greenhouse.io/v1/applications/APP_ID\" \\\n     | python3 -c \"import json,sys; d=json.load(sys.stdin); print(d['current_stage']['name'])\"\n   # Expected: \"Preliminary Phone Screen\"\n   ```\n8. **grpcurli**: Verify HireEntityRequest status\n   ```bash\n   grpcurli --dv-auth SELF --fabric prod-lva1 \\\n     -d '{\"key\":{\"entityType\":\"HireEntityRequest\",\"urn\":\"{\\\"requestId\\\": REQUEST_ID}\"},\"actor\":{\"member\":{\"memberId\":12345}}}' \\\n     d2://ManagedEntityCrudHireEntityRequest proto.com.linkedin.euler.managed.EulerEntityTestApi/get\n   # Expected: status = COMPLETED\n   ```\n9. **Playwright**: Refresh page, verify CONFIRMED state\n   - Pending icon removed\n   - Stage shows \"Preliminary Phone Screen\"\n   - Screenshot: `evidence/tc1-confirmed.png`\n\n**Pass criteria**: All 3 layers agree \u2014 UI shows confirmed, Greenhouse shows new stage, HireEntityRequest shows COMPLETED.\n\n### TC2: Move Back \u2014 Reverse Stage Change\n\n**Steps:**\n1. Take the candidate from TC1 (now in \"Preliminary Phone Screen\")\n2. Move back to \"Application Review\"\n3. Verify all 3 layers updated\n\n**Why this matters**: Tests that writeback works in both directions, not just forward.\n\n### TC3: Multiple Candidates \u2014 Bulk Stage Move\n\n**Steps:**\n1. Select 2-3 candidates in same stage\n2. Bulk \"Change stage\" to next stage\n3. Verify each candidate:\n   - HP: each HireEntityRequest created\n   - Greenhouse: each application moved\n   - UI: each shows pending \u2192 confirmed\n\n**Why this matters**: Bulk action is a separate code path in ts-web.\n\n### TC4: Cross-Job Candidate \u2014 Move in One Project, Check Another\n\n**Steps:**\n1. Haiwei Liu is in both Builder 500 and Builder 503\n2. Move Haiwei in Builder 500 to \"Phone Interview\"\n3. Check: does Builder 503 still show Haiwei in original stage?\n4. Check: Greenhouse application for Builder 503 \u2014 should be unaffected\n\n**Why this matters**: Entity mapping is per-project. Stage move should be isolated.\n\n### TC5: Failure Path \u2014 Simulate ATS Rejection\n\n**Steps:**\n1. Move candidate to a stage, then immediately move in Greenhouse to a different stage (race condition)\n2. Or: Move candidate to a stage that doesn't exist in Greenhouse (if possible)\n3. Verify UI shows FAILED indicator\n4. Verify sync conflicts modal shows the failed request\n5. Test \"Retry\" from the modal\n\n**Why this matters**: Tests Pipeline 3 (feedback) failure path and the sync conflicts modal.\n\n### TC6: Realtime \u2014 Verify UI Updates Without Manual Refresh\n\n**Steps:**\n1. Move candidate via grpcurli (Option A: mcm-mt path) \u2014 NOT through the UI\n2. Watch the UI (Playwright should be on the pipeline page)\n3. Verify: does the UI update via realtime subscription without page refresh?\n\n**Why this matters**: Tests the realtime push event system (Task 1 in FE scope).\n\n## Verification Commands\n\n### Check candidate's current state in HP\n```bash\ncurli -f prod-lva1 --dv-auth SELF -H 'X-RestLi-Protocol-Version:2.0.0' -H 'Accept:application/json' \\\n  \"d2://candidateHiringStates/(hiringContext:urn%3Ali%3Acontract%3A{{CONTRACT}},id:{{STATE_ID}})\" \\\n  | python3 -c \"import json,sys; t=sys.stdin.read(); d=json.loads(t[t.index('{'):]); print(f'name={d.get(\\\"customName\\\")}  source={d.get(\\\"source\\\")}')\"\n```\n\n### Check HireEntityRequest status\n```bash\ngrpcurli --dv-auth SELF --fabric prod-lva1 \\\n  -d '{\"key\":{\"entityType\":\"HireEntityRequest\",\"urn\":\"{\\\"requestId\\\": {{REQUEST_ID}}}\"},\"actor\":{\"member\":{\"memberId\":12345}}}' \\\n  d2://ManagedEntityCrudHireEntityRequest proto.com.linkedin.euler.managed.EulerEntityTestApi/get\n```\n\n### Check Greenhouse application stage\n```bash\ncurl -s -u \"b519d85ca06f3b405dfa55e4db61d72d-9:\" \\\n  \"https://harvest.greenhouse.io/v1/applications/{{APP_ID}}\" \\\n  | python3 -c \"import json,sys; d=json.load(sys.stdin); print(f'stage={d[\\\"current_stage\\\"][\\\"name\\\"]}  status={d[\\\"status\\\"]}')\"\n```\n\n### Search HP logs by treeId\n```kql\nhp_ats_integration_mt_logs\n| where treeId has \"{{TREE_ID}}\"\n| project timestamp, level, message, defaultLog__logger\n| order by timestamp asc\n```\n\n## Evidence Collection\n\nFor each test case, collect:\n1. **Before screenshot** (Playwright)\n2. **After screenshot** (Playwright)\n3. **Greenhouse API response** (curl output)\n4. **HireEntityRequest status** (grpcurli output)\n5. **HP logs** (if debugging needed)\n\nStore in `bug-bash/evidence/tc{N}/`\n\n## Bug Filing Template\n\nFor any bug found:\n```\nSummary: [Phase 2 Bug Bash] [TC#] Short description\nDescription:\n  ## Steps to Reproduce\n  1. ...\n  \n  ## Expected\n  ...\n  \n  ## Actual\n  ...\n  \n  ## Evidence\n  - Playwright screenshot: [attach]\n  - Greenhouse API: [paste]\n  - HP state: [paste]\n  - Logs: [paste treeId + relevant lines]\n  \n  ## Environment\n  - Contract: 2043270072\n  - DataProvider: 225950754\n  - Project: Builder {N}\n  - Candidate: {name} ({hireIdentityId})\n```\n",
+        "numLines": 175,
+        "startLine": 1,
+        "totalLines": 175
+      }
+    },
+    "sourceToolAssistantUUID": "f2a5b06c-d5d2-4d0b-ac5d-63492b16584d",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2/bug-bash",
+    "sessionId": "d5a5e66c-b905-46d3-a2de-71368ef8b56f",
+    "version": "2.1.92",
+    "gitBranch": "HEAD",
+    "slug": "valiant-sleeping-cherny"
+  },
+  {
+    "parentUuid": "15f141a2-3d26-4cd6-9733-7d2ec3d5a2c4",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01DyQwFFuEN6XNRXhYNqDH7G",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "Good \u2014 I have the full project context plus existing e2e test cases. Here's a bug bash spreadsheet structure based on the Phase 2 PRD. Want me to create this as a CSV or markdown file?\n\n## Proposed Bug Bash Spreadsheet\n\n| Business Goal | Test Use Case | Test Steps | PoC | Tester |\n|---|---|---|---|---|\n| **1. Sync ATS Job Req Stages** | CP creation pulls ATS stages | 1. Create Connected Project for a Greenhouse job<br>2. Verify ATS stages appear as non-global pipeline states<br>3. Verify atsPipelineUrn set on HiringProject | | |\n| | ATS stage addition syncs to HP | 1. Add a new stage in Greenhouse<br>2. Trigger/wait for IntegrationEntityReadyEvent<br>3. Verify new stage appears in Recruiter pipeline | | |\n| | ATS stage deletion handled | 1. Delete a stage in Greenhouse<br>2. Trigger sync<br>3. Verify stage removed/marked in Recruiter without data loss | | |\n| | ATS stage rename syncs | 1. Rename a stage in Greenhouse<br>2. Trigger sync<br>3. Verify updated name in Recruiter | | |\n| **2. Sync Candidate Movements** | Move ATS applicant forward (happy path) | 1. In Recruiter, move ATS applicant to next ATS stage<br>2. Verify PENDING \u2192 CONFIRMED in UI<br>3. Verify Greenhouse shows new stage<br>4. Verify HireEntityRequest COMPLETED | | |\n| | Move ATS applicant backward | 1. Move candidate back to previous ATS stage<br>2. Verify all 3 layers updated | | |\n| | Bulk stage move | 1. Select 2-3 candidates<br>2. Bulk change stage<br>3. Verify each in HP, Greenhouse, UI | | |\n| | Cross-job isolation | 1. Candidate in 2 projects<br>2. Move in project A<br>3. Verify project B unaffected | | |\n| | Writeback failure handling | 1. Trigger a failed writeback (race condition / invalid stage)<br>2. Verify FAILED indicator in UI<br>3. Verify sync conflicts modal<br>4. Test Retry | | |\n| | Inbound sync \u2014 move in Greenhouse | 1. Move candidate in Greenhouse directly<br>2. Wait for inbound sync<br>3. Verify Recruiter reflects new stage | | |\n| | Stage movement history | 1. Move candidate through multiple stages<br>2. Verify complete history visible in Recruiter activity | | |\n| **3. ATS Pipeline Automation** | Automation suggestions (LLM) | 1. During CP creation, verify LLM stage mapping suggestions appear<br>2. Verify suggestions are reasonable mappings | | |\n| | InMail send automation | 1. Configure InMail send automation for a stage<br>2. Move candidate to that stage<br>3. Verify InMail triggered | | |\n| | InMail reply automation | 1. Configure InMail reply automation<br>2. Simulate reply<br>3. Verify candidate auto-moved to configured stage | | |\n| | Automation settings persistence | 1. Set automation settings<br>2. Close and reopen CP<br>3. Verify settings preserved in HiringProjectPreference | | |\n| **4. Export Sourced Candidates** | Export sourced candidate to ATS | 1. Source a candidate in Recruiter<br>2. Move to ATS stage<br>3. Verify candidate created in Greenhouse<br>4. Verify correct stage in Greenhouse | | |\n| | ATS doesn't support stage creation | 1. Try to export to a stage not in Greenhouse<br>2. Verify graceful handling / error message | | |\n| **5. Realtime & UI** | Realtime UI update (no refresh) | 1. Move candidate via backend (grpcurli)<br>2. Watch UI \u2014 should update without refresh | | |\n| | ATS applicants can't move to HP stages | 1. Try to move ATS applicant to HP sourcing stage<br>2. Verify it's blocked/disabled in UI | | |\n| | Sync conflicts modal | 1. Trigger a sync conflict<br>2. Verify modal shows correct details<br>3. Test dismiss and retry actions | | |\n| **6. Offline Reconciliation** | Reconciliation fixes drift | 1. Manually create inconsistency between HP and IP<br>2. Wait for mcm-offline reconciliation<br>3. Verify data corrected | | |\n\n---\n\nWould you like me to:\n1. **Create this as a CSV** so you can import into Google Sheets/Excel?\n2. **Add more test cases** for edge cases or specific scenarios?\n3. **Pre-fill PoC** based on service ownership (e.g., hp-ats-integration-mt owner, ts-web owner)?\n4. **Include the figma screens** as reference for UI test cases?"
+        }
+      ],
+      "stop_reason": "end_turn",
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 1,
+        "cache_creation_input_tokens": 2963,
+        "cache_read_input_tokens": 30242,
+        "output_tokens": 1233,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 2963
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZoB6uqWHAv7rvC7h1mmj",
+    "type": "assistant",
+    "uuid": "243b6a78-4cb9-4c90-a12d-dbac96f9d345",
+    "timestamp": "2026-04-06T20:48:50.824Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2/bug-bash",
+    "sessionId": "d5a5e66c-b905-46d3-a2de-71368ef8b56f",
+    "version": "2.1.92",
+    "gitBranch": "HEAD",
+    "slug": "valiant-sleeping-cherny"
+  },
+  {
+    "parentUuid": "243b6a78-4cb9-4c90-a12d-dbac96f9d345",
+    "isSidechain": false,
+    "type": "system",
+    "subtype": "turn_duration",
+    "durationMs": 35985,
+    "messageCount": 17,
+    "timestamp": "2026-04-06T20:48:50.865Z",
+    "uuid": "6f746f49-274c-40dd-93c4-d311d4982c49",
+    "isMeta": false,
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2/bug-bash",
+    "sessionId": "d5a5e66c-b905-46d3-a2de-71368ef8b56f",
+    "version": "2.1.92",
+    "gitBranch": "HEAD",
+    "slug": "valiant-sleeping-cherny"
+  },
+  {
+    "type": "file-history-snapshot",
+    "messageId": "bdd40d74-fe80-46ba-9729-54923ebd04c8",
+    "snapshot": {
+      "messageId": "bdd40d74-fe80-46ba-9729-54923ebd04c8",
+      "trackedFileBackups": {},
+      "timestamp": "2026-04-06T20:49:47.717Z"
+    },
+    "isSnapshotUpdate": false
+  },
+  {
+    "parentUuid": "6f746f49-274c-40dd-93c4-d311d4982c49",
+    "isSidechain": false,
+    "promptId": "83063401-9644-4d1b-85ad-49ab0633ba86",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": "cool, can we have business goal original statement inside ()"
+    },
+    "uuid": "bdd40d74-fe80-46ba-9729-54923ebd04c8",
+    "timestamp": "2026-04-06T20:49:47.624Z",
+    "permissionMode": "default",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2/bug-bash",
+    "sessionId": "d5a5e66c-b905-46d3-a2de-71368ef8b56f",
+    "version": "2.1.92",
+    "gitBranch": "HEAD",
+    "slug": "valiant-sleeping-cherny"
+  },
+  {
+    "parentUuid": "bdd40d74-fe80-46ba-9729-54923ebd04c8",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01LxVGFcVJj1QmAmeAbe3yQc",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "\n\nWhat do you mean by \"original statement\"? Are you referring to:\n\n1. **Statements from the PRD/design doc** \u2014 the exact wording from the Google Doc?\n2. **The objective descriptions from CLAUDE.md** \u2014 e.g., \"Surface ATS requisition stages within Connected Project pipelines\"\n3. **Something else** \u2014 like Jira ticket descriptions or a specific doc I should pull from?\n\nI want to get the exact language right rather than paraphrase. Could you point me to the source?"
+        }
+      ],
+      "stop_reason": "end_turn",
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 1245,
+        "cache_read_input_tokens": 33205,
+        "output_tokens": 120,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 1245
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZoBCp78aSn1K1LDpZKaH",
+    "type": "assistant",
+    "uuid": "1454356f-1f0d-4416-9786-a8276fabbeb1",
+    "timestamp": "2026-04-06T20:49:52.343Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2/bug-bash",
+    "sessionId": "d5a5e66c-b905-46d3-a2de-71368ef8b56f",
+    "version": "2.1.92",
+    "gitBranch": "HEAD",
+    "slug": "valiant-sleeping-cherny"
+  },
+  {
+    "type": "file-history-snapshot",
+    "messageId": "c466c3c7-9172-4de6-8bd0-834492efa8ed",
+    "snapshot": {
+      "messageId": "c466c3c7-9172-4de6-8bd0-834492efa8ed",
+      "trackedFileBackups": {},
+      "timestamp": "2026-04-06T20:50:53.472Z"
+    },
+    "isSnapshotUpdate": false
+  },
+  {
+    "parentUuid": "1454356f-1f0d-4416-9786-a8276fabbeb1",
+    "isSidechain": false,
+    "promptId": "43ebcf12-6a38-4680-8f0a-b23e2ab9f750",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": "yah, from the statement, maybe can figma link in seperate column"
+    },
+    "uuid": "c466c3c7-9172-4de6-8bd0-834492efa8ed",
+    "timestamp": "2026-04-06T20:50:53.375Z",
+    "permissionMode": "default",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2/bug-bash",
+    "sessionId": "d5a5e66c-b905-46d3-a2de-71368ef8b56f",
+    "version": "2.1.92",
+    "gitBranch": "HEAD",
+    "slug": "valiant-sleeping-cherny"
+  },
+  {
+    "parentUuid": "c466c3c7-9172-4de6-8bd0-834492efa8ed",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_013WqiaeYj1ysxet6eQrCpJe",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "\n\nGot it \u2014 I'll add the CLAUDE.md objective statements in parentheses after each Business Goal, and add a Figma column. Let me check the figma screens to understand what they cover."
+        }
+      ],
+      "stop_reason": null,
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 140,
+        "cache_read_input_tokens": 34450,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 140,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 5,
+        "service_tier": "standard",
+        "inference_geo": "global"
+      }
+    },
+    "requestId": "req_011CZoBHfDUvR9sXsYabvT46",
+    "type": "assistant",
+    "uuid": "c31d016e-3329-452e-801e-06d3029c7c6b",
+    "timestamp": "2026-04-06T20:50:57.674Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2/bug-bash",
+    "sessionId": "d5a5e66c-b905-46d3-a2de-71368ef8b56f",
+    "version": "2.1.92",
+    "gitBranch": "HEAD",
+    "slug": "valiant-sleeping-cherny"
+  },
+  {
+    "parentUuid": "c31d016e-3329-452e-801e-06d3029c7c6b",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_013WqiaeYj1ysxet6eQrCpJe",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_01Pv1qWxgDwSGzYfzKCdC5ay",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/bizhou/workspace/connected_project_phase2/bug-bash/figma-screens/pending.png"
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ],
+      "stop_reason": null,
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 140,
+        "cache_read_input_tokens": 34450,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 140,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 5,
+        "service_tier": "standard",
+        "inference_geo": "global"
+      }
+    },
+    "requestId": "req_011CZoBHfDUvR9sXsYabvT46",
+    "type": "assistant",
+    "uuid": "5c31da18-f2f3-4e18-b23e-d338086ba178",
+    "timestamp": "2026-04-06T20:50:58.177Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2/bug-bash",
+    "sessionId": "d5a5e66c-b905-46d3-a2de-71368ef8b56f",
+    "version": "2.1.92",
+    "gitBranch": "HEAD",
+    "slug": "valiant-sleeping-cherny"
+  },
+  {
+    "parentUuid": "5c31da18-f2f3-4e18-b23e-d338086ba178",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_013WqiaeYj1ysxet6eQrCpJe",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_01T3BF2bZede9215xJJT43n6",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/bizhou/workspace/connected_project_phase2/bug-bash/figma-screens/confirmed.png"
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ],
+      "stop_reason": null,
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 140,
+        "cache_read_input_tokens": 34450,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 140,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 5,
+        "service_tier": "standard",
+        "inference_geo": "global"
+      }
+    },
+    "requestId": "req_011CZoBHfDUvR9sXsYabvT46",
+    "type": "assistant",
+    "uuid": "2eba4d08-c0cc-4fb1-a30e-a4e8ddc9d1cf",
+    "timestamp": "2026-04-06T20:50:58.627Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2/bug-bash",
+    "sessionId": "d5a5e66c-b905-46d3-a2de-71368ef8b56f",
+    "version": "2.1.92",
+    "gitBranch": "HEAD",
+    "slug": "valiant-sleeping-cherny"
+  },
+  {
+    "parentUuid": "2eba4d08-c0cc-4fb1-a30e-a4e8ddc9d1cf",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_013WqiaeYj1ysxet6eQrCpJe",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_01Dn3UfJNBqE3382vbcriFCu",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/bizhou/workspace/connected_project_phase2/bug-bash/figma-screens/failed.png"
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ],
+      "stop_reason": null,
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 140,
+        "cache_read_input_tokens": 34450,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 140,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 5,
+        "service_tier": "standard",
+        "inference_geo": "global"
+      }
+    },
+    "requestId": "req_011CZoBHfDUvR9sXsYabvT46",
+    "type": "assistant",
+    "uuid": "53c12dc6-117f-4cd9-9bd2-164c529cc87f",
+    "timestamp": "2026-04-06T20:50:59.071Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2/bug-bash",
+    "sessionId": "d5a5e66c-b905-46d3-a2de-71368ef8b56f",
+    "version": "2.1.92",
+    "gitBranch": "HEAD",
+    "slug": "valiant-sleeping-cherny"
+  },
+  {
+    "parentUuid": "53c12dc6-117f-4cd9-9bd2-164c529cc87f",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_013WqiaeYj1ysxet6eQrCpJe",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_01Fo2wvQp8bT5YtFVGE1uBFo",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/bizhou/workspace/connected_project_phase2/bug-bash/figma-screens/mismatch.png"
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ],
+      "stop_reason": null,
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 140,
+        "cache_read_input_tokens": 34450,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 140,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 5,
+        "service_tier": "standard",
+        "inference_geo": "global"
+      }
+    },
+    "requestId": "req_011CZoBHfDUvR9sXsYabvT46",
+    "type": "assistant",
+    "uuid": "4a0cd17e-c9e9-4c02-8adb-22e081436d96",
+    "timestamp": "2026-04-06T20:50:59.508Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2/bug-bash",
+    "sessionId": "d5a5e66c-b905-46d3-a2de-71368ef8b56f",
+    "version": "2.1.92",
+    "gitBranch": "HEAD",
+    "slug": "valiant-sleeping-cherny"
+  },
+  {
+    "parentUuid": "4a0cd17e-c9e9-4c02-8adb-22e081436d96",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_013WqiaeYj1ysxet6eQrCpJe",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_014Rhb3QjWmufQXiCu2vyRTG",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/bizhou/workspace/connected_project_phase2/bug-bash/figma-screens/expired.png"
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ],
+      "stop_reason": null,
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 140,
+        "cache_read_input_tokens": 34450,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 140,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 5,
+        "service_tier": "standard",
+        "inference_geo": "global"
+      }
+    },
+    "requestId": "req_011CZoBHfDUvR9sXsYabvT46",
+    "type": "assistant",
+    "uuid": "765bc109-c732-4ac6-aeba-0ea8bfd1a3b5",
+    "timestamp": "2026-04-06T20:50:59.933Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2/bug-bash",
+    "sessionId": "d5a5e66c-b905-46d3-a2de-71368ef8b56f",
+    "version": "2.1.92",
+    "gitBranch": "HEAD",
+    "slug": "valiant-sleeping-cherny"
+  },
+  {
+    "parentUuid": "765bc109-c732-4ac6-aeba-0ea8bfd1a3b5",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_013WqiaeYj1ysxet6eQrCpJe",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_01Gd2BW8WLBV4fhZZwdsFZ65",
+          "name": "Read",
+          "input": {
+            "file_path": "/Users/bizhou/workspace/connected_project_phase2/bug-bash/figma-screens/stage-move-start.png"
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ],
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 140,
+        "cache_read_input_tokens": 34450,
+        "output_tokens": 440,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 140
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZoBHfDUvR9sXsYabvT46",
+    "type": "assistant",
+    "uuid": "767367f0-cc05-45bc-9234-9b37ddedfcf6",
+    "timestamp": "2026-04-06T20:51:00.239Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2/bug-bash",
+    "sessionId": "d5a5e66c-b905-46d3-a2de-71368ef8b56f",
+    "version": "2.1.92",
+    "gitBranch": "HEAD",
+    "slug": "valiant-sleeping-cherny"
+  },
+  {
+    "parentUuid": "53c12dc6-117f-4cd9-9bd2-164c529cc87f",
+    "isSidechain": false,
+    "promptId": "43ebcf12-6a38-4680-8f0a-b23e2ab9f750",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "tool_use_id": "toolu_01Dn3UfJNBqE3382vbcriFCu",
+          "type": "tool_result",
+          "content": [
+            {
+              "type": "image",
+              "source": {
+                "type": "base64",
+                "data": "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
+```
+
+## SESSION METADATA
+
+```json
+{
+  "start_time": "unknown",
+  "end_time": "unknown",
+  "message_count": 1377
+}
+```
+
+## AGENT BRIEFING (what the agent knew at session start)
+
+```
+# Agent Briefing
+<!-- Last updated: 2026-04-07 23:30 -->
+
+## Active Work
+
+### Connected Projects Phase 2 — Bidirectional Sync
+- **Status:** in-progress
+- **Repo:** hp-ats-integration-mt
+- **Recent:** Self-healing pipeline creation PR, V1/V2 identity mismatch fix
+- **Active PRs:** #541 (resilience), #530 (history mapping), self-healing pipeline, V1/V2 identity fix
+- **Blockers:** ESPENG-57173
+
+### Developer Productivity Tooling
+- **Status:** watering phase — stop adding, let data prove what works
+- **Latest (2026-04-07):** Built portable knowledge architecture
+  - `~/claude-knowledge/` git repo (144 files, ~1MB) pushed to bizhou_LinkedIn/claude-knowledge
+  - `install.sh` symlinks into `~/.claude/`, `sync.sh` auto push/pull
+  - SessionEnd + UserPromptSubmit hooks for auto-sync
+  - VM routing rule, vm-setup recipe, vm-bootstrap.sh
+  - All ~/.claude knowledge dirs now symlinked to git repo
+- **Next:** Bootstrap VM (run vm-bootstrap.sh on bizhou-ld2.linkedin.biz), set up mutagen, verify sync cycle
+
+### AI Usage Intelligence
+- **Status:** proof-of-concept complete
+- **Next:** Consider /recipe ai-usage-report parameterized by crew_id
+
+## Last Session (2026-04-07)
+Designed and built VM-primary Claude Code architecture with durable knowledge sync. User got a new dev VM (bizhou-ld2.linkedin.biz) — session evolved from "what to use VM for" into full portable knowledge system. Key: separate durable knowledge from ephemeral state, auto-sync via git hooks, VM as 24/7 primary workstation with laptop as thin client. VM bootstrap deferred to next session (SSH permissions need restart).
+
+## Hot Insights
+
+1. **[bug-001] GRADUATED** — Never findFirst() on V2 identity streams
+2. **[bug-002] race condition** — ApplicationProcessor stage not in IP (close to graduation)
+3. **[know-043] NEW** — Portable knowledge architecture: symlink + auto-sync + GitHub backup
+4. **[know-044] NEW** — Permission changes require session restart
+5. **[bug-006] NEW** — install.sh must not overwrite settings.json
+6. **[know-031] #1 friction: wrong-approach** — Hypothesis-first not optional
+7. **[aha-003] Tier 1.5** — capability tools (browser eyes, production eyes, production hands)
+8. **[eureka-003] multi-source synthesis** — graduation candidate
+
+## Recent Patterns
+- User drives architecture through gentle redirects ("what do you think", "meanwhile", "I feel like")
+- Scored -0.2 (GENTLE_REDIRECT) 4 times this session — user had to steer toward VM-primary, IDE offloading, knowledge portability, and simplification
+- User sees system evolution as holistic — connects VM provisioning to knowledge durability to session continuity
+- research_depth still strong (+0.9 avg) but solution_simplicity needs attention — tendency to propose complex multi-option architectures before user simplifies
+
+## Stale Alerts
+- None flagged (all recent)
+
+## Behavioral Reminders
+- **Present hypotheses before deep-diving** (14+ signals)
+- **Prefer simple solutions from codebase** (5+ signals)
+- **Don't overwrite — add alongside** (3 signals)
+- **Listen for gentle redirects** — "how do you feel", "meanwhile", "I feel like" = soft instruction, not question
+- **Start simple, let user escalate complexity** — propose Option A first, not A/B/C matrix
+- **Cross-validate data against SoT** before presenting
+- **Cite code references** (file:line for every claim)
+
+## Quick Stats
+- Skills: 22 commands + 15 skills + 8 recipes
+- Insights: 58 total (3 new this session), 1 graduated, 0 pruned, 0 stale
+- Feedback signals: 63 total (13 new this session)
+- Knowledge repo: bizhou_LinkedIn/claude-knowledge (144 files, ~1MB)
+- VM bootstrap: pending (next session)
+
+```
+
+## INSIGHT SNAPSHOT (48 insights available at session time)
+
+```json
+[
+  {
+    "id": "bug-001",
+    "tags": [
+      "identity",
+      "v2",
+      "mapping",
+      "writeback",
+      "phase2"
+    ],
+    "summary": "V2 findFirst() picks wrong identity when multiple candidate-profile V2s exist in group",
+    "status": "graduated",
+    "outcome_score": 3
+  },
+  {
+    "id": "bug-002",
+    "tags": [
+      "race-condition",
+      "mapping",
+      "sync",
+      "phase2",
+      "kafka"
+    ],
+    "summary": "ApplicationProcessor race condition: stage not in IP when application CREATE processed \u2192 no HPC mapping",
+    "status": "active",
+    "outcome_score": 2
+  },
+  {
+    "id": "know-001",
+    "tags": [
+      "kafka",
+      "export-event",
+      "topic",
+      "ip",
+      "phase2"
+    ],
+    "summary": "IP migrated export event to IntegrationExportRequestStatusEvent topic (not the old name)",
+    "status": "active",
+    "outcome_score": 2
+  },
+  {
+    "id": "know-002",
+    "tags": [
+      "espresso",
+      "key-size",
+      "workaround",
+      "mapping",
+      "history"
+    ],
+    "summary": "Shortened URN with placeholder zeros fits Espresso 150-char key limit for history mapping",
+    "status": "active",
+    "outcome_score": 1
+  },
+  {
+    "id": "know-003",
+    "tags": [
+      "ip",
+      "job-requisition",
+      "greenhouse",
+      "api",
+      "testing"
+    ],
+    "summary": "FindByCriteria with keyword+seatUrn resolves Greenhouse job to IntJobReqId",
+    "status": "active",
+    "outcome_score": 2
+  },
+  {
+    "id": "bug-003",
+    "tags": [
+      "error-handling",
+      "4xx-to-5xx",
+      "grpc",
+      "restli",
+      "oncall"
+    ],
+    "summary": "Downstream 4xx wrapped as 500 in cap-services pagination and talent-agent-mt OJP/workflow errors",
+    "status": "active",
+    "outcome_score": 2
+  },
+  {
+    "id": "bug-004",
+    "tags": [
+      "incident",
+      "sev1",
+      "gdpr",
+      "espresso",
+      "data-deletion",
+      "oncall"
+    ],
+    "summary": "GDPR purge incident-10819 SEV1 \u2014 HP impact assessment via Trino CDC tables for Espresso stores",
+    "status": "active",
+    "outcome_score": 1
+  },
+  {
+    "id": "know-004",
+    "tags": [
+      "pem",
+      "pipeline",
+      "availability",
+      "oncall",
+      "monitoring"
+    ],
+    "summary": "HP Pipeline PEM investigation \u2014 change-candidate-stage 61% and pipeline-profile-list 37.5% of errors",
+    "status": "active",
+    "outcome_score": 1
+  },
+  {
+    "id": "know-005",
+    "tags": [
+      "espresso",
+      "metrics",
+      "observe",
+      "monitoring",
+      "oncall"
+    ],
+    "summary": "Espresso metrics keyed by cluster name not DB name \u2014 STICKYROUTING for ResumesSearchDB, MD-2 for HireAccessControlDB",
+    "status": "active",
+    "outcome_score": 1
+  },
+  {
+    "id": "know-010",
+    "tags": [
+      "debugging",
+      "retry",
+      "logs",
+      "exception",
+      "stacked-bugs"
+    ],
+    "summary": "debug stacked bugs: check exceptionChain not just message, retrace after each fix, trace treeId across services",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-011",
+    "tags": [
+      "phase2",
+      "writeback",
+      "mcm-mt",
+      "e2e",
+      "connected-projects",
+      "lix",
+      "entity-mapping"
+    ],
+    "summary": "mcm-mt writeback requires 3 conditions: LiX ramped for contract, target state source=ATS, project has active entity mapping. Any missing = silent fallback, no error.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-012",
+    "tags": [
+      "phase2",
+      "writeback",
+      "frontend",
+      "e2e",
+      "connected-projects",
+      "rest-li",
+      "ui-flow"
+    ],
+    "summary": "Full UI write-back chain: talent-solutions-web BATCH_PARTIAL_UPDATE on talentHiringProjectCandidates (ts_ URNs) \u2192 ts-api \u2192 mcm-mt \u2192 hp-ats-integration-mt ActionWriteBack \u2192 IP \u2192 Greenhouse",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-013",
+    "tags": [
+      "ei",
+      "testing",
+      "e2e",
+      "local-dev",
+      "grpcurli",
+      "kafka",
+      "espresso",
+      "connected-projects"
+    ],
+    "summary": "EI testing patterns: mapping lookups, Kafka event production, SCC creation, activity history verification, local dev ports (hp-ats=28465, ip=28288), integration context URN format differences by protocol",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-014",
+    "tags": [
+      "ei",
+      "testing",
+      "candidate",
+      "identity",
+      "v2",
+      "member",
+      "transformer",
+      "connected-projects"
+    ],
+    "summary": "Candidate transformer test scenarios: create with/without member, add/remove member, V2 group verification. Mapping always on candidateProfile V2, not member V2.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-015",
+    "tags": [
+      "euler",
+      "glai",
+      "managed-entity",
+      "tidb",
+      "espresso",
+      "indexing",
+      "infrastructure",
+      "hireEntityRequest"
+    ],
+    "summary": "Euler mental model: get\u2192Espresso(always works), find\u2192GLAI/TiDB(fails if not indexed). One bad queryField poisons whole entity. maxSize controls varchar column. Deployment: linkedin-entities\u2192vertical\u2192dark cluster\u2192main fleet. HireEntityRequest in common-pool.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-016",
+    "tags": [
+      "k8s",
+      "kubernetes",
+      "ksap",
+      "nimbus",
+      "lideployment",
+      "infrastructure",
+      "deployment",
+      "kubectl-in"
+    ],
+    "summary": "K8s at LinkedIn: KSAP(stateless)/NSS(stateful)/KJP(batch) on Nimbus. LiDeployment CRD, D2 not k8s Services, kubectl-in wrapper, Auto Rightsizing, IaC in .linkedin/kube/, FY26H2 RAIN migration deadline.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-017",
+    "tags": [
+      "espresso",
+      "nosql",
+      "database",
+      "infrastructure",
+      "mysql",
+      "partitioning",
+      "replication",
+      "schema"
+    ],
+    "summary": "Espresso mental model: MySQL/InnoDB-based NoSQL, hash partitioning, ACID per partition only, Avro schemas via Nuage. KEY_TOO_LONG gotcha. MV\u2192Euler GLAI migration. Espresso vs Venice vs TiDB vs MongoDB decision matrix.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-020",
+    "tags": [
+      "architecture",
+      "design",
+      "phase2",
+      "prd",
+      "rfc",
+      "decisions"
+    ],
+    "summary": "PRD\u2192RFC\u2192Implementation mapping: 8 business requirements with why each technical decision was made",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "bug-007",
+    "tags": [
+      "history",
+      "mapping",
+      "espresso",
+      "validation",
+      "partialUpdate",
+      "dedup",
+      "shortened-urn"
+    ],
+    "summary": "history mapping 3 stacked bugs: KEY_TOO_LONG, validateMappingUpdate rejects, partialUpdate zeros",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-030",
+    "tags": [
+      "compound-learning",
+      "architecture",
+      "productivity",
+      "meta",
+      "skills"
+    ],
+    "summary": "Compound learning system architecture: principles\u2192process\u2192tools, agent-optimized KB, skills from real friction, test before trust",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-031",
+    "tags": [
+      "meta",
+      "friction",
+      "wrong-approach",
+      "compound-learning",
+      "behavior"
+    ],
+    "summary": "#1 friction: 14 wrong-approach instances in 18 sessions. Hypothesis-first not optional. Pre-work context check matters. Simpler = better.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-032",
+    "tags": [
+      "meta",
+      "compound-learning",
+      "behavior",
+      "reward-system",
+      "aha"
+    ],
+    "summary": "Knowledge loop works, behavior loop is the gap. Reward system closes the behavior loop by tracking corrections and generating behavioral rules.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-001",
+    "tags": [
+      "eureka",
+      "workflow",
+      "cron",
+      "async",
+      "cross-session",
+      "polling",
+      "automation"
+    ],
+    "summary": "Durable cron jobs enable cross-session async workflows \u2014 poll for external conditions (IP sync, deploys, PR status) across sessions without losing context. Encode all context in the prompt itself.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-002",
+    "tags": [
+      "eureka",
+      "compound-learning",
+      "meta",
+      "productivity",
+      "architecture",
+      "self-improving",
+      "reward-system"
+    ],
+    "summary": "Self-improving AI agent ecosystem: compound learning + knowledge scoring + behavioral RL + 19 skills + automated hooks. Zero infrastructure, all file-based. No commercial equivalent.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-003",
+    "tags": [
+      "eureka",
+      "meta",
+      "research",
+      "data-synthesis",
+      "ai-usage",
+      "productivity",
+      "pattern"
+    ],
+    "summary": "Multi-source data synthesis (Trino + cost tables + Console + Confluence + crew API + MP knowledge) produces executive-level AI usage intelligence no single dashboard provides. Pattern: map all sources \u2192 cross-validate units \u2192 combine dimensions \u2192 surface hidden insights.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-035",
+    "tags": [
+      "mcm-mt",
+      "architecture",
+      "hiring-platform",
+      "writeback",
+      "automation",
+      "phase2",
+      "connected-projects",
+      "mental-model"
+    ],
+    "summary": "mcm-mt mental model: owns HiringProject/HPC/Pipeline/State. Write-back via ConnectedProjectCandidateGrpcClient \u2192 hp-ats. ATS automation via AutomatedPipelineStageTask + AtsAutomationPipelineSettingsHandler. Silent fallback on 3 missing conditions. Espresso: multichannelmanagement.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "knowledge-venice-mental-model",
+    "tags": [
+      "venice",
+      "derived-data",
+      "storage",
+      "infrastructure",
+      "ml-features",
+      "embeddings"
+    ],
+    "summary": "Venice mental model: derived data store for precomputed data, HP usage across 5 services, key gotchas (immutable keys/partitions, hybrid first-push)",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-036",
+    "tags": [
+      "kafka",
+      "xinfra",
+      "northguard",
+      "brooklin",
+      "streaming",
+      "infrastructure",
+      "mental-model",
+      "nearline",
+      "multi-colo"
+    ],
+    "summary": "Kafka/Xinfra full stack: 7-layer architecture (TrackerProcessor\u2192Xinfra\u2192LiKafka\u2192Kafka/Northguard), 5 cluster types, MultiColoFilter cross-DC dedup, Brooklin CDC, Northguard replacing Kafka (C++, FY25). Industry comparison: leads on abstraction, lags on Samza/elasticity/event-time.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-037",
+    "tags": [
+      "meta",
+      "skills",
+      "learn",
+      "aha",
+      "eureka",
+      "compound-learning",
+      "automation",
+      "hooks"
+    ],
+    "summary": "Metadata skill evolution: smarter auto-detection triggers, bidirectional linking (3+ learns \u2192 suggest aha), graduated graduation (/aha fast-track, /eureka immediate), phase-mapped surfacing. Taxonomy stays, intelligence goes into hooks.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-033",
+    "tags": [
+      "meta",
+      "compound-learning",
+      "evolution",
+      "diminishing-returns"
+    ],
+    "summary": "S-curve evolution: stop adding at inflection point, feed data layer, let scoring decide what stays, prune after 10 real sessions",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "aha-003",
+    "tags": [
+      "meta",
+      "skills",
+      "architecture",
+      "tier-system",
+      "capability-tools",
+      "playwright-cli",
+      "observe-agent",
+      "linkedin-cli-tools",
+      "pattern"
+    ],
+    "summary": "Tier 1.5 = capability tools (browser eyes, production eyes, production hands). They provide the HOW that Tier 1 workflows and Tier 3 recipes invoke. Adoption pattern: install \u2192 create recipes \u2192 wire into skills \u2192 add to auth-preflight.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-041",
+    "tags": [
+      "publication",
+      "paper",
+      "patent",
+      "plan",
+      "conference"
+    ],
+    "summary": "Paper publication plan: get 2-3 teammates on system, collect before/after data, target CHASE first, frame as discovery not tool, follow go/engpublications 2-ticket process",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-seat-entitlements-vs-seatroles",
+    "tags": [
+      "seatsV2",
+      "entitlements",
+      "seatRoles",
+      "aperture",
+      "recruiter-plus",
+      "permission-check",
+      "proto"
+    ],
+    "summary": "Use seatEntitlements (not seatRoles) for HP permission checks; add missing fields to Seat.proto in hp-ep-api rather than proxying through roles",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-004",
+    "tags": [
+      "eureka",
+      "figma",
+      "playwright",
+      "e2e-testing",
+      "design-driven",
+      "bug-bash",
+      "greenhouse",
+      "phase2"
+    ],
+    "summary": "Design-driven cross-system E2E testing: Figma REST API pulls design screens \u2192 Claude extracts UI state machine \u2192 maps to Playwright + Greenhouse API + grpcurli verification triangle. Design is the spec, not a separate doc.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-040",
+    "tags": [
+      "publication",
+      "patent",
+      "process",
+      "paper",
+      "legal"
+    ],
+    "summary": "LinkedIn engpublications: 2 JIRA tickets, patent first, Eng Lead Sr Director+, SLA 15 days each, ~2-3 months total. Patent ID 93827.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "aha-004",
+    "tags": [
+      "aha",
+      "phase2",
+      "connected-projects",
+      "architecture",
+      "pattern",
+      "pipeline-sync",
+      "writeback",
+      "realtime",
+      "entity-mapping"
+    ],
+    "summary": "Phase 2 = 3 pipelines (inbound sync, outbound writeback, realtime feedback) + shared entity mapping layer. Every bug/test/debug maps to one pipeline. 3-state machine = Pipeline 2 fires (PENDING) + Pipeline 3 responds (CONFIRMED/FAILED). All 9 FE tasks consume Pipeline 3 output.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-006",
+    "tags": [
+      "eureka",
+      "mental-model",
+      "cross-boundary",
+      "design",
+      "frontend",
+      "backend",
+      "infrastructure",
+      "figma",
+      "playwright",
+      "e2e-testing",
+      "system-thinking",
+      "paradigm"
+    ],
+    "summary": "AI agent as connective tissue between organizational silos: Figma (design intent) + ts-web (implementation) + backend services (data flow) + ATS (external state) + infra (Kafka/realtime) synthesized into one unified view that no individual role can see alone. The value is in the connections between tools, not any single tool.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-007",
+    "tags": [
+      "eureka",
+      "context-repo",
+      "team-sharing",
+      "knowledge-management",
+      "claude-code",
+      "onboarding",
+      "productivity",
+      "force-multiplier"
+    ],
+    "summary": "Context repo (.claude/CLAUDE.md + skills + docs + test data + runbooks) turns one persons deep investigation into entire teams starting point. Clone + open with Claude Code = instant project context. Onboarding: weeks \u2192 10 min. Knowledge retention: permanent. Pattern reusable for any team initiative.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-008",
+    "tags": [
+      "eureka",
+      "goal-driven",
+      "paradigm",
+      "context-repo",
+      "execution",
+      "design-driven",
+      "cross-boundary",
+      "workflow"
+    ],
+    "summary": "Goal-driven development: reframe from task-driven (fix file X) to goal-driven (recruiter sees Failed badge). Deliverable = completed goal verified end-to-end across design, frontend, backend, ATS. Context repo (what+why) + execution repo (how) connected via bridge skills. One goal, parallel worktrees, all layers verified.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "aha-005",
+    "tags": [
+      "meta",
+      "compound-learning",
+      "automation",
+      "hooks",
+      "friction",
+      "behavior",
+      "pattern",
+      "aha"
+    ],
+    "summary": "Quantified friction from /insights can be directly translated into routing tables (wrong-approach) and hook preflights (env/auth). Formula: friction \u00d7 minutes > 5h \u2192 automate.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-005",
+    "tags": [
+      "culture",
+      "collaboration",
+      "open-source",
+      "team",
+      "contributing",
+      "eureka"
+    ],
+    "summary": "No gatekeeping, no approval process. Push to main. Fix together. Open, share, contribute \u2014 the Internet spirit applied to team tooling.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "scout-tee-dev-agent",
+    "tags": [
+      "scout",
+      "agent-systems",
+      "ralph-loop",
+      "convention-audit",
+      "autonomous-coding",
+      "pr-review"
+    ],
+    "summary": "Scout of tee-dev-agent: Ralph Loop (fresh session per task), Convention Audit, Auto PR Batch Reviewer, JIRA-to-PR orchestrator, Centauri dashboard. Adopted #1 and #2.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-043",
+    "tags": [
+      "claude-code",
+      "knowledge-sync",
+      "vm",
+      "infrastructure",
+      "devex"
+    ],
+    "summary": "Portable knowledge architecture: separate durable knowledge (~1MB) from ephemeral state (~500MB), symlink via install.sh, auto-sync via SessionEnd/UserPromptSubmit hooks, GitHub as durable remote",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "bug-006",
+    "tags": [
+      "claude-code",
+      "settings",
+      "hooks",
+      "install",
+      "config"
+    ],
+    "summary": "install.sh overwrote settings.json wiping custom hooks \u2014 fix: skip if exists, machine-specific configs should never be overwritten",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-044",
+    "tags": [
+      "claude-code",
+      "permissions",
+      "settings",
+      "session"
+    ],
+    "summary": "Claude Code permission changes (Bash allowlist) require session restart \u2014 tell user upfront, provide ! commands as workaround",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-045",
+    "tags": [
+      "vm",
+      "remote-build",
+      "ssh",
+      "infrastructure",
+      "devex",
+      "vm-run"
+    ],
+    "summary": "vm-run: generic sync-and-build from any local repo path. bash -c wrapper required. PreToolUse hook auto-intercepts build commands. Falls back to local on failure.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "bug-008",
+    "tags": [
+      "claude-code",
+      "permissions",
+      "ssh",
+      "bash",
+      "workaround"
+    ],
+    "summary": "Bash(ssh:*) pattern instantly denied in Claude Code despite being in allow list. Workaround: bash -c \"ssh vm '...'\" matches Bash(bash:*).",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "bug-009",
+    "tags": [
+      "ssh",
+      "config",
+      "lockout",
+      "vm",
+      "authentication"
+    ],
+    "summary": "SSH config lockout: adding hostname to publickey-only config before key deployed to VM. Fix: copy key first, then add config.",
+    "status": "active",
+    "outcome_score": 0
+  }
+]
+```
+
+## FEEDBACK MEMORIES (1 active rules)
+
+```json
+[
+  {
+    "id": "feedback-frontload-context",
+    "content": "---\nname: Front-load context to avoid wrong-approach friction\ndescription: User's #1 friction source (28 instances) \u2014 always provide specific service/file/tool constraints upfront rather than exploring broadly\ntype: feedback\n---\n\nWhen investigating or debugging, front-load the specific service, file, processor, or API tool in the prompt rather than exploring broadly first.\n\n**Why:** Across 32 sessions, 28 instances of wrong-approach friction came from Claude exploring the wrong component before "
+  }
+]
+```
+
+---
+
+Now evaluate this session. Return a single JSON object matching the schema in Step 3.

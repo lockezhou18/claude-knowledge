@@ -1,0 +1,2199 @@
+
+# Agent Session Judge Prompt
+# Version: 1.1
+
+You are an expert evaluator assessing the quality of an AI Partner's collaborative behavior
+during a work session. You will receive a session transcript and produce a structured
+verdict for each task/interaction within the session.
+
+## Your Role
+
+You are the judge — not the AI Partner, not the human. Your job is to evaluate the
+PARTNERSHIP quality: not just "did the code come out right?" but "did the AI Partner
+collaborate effectively with the human?"
+
+This means evaluating:
+1. **Technical correctness** — Was the approach right?
+2. **Collaboration quality** — Did the AI Partner listen, adapt, and match the human's style?
+3. **Learning behavior** — Did the AI Partner use past knowledge and generate new insights?
+4. **Human behavioral awareness** — Did the AI Partner read the human's signals correctly?
+
+The human in this partnership communicates through gentle redirects ("I feel like...",
+"meanwhile...", "what do you think?"), not direct commands. The AI Partner must detect
+these soft signals as real instructions, not just suggestions.
+
+## Input Format
+
+You will receive:
+1. **Session transcript** — the full conversation between human and AI Partner, including
+   tool calls and their results
+2. **Session metadata** — date, repo context, duration, tools available
+3. **Agent briefing** — what the AI Partner knew at session start (active work, hot insights,
+   behavioral reminders)
+4. **Insight snapshot** — the full manifest.jsonl at time of session, so you can determine
+   which insights were available and whether the agent should have used them
+5. **Feedback memories** — all feedback-type memories active at session time, representing
+   rules the agent should have followed
+
+## Evaluation Process
+
+### Step 1: Segment into Tasks
+
+Break the session into discrete tasks. A task is a unit of work initiated by the user.
+Signals for task boundaries:
+- User sends a new request/instruction
+- Topic changes significantly
+- User redirects to a different area
+
+For each task, record:
+- `task_id`: sequential (T1, T2, ...)
+- `task_summary`: one-line description of what the user asked
+- `task_start`: approximate message index
+- `task_end`: approximate message index
+
+### Step 2: Evaluate Each Task
+
+For each task, answer these questions:
+
+#### 2a. Was the first approach correct?
+- **correct**: Agent's initial plan/action aligned with what the user wanted
+- **partially_correct**: Right direction but needed minor adjustment
+- **incorrect**: Agent went down the wrong path, user had to redirect
+
+#### 2b. How many redirections?
+Count the number of times the user had to correct or redirect the agent.
+- 0 = clean execution
+- 1 = minor course correction
+- 2+ = significant misalignment
+
+#### 2c. Insight & Memory Audit
+
+For each task, cross-reference against the insight snapshot and feedback memories:
+
+**Insights that SHOULD have been used:**
+Search the manifest for insights matching the task's repo, tags, and keywords.
+For each match with `status: "active"` and `outcome_score >= 0`:
+- Was the insight retrieved (visible in agent's tool calls)?
+- Was it applied (visible in agent's behavior)?
+- If not retrieved: `context_miss` — scout/retrieval failed
+- If retrieved but not applied: `context_miss` — agent ignored known knowledge
+- If correctly applied: note as `insight_hit` (positive signal)
+
+**Feedback memories that were violated:**
+Check each active feedback memory. Did the agent's behavior contradict it?
+- If violated: contributes to `wrong_approach` or `over_engineering` depending on the rule
+- If followed: note as `rule_followed` (positive signal)
+
+**Insights that WERE used:**
+Track which insights the agent retrieved. For each:
+- Did it help? → `insight_outcome: "helped"`
+- Did it mislead? → `insight_outcome: "wrong"` (candidate for pruning)
+- Irrelevant? → `insight_outcome: "irrelevant"` (retrieval noise)
+
+Record in the task verdict:
+```json
+{
+  "insight_audit": {
+    "should_have_used": ["insight-id-1", "insight-id-2"],
+    "actually_used": ["insight-id-3"],
+    "hits": [{"id": "insight-id-3", "outcome": "helped"}],
+    "misses": [{"id": "insight-id-1", "reason": "not retrieved"}],
+    "violations": [{"feedback_id": "feedback-xyz", "rule": "present hypotheses first"}]
+  }
+}
+```
+
+This directly feeds the compound learning system's outcome tracking and graduation/pruning.
+
+#### 2d. Failure classification (if not correct)
+Classify using exactly ONE primary failure type from the taxonomy (see `failure_taxonomy.md`):
+
+| Type | Code | Definition |
+|------|------|------------|
+| Wrong approach | `wrong_approach` | Agent's conceptual plan was wrong |
+| Skill deficiency | `skill_deficiency` | Right skill invoked, but skill instructions led to suboptimal result |
+| Skill gap | `skill_gap` | No skill exists for this workflow; agent improvised |
+| Context miss | `context_miss` | Relevant info existed but wasn't retrieved/used |
+| Over-engineering | `over_engineering` | Did more than asked |
+| Tool misuse | `tool_misuse` | Wrong tool or wrong tool usage |
+| User ambiguity | `user_ambiguity` | Request was genuinely unclear |
+
+If multiple failure types apply, use the PRIORITY CHAIN to pick the primary:
+```
+wrong_approach > context_miss > skill_deficiency > over_engineering > tool_misuse > skill_gap > user_ambiguity
+```
+
+Record secondary types as `contributing_types` but only one `primary_type`.
+
+#### 2e. Evidence
+Quote the specific messages (user corrections, agent wrong turns) that support your
+classification. Include message indices.
+
+#### 2f. Counterfactual
+What SHOULD the agent have done? Be specific:
+- "Should have checked `pipeline.py:142` before proposing a fix"
+- "Should have asked 'which processor?' before investigating"
+- "Should have used `curli` instead of Trino"
+
+#### 2g. Fix target
+What artifact should change to prevent this failure?
+- Specific skill file (e.g., `~/.claude/commands/investigate.md`)
+- Specific rule (e.g., `CLAUDE.md` behavioral gate)
+- Specific hook (e.g., `UserPromptSubmit`)
+- New skill/recipe to create
+- Insight to add/update
+
+### Step 3: Session-Level Metrics
+
+After evaluating all tasks, compute:
+
+```json
+{
+  "session_id": "...",
+  "session_date": "YYYY-MM-DD",
+  "repo": "repo-name or 'global'",
+  "total_tasks": N,
+  "correct_first_approach": N,
+  "agreement_rate": N/total (percentage),
+  "total_redirections": N,
+  "avg_redirections_per_task": float,
+  "failure_distribution": {
+    "wrong_approach": N,
+    "skill_deficiency": N,
+    "skill_gap": N,
+    "context_miss": N,
+    "over_engineering": N,
+    "tool_misuse": N,
+    "user_ambiguity": N
+  },
+  "dominant_failure_type": "the type with highest count (excluding user_ambiguity)",
+  "severity_weighted_score": float,
+  "insight_summary": {
+    "total_available": "N insights in manifest at session time",
+    "total_retrieved": "N insights agent actually read",
+    "total_hits": "N insights that helped",
+    "total_misses": "N insights that should have been used but weren't",
+    "total_wrong": "N insights that misled the agent",
+    "total_violations": "N feedback rules violated",
+    "retrieval_precision": "hits / retrieved",
+    "retrieval_recall": "hits / (hits + misses)",
+    "insight_ids_to_prune": ["ids with outcome 'wrong'"],
+    "insight_ids_to_graduate": ["ids with repeated 'helped' outcomes"],
+    "feedback_ids_to_strengthen": ["violated feedback memory ids"]
+  },
+  "behavioral_loop": {
+    "signals_detected": "N",
+    "signals_total": "N",
+    "signal_detection_rate": "float",
+    "adaptation_speed_distribution": {"immediate": "N", "delayed": "N", "resistant": "N"},
+    "proactive_suggestions": {"appropriate": "N", "pushy": "N", "missed": "N"}
+  },
+  "compound_learning": {
+    "retrieval_quality": "effective|partial|poor",
+    "insights_generated": "N",
+    "insights_quality": "high|medium|low",
+    "duplicates_created": "N",
+    "graduation_candidates": [],
+    "prune_candidates": [],
+    "stale_candidates": [],
+    "loop_closed": "boolean"
+  },
+  "session_score": "float (0.0-1.0, weighted composite)",
+  "tasks": [
+    {
+      "task_id": "T1",
+      "task_summary": "...",
+      "first_approach": "correct|partially_correct|incorrect",
+      "redirections": N,
+      "primary_failure_type": "type or null if correct",
+      "contributing_types": [],
+      "evidence": "...",
+      "counterfactual": "...",
+      "fix_target": "...",
+      "insight_audit": {
+        "should_have_used": [],
+        "actually_used": [],
+        "hits": [],
+        "misses": [],
+        "violations": []
+      }
+    }
+  ]
+}
+```
+
+### Step 4: Improvement Simulation
+
+For each failure type with count > 0 (excluding `user_ambiguity`):
+
+Estimate the agreement rate improvement if ALL failures of that type were fixed:
+```
+simulated_agreement = (correct_first_approach + failures_of_this_type) / total_tasks
+delta = simulated_agreement - current_agreement_rate
+```
+
+Rank failure types by `delta` (highest improvement first). This tells the improvement
+loop which failure type to fix first.
+
+## Severity Weights
+
+Used for `severity_weighted_score`:
+
+| Type | Weight | Rationale |
+|------|--------|-----------|
+| `wrong_approach` | 3.0 | Wastes 20+ minutes, erodes trust |
+| `context_miss` | 2.5 | Means learning system is failing |
+| `skill_deficiency` | 2.0 | Skill exists but isn't good enough |
+| `over_engineering` | 1.5 | Wastes time, adds complexity |
+| `tool_misuse` | 1.0 | Usually just slower, not wrong |
+| `skill_gap` | 1.0 | Latent — only matters when task arises |
+| `user_ambiguity` | 0.0 | Not agent's fault |
+
+```
+severity_weighted_score = 1 - (sum(weight × count) / (max_possible_severity × total_tasks))
+```
+
+Where `max_possible_severity = 3.0 × total_tasks` (worst case: all wrong_approach).
+
+## Grading Rubric for Edge Cases
+
+### Partially correct first approach
+- If agent was on the right track but needed 1 minor correction → `partially_correct`,
+  count 0.5 toward correct_first_approach
+- "Minor" = same component, same tool, slightly different parameters or scope
+
+### Multiple failure types on one task
+- Pick primary by priority chain
+- Record all others as contributing_types
+- Only the primary counts in failure_distribution
+
+### Agent self-corrected before user noticed
+- If agent caught its own mistake and corrected WITHOUT user intervention → count as `correct`
+- Self-correction is a positive signal, note it in evidence
+
+### User changed requirements mid-task
+- If the user shifted what they wanted after agent started → `user_ambiguity`
+- This is NOT the agent's fault
+
+### Agent asked good clarifying questions
+- If agent asked before acting and the question was appropriate → `correct`
+- Asking is always better than guessing wrong
+
+## Step 5: Human Behavioral Loop Assessment
+
+The human-AI partnership has a behavioral feedback loop:
+- Human provides gentle redirects → AI Partner should detect and adapt
+- Human confirms non-obvious approaches → AI Partner should reinforce these
+- Human's silence after a proposal = soft approval
+- Human's "what do you think?" = wants the AI Partner to lead with an opinion
+
+For each task, evaluate the AI Partner's behavioral awareness:
+
+### 5a. Signal Detection
+Did the AI Partner correctly interpret the human's communication style?
+
+| Signal Type | Example | Correct Response |
+|-------------|---------|-----------------|
+| Gentle redirect | "I feel like X" | Pivot immediately to X |
+| Soft instruction | "meanwhile can you..." | Treat as a hard requirement |
+| Thinking aloud | "what do you think?" | Lead with a recommendation |
+| Confirmation | "sounds good, do it" | Execute without over-explaining |
+| Escalation | "no, that's wrong" | Hard stop, ask what's right |
+
+Score: `signal_detection_rate` = correctly_interpreted / total_signals
+
+### 5b. Adaptation Speed
+How quickly did the AI Partner adapt after a redirect?
+- **immediate**: Pivoted in the very next response
+- **delayed**: Took 1-2 extra messages to course-correct
+- **resistant**: Continued the old approach despite redirect
+
+### 5c. Proactive Suggestions
+Did the AI Partner proactively suggest useful next steps?
+- Suggested a relevant skill at the right moment? (positive)
+- Suggested too many things / was pushy? (negative)
+- Missed an obvious suggestion opportunity? (negative)
+
+Record in the task verdict:
+```json
+{
+  "behavioral_loop": {
+    "signals_detected": N,
+    "signals_total": N,
+    "signal_detection_rate": float,
+    "adaptation_speed": "immediate|delayed|resistant",
+    "proactive_suggestions": {
+      "appropriate": N,
+      "pushy": N,
+      "missed": N
+    }
+  }
+}
+```
+
+## Step 6: Compound Learning Assessment
+
+The AI Partner operates within a compound learning system that accumulates knowledge
+across sessions. Evaluate how well this system functioned:
+
+### 6a. Knowledge Retrieval Quality
+Was the scout hook effective? Did the right insights surface?
+- Check the UserPromptSubmit hook output at session start
+- Was the agent-briefing.md content relevant to the session's work?
+- Did manifest search return useful insights?
+
+### 6b. Knowledge Generation Quality
+Did the AI Partner generate good new insights during this session?
+- Were insights actionable ("When X, do Y because Z")?
+- Were they properly categorized (bug-track vs knowledge-track)?
+- Did they overlap with existing insights (duplication)?
+- Were they too specific (won't generalize) or too vague (not actionable)?
+
+### 6c. Knowledge Lifecycle Health
+Across the session:
+- Any insights that should be **graduated** (used 3+ times, consistently helpful)?
+- Any insights that should be **pruned** (misleading, outdated)?
+- Any insights that should be **flagged stale** (>90 days, code references may be wrong)?
+- Any feedback memories that need **strengthening** (violated despite existing)?
+
+### 6d. Compound Loop Closure
+Did the AI Partner close the learning loop?
+- If significant work was done, did it run/suggest `/compound`?
+- Were outcome-log entries created for insights used?
+- Was the agent-briefing updated?
+
+Record:
+```json
+{
+  "compound_learning": {
+    "retrieval_quality": "effective|partial|poor",
+    "insights_generated": N,
+    "insights_quality": "high|medium|low",
+    "duplicates_created": N,
+    "graduation_candidates": ["insight-ids"],
+    "prune_candidates": ["insight-ids"],
+    "stale_candidates": ["insight-ids"],
+    "loop_closed": true/false
+  }
+}
+```
+
+## Integrated Session Score
+
+Combine all dimensions into a single session quality score:
+
+```
+session_score = (
+    0.35 × agreement_rate +           # Technical correctness (35%)
+    0.25 × signal_detection_rate +     # Human behavioral awareness (25%)
+    0.20 × insight_effectiveness +     # Compound learning quality (20%)
+    0.20 × (1 - redirection_rate)      # Collaboration efficiency (20%)
+)
+```
+
+Where:
+- `agreement_rate` = correct_first_approach / total_tasks
+- `signal_detection_rate` = from Step 5a
+- `insight_effectiveness` = (hits - wrong) / max(hits + misses, 1)
+- `redirection_rate` = total_redirections / (total_tasks × 3) (capped at 1.0)
+
+This score reflects the FULL partnership — not just code output, but how well the
+AI Partner collaborates, learns, and adapts.
+
+## Output Format
+
+Return a single JSON object matching the schema in Step 3, extended with:
+- `behavioral_loop` (from Step 5) at session level and per-task
+- `compound_learning` (from Step 6) at session level
+- `session_score` (from Integrated Session Score)
+- `summary`: 2-3 sentence natural language assessment of the partnership quality
+
+Include a `summary` field with a 2-3 sentence natural language assessment of the session.
+
+
+---
+
+## SESSION TRANSCRIPT
+
+```json
+[
+  {
+    "type": "file-history-snapshot",
+    "messageId": "c68473d4-a4b9-470e-9169-aa8ad0376a67",
+    "snapshot": {
+      "messageId": "c68473d4-a4b9-470e-9169-aa8ad0376a67",
+      "trackedFileBackups": {},
+      "timestamp": "2026-04-01T18:44:25.787Z"
+    },
+    "isSnapshotUpdate": false
+  },
+  {
+    "parentUuid": null,
+    "isSidechain": false,
+    "promptId": "8894b56f-0c0a-410f-9b08-33b3e2854062",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": "can you check the status of the request - 8489, seems like still pending, maybe focus on IP side log"
+    },
+    "uuid": "c68473d4-a4b9-470e-9169-aa8ad0376a67",
+    "timestamp": "2026-04-01T18:44:25.702Z",
+    "permissionMode": "default",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "c787d78d-1475-4359-8d95-6cc0723ea7ce",
+    "version": "2.1.89",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "c68473d4-a4b9-470e-9169-aa8ad0376a67",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01GUydbRSfmhGH5WNR5wCLmn",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "thinking",
+          "thinking": "",
+          "signature": "EosDClkIDBgCKkALe1mzH4HXPAMDhjkD6ScwdpO9t818pdJ0zJlHZyHHOwchVnhyzsBMJqan8COJEJAObfQ6sl01HbcSAaOdiEW2Mg9jbGF1ZGUtb3B1cy00LTY4ABIMteYAIw1xlrUtDA6DGgwJ7101s60cVm/CtWYiMJRsqI8sTGDcizCg0B0JCI2QfjXEPNLi9BaJiT+YiTdXom0bxjQ6eW2woWC2eXn+uCrfAXEGgEXSezXp7VUemdcwhcO73QyNS0bZ1s0lHkmSzze/NI+sGJWbiKQt3e1tK53dzE55v+efetU2CRj6RGPRnJ6WdSCwofFFwR5nzN0KbukksttajC5Vg33b3WUvQMhY3WqozR9cwycpR3yY//6qAtnlgoapVg69nGA96u/KIzrcDCZrsJJbwXgcc86DMEv2xPxySttEQJLdpF1iOd5nvPdxdqUa28t3ghUxaE+7g4w++NY5vTiSveQWpEeo061ADyvW3xrFnSPEtko00qFSAixxOF3HVREM/a1iRQnXwQoYAQ=="
+        }
+      ],
+      "stop_reason": null,
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 20195,
+        "cache_read_input_tokens": 11859,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 20195,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 31,
+        "service_tier": "standard",
+        "inference_geo": "global"
+      }
+    },
+    "requestId": "req_011CZdYbmAL8BbcPNnrdmJrz",
+    "type": "assistant",
+    "uuid": "084a3f58-a3e4-403b-9641-2104f864fea7",
+    "timestamp": "2026-04-01T18:44:30.408Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "c787d78d-1475-4359-8d95-6cc0723ea7ce",
+    "version": "2.1.89",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "084a3f58-a3e4-403b-9641-2104f864fea7",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01GUydbRSfmhGH5WNR5wCLmn",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "Let me check the request status across HP and IP systems."
+        }
+      ],
+      "stop_reason": null,
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 20195,
+        "cache_read_input_tokens": 11859,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 20195,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 31,
+        "service_tier": "standard",
+        "inference_geo": "global"
+      }
+    },
+    "requestId": "req_011CZdYbmAL8BbcPNnrdmJrz",
+    "type": "assistant",
+    "uuid": "4b72139d-5ca4-4bb6-991d-cf149f42c2f5",
+    "timestamp": "2026-04-01T18:44:30.922Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "c787d78d-1475-4359-8d95-6cc0723ea7ce",
+    "version": "2.1.89",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "4b72139d-5ca4-4bb6-991d-cf149f42c2f5",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01GUydbRSfmhGH5WNR5wCLmn",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_011qXNmzZ9ArCXV5xW17xSBe",
+          "name": "Skill",
+          "input": {
+            "skill": "hiring-platform",
+            "args": "Check ActionWriteBack request 8489 - get the full request details including status, hiringProjectCandidate, candidateHiringState, and any error info"
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ],
+      "stop_reason": null,
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 20195,
+        "cache_read_input_tokens": 11859,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 20195,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 31,
+        "service_tier": "standard",
+        "inference_geo": "global"
+      }
+    },
+    "requestId": "req_011CZdYbmAL8BbcPNnrdmJrz",
+    "type": "assistant",
+    "uuid": "69d08b4b-1d2f-431a-b144-cb78d8952fcd",
+    "timestamp": "2026-04-01T18:44:32.371Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "c787d78d-1475-4359-8d95-6cc0723ea7ce",
+    "version": "2.1.89",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "69d08b4b-1d2f-431a-b144-cb78d8952fcd",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01GUydbRSfmhGH5WNR5wCLmn",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_01QsaY4edBngD4aGhSLrUw42",
+          "name": "Skill",
+          "input": {
+            "skill": "integration-platform",
+            "args": "Check IntegrationExportRequest 8489 - get status, exportRequestStatus, any error details. Also check IntegrationExportRequestStatusEvent logs related to this request."
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ],
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 20195,
+        "cache_read_input_tokens": 11859,
+        "output_tokens": 274,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 20195
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZdYbmAL8BbcPNnrdmJrz",
+    "type": "assistant",
+    "uuid": "ac042e25-7804-456e-947f-a347e1b427f6",
+    "timestamp": "2026-04-01T18:44:33.387Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "c787d78d-1475-4359-8d95-6cc0723ea7ce",
+    "version": "2.1.89",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "69d08b4b-1d2f-431a-b144-cb78d8952fcd",
+    "isSidechain": false,
+    "promptId": "8894b56f-0c0a-410f-9b08-33b3e2854062",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "toolu_011qXNmzZ9ArCXV5xW17xSBe",
+          "content": "Launching skill: hiring-platform"
+        }
+      ]
+    },
+    "uuid": "ce38c12f-529f-4de2-aabe-d88c86baa68f",
+    "timestamp": "2026-04-01T18:44:33.490Z",
+    "toolUseResult": {
+      "success": true,
+      "commandName": "hiring-platform",
+      "allowedTools": [
+        "Bash",
+        "Read",
+        "execute_kusto_query"
+      ]
+    },
+    "sourceToolAssistantUUID": "69d08b4b-1d2f-431a-b144-cb78d8952fcd",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "c787d78d-1475-4359-8d95-6cc0723ea7ce",
+    "version": "2.1.89",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "ce38c12f-529f-4de2-aabe-d88c86baa68f",
+    "isSidechain": false,
+    "promptId": "8894b56f-0c0a-410f-9b08-33b3e2854062",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "Base directory for this skill: /Users/bizhou/.claude/skills/hiring-platform\n\n# Hiring Platform (HP) - Connected Projects APIs\n\nQuery HP services for Connected Projects Phase 2 debugging and testing.\n\n**Services**:\n- `hp-ats-integration-mt` \u2014 Connected Project orchestration, entity mappings, write-back\n- `mcm-mt` \u2014 HiringProject, CandidateHiringState, CandidateHiringPipeline, HiringProjectCandidate\n- `hire-access-control` \u2014 HiringProjectPreference, entitlements\n\n**Proto package**: `proto.com.linkedin.hire.integration` (hp-ats-integration-mt)\n**Source repo**: `linkedin-multiproduct/hp-ats-integration-mt`\n\n---\n\n## 1. ConnectedProjectsApi (hp-ats-integration-mt)\n\nD2 URI: `d2://connectedProjectsApi`\n\nMethods: **Create**, **BatchCreate**, **Get**, **ActionTriggerSync**, **ActionGetRscConnections**, **ActionGetDefaultOwner**, **ActionBootstrapForAutoSync**\n\n### connected-project \u2014 Get by HiringProject + IntegrationJobRequisition\n```bash\ngrpcurli --dv-auth SELF -f {{fabric}} d2://connectedProjectsApi \\\n  proto.com.linkedin.hire.integration.ConnectedProjectsApi/Get \\\n  -d '{\"key\":{\"hiringContext\":\"urn:li:contract:{{contract}}\",\"id\":{{id}}},\"integrationJobRequisitionUrn\":{\"integrationJobRequisitionId\":\"JOB_REQ_ID\"},\"viewerSeatUrn\":{\"seatId\":\"SEAT_ID\"}}'\n```\n\n### create-connected-project \u2014 Create a connection\n```bash\ngrpcurli --dv-auth SELF -f {{fabric}} d2://connectedProjectsApi \\\n  proto.com.linkedin.hire.integration.ConnectedProjectsApi/Create \\\n  -d '{\"value\":{\"hiringProjectUrn\":{\"hiringContext\":\"urn:li:contract:{{contract}}\",\"id\":{{id}}},\"integrationJobRequisitionUrn\":{\"integrationJobRequisitionId\":\"JOB_REQ_ID\"},\"ownerSeatUrn\":{\"seatId\":\"SEAT_ID\"},\"contractUrn\":{\"contractId\":\"{{contract}}\"},\"integrationJobRequisitionStageUrns\":[{\"integrationJobRequisitionStageId\":\"STAGE_ID\"}],\"atsPipelineAutomationSettings\":{\"inmailSentAutomation\":{\"isEnabled\":true,\"integrationJobRequisitionStageUrns\":[{\"integrationJobRequisitionStageId\":\"TARGET_STAGE\"}]}}},\"actorSeatUrn\":{\"seatId\":\"SEAT_ID\"}}'\n```\n\n### trigger-sync \u2014 Trigger entity sync for a connected project\n```bash\ngrpcurli --dv-auth SELF -f {{fabric}} d2://connectedProjectsApi \\\n  proto.com.linkedin.hire.integration.ConnectedProjectsApi/ActionTriggerSync \\\n  -d '{\"hiringProjectUrn\":{\"hiringContext\":\"urn:li:contract:{{contract}}\",\"id\":{{id}}},\"actorSeatUrn\":{\"seatId\":\"SEAT_ID\"}}'\n```\n\n### rsc-connections \u2014 Get RSC connections (data providers) for a contract\n```bash\ngrpcurli --dv-auth SELF -f {{fabric}} d2://connectedProjectsApi \\\n  proto.com.linkedin.hire.integration.ConnectedProjectsApi/ActionGetRscConnections \\\n  -d '{\"contractUrn\":{\"contractId\":\"{{contract}}\"},\"viewerSeatUrn\":{\"seatId\":\"SEAT_ID\"}}'\n```\n\n### default-owner \u2014 Get default owner seat for a job requisition\n```bash\ngrpcurli --dv-auth SELF -f {{fabric}} d2://connectedProjectsApi \\\n  proto.com.linkedin.hire.integration.ConnectedProjectsApi/ActionGetDefaultOwner \\\n  -d '{\"integrationJobRequisitionUrn\":{\"integrationJobRequisitionId\":\"JOB_REQ_ID\"},\"viewerSeatUrn\":{\"seatId\":\"SEAT_ID\"},\"contractUrn\":{\"contractId\":\"{{contract}}\"}}'\n```\n\n### ConnectedProject Data Model\n\n| Field | Type | Description |\n|---|---|---|\n| `hiringProjectUrn` | HiringProjectUrn | HP project (primary key) |\n| `integrationJobRequisitionUrn` | IntegrationJobRequisitionUrn | Linked ATS job req |\n| `ownerSeatUrn` | SeatUrn | Connection owner |\n| `contractUrn` | ContractUrn | Associated contract |\n| `useExistingProjectMetadata` | bool | Reuse existing project metadata |\n| `syncProjectWithRequisitionEnabled` | bool | Auto-sync with ATS req changes |\n| `atsPipelineAutomationSettings` | AtsPipelineAutomationSettings | Automation rules |\n| `integrationJobRequisitionStageUrns` | repeated IntegrationJobRequisitionStageUrn | Selected ATS stages |\n\n### AtsPipelineAutomationSettings\n\n| Field | Type | Description |\n|---|---|---|\n| `inmailSentAutomation` | AtsPipelineAutomationRule | Move candidate when InMail sent |\n| `inmailReplyAutomation` | AtsPipelineAutomationRule | Move candidate when InMail replied |\n| `lihaEvalAutomationExclusion` | AtsPipelineAutomationRule | Exclude stages from LiHA evaluation |\n\nEach `AtsPipelineAutomationRule` has:\n- `isEnabled` (bool)\n- `integrationJobRequisitionStageUrns` (repeated) \u2014 target stages\n\n### Connected Project Creation Flow (10 Steps)\n\n1. ts-web calls middleware `/talentIntegrationJobRequisitionStages` to fetch ATS stages (populates dropdown)\n2. ts-web calls ts-api `/talentConnectedProjects getAtsPipelineAutomationSuggestions(HiringProjectUrn, IntegrationJobRequisitionUrn)`\n3. ts-api calls hp-ats-integration-mt `/hpIntegrationStageMappingApi findOrCreateByJobRequisition(IntegrationJobRequisitionUrn, ContractUrn)`\n4. hp-ats-integration-mt checks HiringPlatformIntegrationDB; if no mappings \u2192 calls talent-copilot-service `/processStageMappingApi` for LLM-based mapping \u2192 stores result\n5. Returns suggestions to frontend\n6. User selects automation settings, ts-web calls `/talentConnectedProjects create`\n7. ts-api calls hp-ats-integration-mt `/connectedProjectsApi create`\n8. **NEW**: hp-ats-integration-mt gets all stages from IP, creates entity mappings (CandidateHiringStateUrn \u2194 IntegrationJobRequisitionStageUrn) in IP\n9. **NEW**: Creates CandidateHiringPipeline with one **non-global** CandidateHiringState per ATS stage; stores as `atsPipelineUrn` on HiringProject\n10. **NEW**: Stores `atsPipelineAutomationSettings` in HiringProjectPreference (hire-access-control)\n\n---\n\n## 2. ConnectedProjectCandidateApi (hp-ats-integration-mt)\n\nD2 URI: `d2://connectedProjectCandidateApi`\n\nMethods: **ActionWriteBack**\n\n### writeback \u2014 Move candidate between ATS stages\n```bash\ngrpcurli --dv-auth SELF -f {{fabric}} d2://connectedProjectCandidateApi \\\n  proto.com.linkedin.hire.integration.ConnectedProjectCandidateApi/ActionWriteBack \\\n  -d '{\"actorSeat\":{\"seatId\":\"SEAT_ID\"},\"hiringProjectCandidateUrn\":{\"hiringProjectUrn\":{\"hiringContext\":\"urn:li:contract:{{contract}}\",\"hiringProjectId\":\"{{id}}\"},\"hireIdentityUrn\":{\"hireIdentityId\":\"HI_ID\"}},\"previousState\":{\"hiringContext\":\"urn:li:contract:{{contract}}\",\"candidateHiringStateId\":\"PREV_STATE\"},\"targetState\":{\"hiringContext\":\"urn:li:contract:{{contract}}\",\"candidateHiringStateId\":\"TARGET_STATE\"},\"historyItemId\":0}'\n```\n\nResponse includes `status` (google.rpc.Status) and `requestId` (int64) for tracking.\n\n---\n\n## 3. HpIntegrationEntityMappingApi (hp-ats-integration-mt)\n\nD2 URI: `d2://hpIntegrationEntityMappingApi`\n\nMethods: **FindByIntegrationEntity**, **FindByHiringEntity**, **Update**\n\nHP's own entity mapping store (separate from IP's URN mapping). Maps HP entities \u2194 IP entities with contract, data provider, and status.\n\n### entity-mapping-by-integration \u2014 Find by IP entity\n```bash\n# By IntegrationJobRequisition\ngrpcurli --dv-auth SELF -f {{fabric}} d2://hpIntegrationEntityMappingApi \\\n  proto.com.linkedin.hire.integration.HpIntegrationEntityMappingApi/FindByIntegrationEntity \\\n  -d '{\"integrationEntityUrn\":{\"integrationJobRequisitionUrn\":{\"integrationJobRequisitionId\":\"{{id}}\"}},\"status\":\"MappingStatus_ACTIVE\"}'\n\n# By IntegrationApplication\ngrpcurli --dv-auth SELF -f {{fabric}} d2://hpIntegrationEntityMappingApi \\\n  proto.com.linkedin.hire.integration.HpIntegrationEntityMappingApi/FindByIntegrationEntity \\\n  -d '{\"integrationEntityUrn\":{\"integrationApplicationUrn\":{\"integrationApplicationId\":\"{{id}}\"}},\"status\":\"MappingStatus_ACTIVE\"}'\n\n# By IntegrationJobRequisitionStage\ngrpcurli --dv-auth SELF -f {{fabric}} d2://hpIntegrationEntityMappingApi \\\n  proto.com.linkedin.hire.integration.HpIntegrationEntityMappingApi/FindByIntegrationEntity \\\n  -d '{\"integrationEntityUrn\":{\"integrationJobRequisitionStageUrn\":{\"integrationJobRequisitionStageId\":\"{{id}}\"}},\"status\":\"MappingStatus_ACTIVE\"}'\n\n# By IntegrationApplicationStage\ngrpcurli --dv-auth SELF -f {{fabric}} d2://hpIntegrationEntityMappingApi \\\n  proto.com.linkedin.hire.integration.HpIntegrationEntityMappingApi/FindByIntegrationEntity \\\n  -d '{\"integrationEntityUrn\":{\"integrationApplicationStageUrn\":{\"integrationApplicationStageId\":\"{{id}}\"}},\"status\":\"MappingStatus_ACTIVE\"}'\n```\n\n### entity-mapping-by-hiring \u2014 Find by HP entity\n```bash\n# By HiringProject\ngrpcurli --dv-auth SELF -f {{fabric}} d2://hpIntegrationEntityMappingApi \\\n  proto.com.linkedin.hire.integration.HpIntegrationEntityMappingApi/FindByHiringEntity \\\n  -d '{\"hiringEntityUrn\":{\"hiringProjectUrn\":{\"hiringContext\":\"urn:li:contract:{{contract}}\",\"id\":{{id}}}}}'\n\n# By SourcingChannelCandidate\ngrpcurli --dv-auth SELF -f {{fabric}} d2://hpIntegrationEntityMappingApi \\\n  proto.com.linkedin.hire.integration.HpIntegrationEntityMappingApi/FindByHiringEntity \\\n  -d '{\"hiringEntityUrn\":{\"sourcingChannelCandidateUrn\":{\"sourcingChannelUrn\":{\"hiringContext\":\"urn:li:contract:{{contract}}\",\"sourcingChannelId\":SC_ID},\"hireIdentityUrn\":{\"hireIdentityId\":HI_ID}}},\"status\":\"MappingStatus_ACTIVE\"}'\n\n# By CandidateHiringState\ngrpcurli --dv-auth SELF -f {{fabric}} d2://hpIntegrationEntityMappingApi \\\n  proto.com.linkedin.hire.integration.HpIntegrationEntityMappingApi/FindByHiringEntity \\\n  -d '{\"hiringEntityUrn\":{\"candidateHiringStateUrn\":{\"hiringContext\":\"urn:li:contract:{{contract}}\",\"candidateHiringStateId\":\"STATE_ID\"}}}'\n```\n\n### HpIntegrationEntityMapping Data Model\n\n| Field | Type | Description |\n|---|---|---|\n| `integrationEntityUrn` | IntegrationEntityUrn (oneof) | IP side entity |\n| `dataProvider` | DeveloperApplicationUrn | ATS data provider |\n| `integrationContext` | OrganizationUrn | ATS org |\n| `hiringEntityUrn` | HiringEntityUrn (oneof) | HP side entity |\n| `contractUrn` | ContractUrn | Contract |\n| `integrationEntityType` | IntegrationEntityType | Entity type enum |\n| `status` | MappingStatus | `MappingStatus_ACTIVE`, `MappingStatus_INACTIVE` |\n\n---\n\n## 4. HpIntegrationStageMappingApi (hp-ats-integration-mt)\n\nD2 URI: `d2://hpIntegrationStageMappingApi`\n\nMethods: **findByContract**, **update**\n\nMaps raw ATS stage names \u2192 CandidateHiringState URNs (used for LLM-backed stage mapping suggestions).\n\n### stage-mapping \u2014 Find stage mappings for a contract\n```bash\ngrpcurli --dv-auth SELF -f {{fabric}} d2://hpIntegrationStageMappingApi \\\n  proto.com.linkedin.hire.integration.HpIntegrationStageMappingApi/findByContract \\\n  -d '{\"contractUrn\":{\"contractId\":\"{{contract}}\"}}'\n```\n\n### HpIntegrationStageMapping Data Model\n\n| Field | Type | Description |\n|---|---|---|\n| `contractUrn` | ContractUrn | Contract |\n| `candidateHiringStateUrn` | CandidateHiringStateUrn | HP stage |\n| `rawStage` | string | Raw ATS stage name |\n\n---\n\n## 5. MCM-MT APIs (Hiring Platform Core)\n\n### hiring-project \u2014 Get HiringProject with fields (REST)\n```bash\ncurli --dv-auth SELF -f {{fabric}} \\\n  \"d2://hiringProjects?ids=List((hiringContext:urn%3Ali%3Acontract%3A{{contract}},id:{{id}}))&fields=id,name,atsPipelineUrn,owner,sourcingChannels\" \\\n  -H 'Accept:application/json' -H 'X-RestLi-Protocol-Version:2.0.0'\n```\n\n### Set atsPipelineUrn on HiringProject (gRPC)\n```bash\ngrpcurli --dv-auth SELF -f {{fabric}} d2://hiringProjectsGrpc \\\n  proto.com.linkedin.hire.HiringProjectsService/partialUpdate \\\n  -d '{\"id\":{\"key\":{\"hiringContext\":\"urn:li:contract:{{contract}}\",\"id\":{{id}}}},\"input\":{\"atsPipelineUrn\":{\"hiringContext\":\"urn:li:contract:{{contract}}\",\"candidateHiringPipelineId\":PIPELINE_ID}},\"actor\":\"urn:li:seat:0\"}'\n```\n\n### candidate-hiring-state \u2014 Get CandidateHiringState (REST)\n```bash\ncurli -X GET --dv-auth SELF -f {{fabric}} \\\n  \"d2://candidateHiringStates/(hiringContext:urn%3Ali%3Acontract%3A{{contract}},id:STATE_ID)\" \\\n  -H 'X-RestLi-Protocol-Version:2.0.0'\n```\n\n### create-ats-state \u2014 Create ATS CandidateHiringState (gRPC)\n```bash\ngrpcurli --dv-auth SELF -f {{fabric}} d2://localCandidateHiringStatesApi \\\n  proto.com.linkedin.hire.LocalCandidateHiringStatesApi/create \\\n  -d '{\"value\":{\"hiringContext\":\"urn:li:contract:{{contract}}\",\"statusType\":\"HireStatusType_SHORTLISTED\",\"customName\":\"Stage Name\",\"nameCustomized\":true,\"source\":\"CandidateHiringStateSource_ATS\",\"sortOrder\":1,\"hidden\":false,\"associatedRules\":[],\"created\":{\"actor\":\"urn:li:seat:SEAT\",\"time\":\"0\"},\"lastModified\":{\"actor\":\"urn:li:seat:SEAT\",\"time\":\"0\"}},\"actorSeatUrn\":{\"seatId\":0}}'\n```\n\n### pipeline \u2014 Get CandidateHiringPipeline (REST)\n```bash\ncurli --dv-auth SELF -f {{fabric}} \\\n  \"d2://candidateHiringPipelines/(hiringContext:urn%3Ali%3Acontract%3A{{contract}},id:PIPELINE_ID)\" \\\n  -H 'Accept:application/json' -H 'X-RestLi-Protocol-Version:2.0.0'\n```\n\n### Move HPC to a specific stage (REST partial_update)\n```bash\ncurli \"d2://hiringProjectCandidates/(hiringContext:urn%3Ali%3Acontract%3A{{contract}},hiringProject:urn%3Ali%3AhiringProject%3A%28urn%3Ali%3Acontract%3A{{contract}}%2C{{id}}%29,candidate:urn%3Ali%3AhireIdentity%3AHI_ID)\" \\\n  -X POST -H 'Accept:application/json' -H 'Content-Type:application/json' \\\n  -H 'X-RestLi-Protocol-Version:2.0.0' -H 'X-RestLi-Method:partial_update' \\\n  -d '{\"patch\":{\"$set\":{\"candidateHiringState\":\"urn:li:candidateHiringState:(urn:li:contract:{{contract}},STATE_ID)\"}}}' \\\n  -f {{fabric}} --dv-auth SELF\n```\n\n### project-candidates \u2014 List HiringProjectCandidates (REST)\n```bash\ncurli --dv-auth SELF -f {{fabric}} \\\n  \"d2://hiringProjectCandidates?q=hiringProject&hiringContext=urn%3Ali%3Acontract%3A{{contract}}&hiringProject=urn%3Ali%3AhiringProject%3A%28urn%3Ali%3Acontract%3A{{contract}}%2C{{id}}%29&count=100\" \\\n  -H 'Accept:application/json' -H 'X-RestLi-Protocol-Version:2.0.0'\n```\n\n### sourcing-candidates \u2014 List SourcingChannelCandidates (REST)\n```bash\ncurli --dv-auth SELF -f {{fabric}} --pretty-print \\\n  \"d2://sourcingChannelCandidates?q=candidateSourcingChannel&sourcingChannel=urn%3Ali%3AsourcingChannel%3A%28urn%3Ali%3Acontract%3A{{contract}}%2CSC_ID%29&viewer=urn%3Ali%3Aseat%3ASEAT_ID\"\n```\n\n---\n\n## 6. Euler HireEntityRequest Store\n\n### euler-request \u2014 Get write-back request from Euler store\n```bash\ngrpcurli --dv-auth SELF -f {{fabric}} d2://ManagedEntityCrudHireEntityRequest \\\n  proto.com.linkedin.euler.managed.EulerEntityTestApi/get \\\n  -d '{\"key\":{\"entityType\":\"HireEntityRequest\",\"urn\":\"{\\\"requestId\\\": {{id}}}\"},\"actor\":{\"member\":{\"memberId\":12345}}}'\n```\n\n### euler-request-create \u2014 Create HireEntityRequest directly (for testing)\n```bash\ngrpcurli --dv-auth SELF --fabric {{fabric}} -d '{\n  \"entityType\": \"HireEntityRequest\",\n  \"actor\": {\"member\": {\"memberId\": 12345}},\n  \"value\": {\n    \"value\": \"{\\\"requestId\\\":{\\\"requestId\\\":REQUEST_ID},\\\"hiringProjectUrn\\\":{\\\"hiringContext\\\":\\\"urn:li:contract:CONTRACT\\\",\\\"hiringProjectId\\\":PROJECT_ID},\\\"candidate\\\":{\\\"hireIdentityId\\\":HI_ID},\\\"status\\\":\\\"HireEntityRequestStatus_PENDING\\\",\\\"type\\\":\\\"HireEntityRequestType_HIRING_PROJECT_CANDIDATE\\\",\\\"hiringProjectCandidateRequestDetails\\\":{\\\"candidate\\\":{\\\"hireIdentityId\\\":HI_ID},\\\"targetPipelineStateValue\\\":{\\\"hiringContext\\\":\\\"urn:li:contract:CONTRACT\\\",\\\"candidateHiringStateId\\\":TARGET_STATE},\\\"previousPipelineStateValue\\\":{\\\"hiringContext\\\":\\\"urn:li:contract:CONTRACT\\\",\\\"candidateHiringStateId\\\":PREV_STATE}},\\\"isDismissed\\\":false,\\\"createdBy\\\":{\\\"seatId\\\":SEAT_ID}}\"\n  }\n}' d2://ManagedEntityCrudHireEntityRequest proto.com.linkedin.euler.managed.EulerEntityTestApi/create\n```\n\n**Notes:**\n- The `value.value` field is a **JSON string** (escaped JSON inside JSON)\n- `requestId` must be unique \u2014 use a large number to avoid collisions\n- `status` options: `HireEntityRequestStatus_PENDING`, `HireEntityRequestStatus_FAILURE`, `HireEntityRequestStatus_FAILURE_WITH_TIMEOUT`, `HireEntityRequestStatus_COMPLETED`\n- Useful for E2E testing: create a PENDING request, then fire a Kafka event to test the processor\n\n---\n\n## Entity Relationships (HP Side)\n\n```\nHiringProject (mcm-mt)\n  \u251c\u2500\u2500 atsPipelineUrn \u2192 CandidateHiringPipeline (ATS stages pipeline)\n  \u2502                      \u2514\u2500\u2500 has states \u2192 CandidateHiringState (source=ATS, non-global)\n  \u251c\u2500\u2500 has many \u2192 HiringProjectCandidate\n  \u2502                \u2514\u2500\u2500 has history \u2192 HiringProjectCandidateHistory\n  \u2514\u2500\u2500 has many \u2192 SourcingChannelCandidate\n\nConnectedProject (hp-ats-integration-mt)\n  \u251c\u2500\u2500 hiringProjectUrn \u2192 HiringProject\n  \u251c\u2500\u2500 integrationJobRequisitionUrn \u2192 IntegrationJobRequisition (IP)\n  \u251c\u2500\u2500 atsPipelineAutomationSettings \u2192 automation rules\n  \u2514\u2500\u2500 integrationJobRequisitionStageUrns \u2192 selected ATS stages\n\nHpIntegrationEntityMapping (hp-ats-integration-mt)\n  \u251c\u2500\u2500 integrationEntityUrn (IP) \u2194 hiringEntityUrn (HP)\n  \u251c\u2500\u2500 Maps: IntegrationJobRequisition \u2194 HiringProject\n  \u251c\u2500\u2500 Maps: IntegrationApplication \u2194 SourcingChannelCandidate\n  \u251c\u2500\u2500 Maps: IntegrationCandidate \u2194 HireIdentity\n  \u251c\u2500\u2500 Maps: IntegrationJobRequisitionStage \u2194 CandidateHiringState\n  \u2514\u2500\u2500 Maps: IntegrationApplicationStage \u2194 HiringProjectCandidateHistory\n\nHpIntegrationStageMapping (hp-ats-integration-mt)\n  \u2514\u2500\u2500 rawStage (ATS stage name) \u2192 candidateHiringStateUrn (HP stage)\n```\n\n## Data Sync Pipeline (Inbound: ATS \u2192 HP)\n\n### Kafka Event: IntegrationEntityReadyEvent\n\nPublished by IP, consumed by hp-ats-integration-mt. Drives all inbound data sync.\n\n| Field | Description |\n|---|---|\n| `integrationUrn` | e.g., `urn:li:integrationRequisition:123` |\n| `entityType` | `JOB_REQUISITION`, `APPLICATION`, `CANDIDATE`, `APPLICATION_STAGE`, etc. |\n| `operationType` | `SYNC` (bootstrap) or `UPDATE` (continued sync) |\n| `integrationContext` | `urn:li:organization:ORG_ID` |\n| `dataProvider` | `urn:li:developerApplication:APP_ID` |\n\n**Partition key**: `[integrationContext + dataProvider]` \u2014 ensures ordered processing per org+ATS.\n\n```bash\n# Produce IntegrationEntityReadyEvent (EI)\ncat EVENT_FILE | kafka-tool topic produce -f ei-ltx1 -t IntegrationEntityReadyEvent -c tracking\n\n# Produce IntegrationEntityReadyEvent (Prod)\nkafka-tool topic produce -f prod-ltx1 -t IntegrationEntityReadyEvent -c queuing\n\n# Check consumer offset\nkafka-tool offset get -g hpAtsIntegrationMt-integrationEntityReadyEvent-consumer --cluster queuing -t IntegrationEntityReadyEvent -f prod-lor1\n```\n\n### Sync Flows\n\n**Manual Connect** (user-initiated):\n1. ts-web \u2192 ts-api `/talentConnectedProjects create()`\n2. ts-api \u2192 hp-ats-integration-mt `ConnectedProjectsApi/Create`\n3. hp-ats-integration-mt: get requisition from IP, transform, create/update HiringProject in mcm-mt, store entity mapping, trigger child sync\n4. IP enqueues IntegrationEntityReadyEvent per child entity (parent\u2192child order)\n5. hp-ats-integration-mt consumer processes each event: look up mapping \u2192 get IP entity \u2192 transform \u2192 create/update HP entity\n\n**Continued Sync** (ATS-initiated updates):\n1. ATS change \u2192 IP persists \u2192 IP publishes IntegrationEntityReadyEvent (operationType=UPDATE)\n2. hp-ats-integration-mt consumer: look up mapping \u2192 check RSC enabled \u2192 transform \u2192 update HP entity\n\n**Auto Connect** (auto-sync enabled):\n1. ts-api \u2192 hire-access-control `/hiringAccountPreferences partialUpdate()` (persist prefs)\n2. ts-api \u2192 hp-ats-integration-mt `ConnectedProjectsApi/ActionBootstrapForAutoSync`\n3. IP finds unconnected requisitions \u2192 enqueues events\n4. Consumer: check pref \u2192 find similar project \u2192 create/update \u2192 store mapping \u2192 trigger child sync\n\n**Offline Reconciliation** (mcm-offline):\n1. Compare HP vs IP data offline\n2. Push IntegrationEntityReadyEvent for inconsistencies\n3. Consumer re-checks with online data and fixes\n\n### Entity Dependency Order\n\nParent entities must be created before children. IP triggers in order:\n```\nIntegrationJobRequisition \u2192 IntegrationApplication \u2192 IntegrationCandidate\n                          \u2192 IntegrationApplicationStage\n                          \u2192 IntegrationEntityAcl (RoleAssignment)\n                          \u2192 IntegrationAttachment (HiringDocument)\n```\n\n## Write-Back Flow (Outbound: HP \u2192 ATS)\n\n1. User moves candidate to ATS stage in Recruiter (ts-web)\n2. ts-api `/talentHiringProjectCandidates partialUpdate` \u2192 mcm-mt `/hiringProjectCandidates partialUpdate`\n3. mcm-mt detects Connected Project \u2192 calls hp-ats-integration-mt `ConnectedProjectCandidateApi/ActionWriteBack`\n4. hp-ats-integration-mt resolves HP entities \u2192 IP entities via entity mappings\n5. Calls IP `IntegrationApplicationStageApi/ActionUpsert` \u2192 gets `requestId`\n6. IP forwards to gateway \u2192 ATS partner API\n7. Status updates via `IntegrationApplicationStageExportStatusEvent` Kafka event\n8. HP can poll status via `IntegrationApplicationStageExportRequestApi/Get`\n\n### Write-Back Rules\n\n| Candidate Type | Can move to HP sourcing stages? | Can move to ATS stages? | Write-back triggered? |\n|---|---|---|---|\n| **ATS applicant** (synced from ATS) | NO (prevents out-of-sync) | YES | YES |\n| **Sourced candidate** (HP-sourced) | YES | YES | YES (+ export to ATS if enabled) |\n\n- **On write-back failure**: The state update on hiringProjectCandidate is **FAILED** \u2014 the stage change is rolled back / not recorded\n- **Sourced \u2192 ATS stage**: Also triggers one-click export to ATS if setting is enabled and credits are available\n- **ATS limitation**: Greenhouse does NOT support creating new stages via API\n\n## ACL Management\n\n### Check if caller has access to a target service resource\n```bash\n# Check TARGET service's ACLs and grep for CALLER\nacl-tool app viewAcls {{TARGET_APP}} 2>&1 | python3 -c \"\nimport json,sys\ndata = json.load(sys.stdin)\nfor el in data.get('elements',[]):\n    text = json.dumps(el)\n    if '{{CALLER_APP}}' in text:\n        resource = el.get('aclDataKey',{}).get('resource','')\n        scope = el.get('aclDataKey',{}).get('accessControlScopeValue','')\n        print(f'  scope={scope}  resource={resource}')\n\"\n\n# Example: check hp-ats-integration-mt \u2192 mcm-mt access\nacl-tool app viewAcls mcm-mt 2>&1 | grep -B 5 'hp-ats-integration-mt'\n```\n\n### ACL UI (recommended for visual inspection)\n```\nhttps://aclin.nuage.prod.linkedin.com/deployments/urn%3Ali%3AdataPlatform%3AGRPC/{{TARGET_APP}}%2F{{PROTO_SERVICE_NAME}}/urn%3A...\n```\n\n### Key ACL pattern\n- **Resource URN**: `urn:li:grpc:({{TARGET_APP}},{{PROTO_PACKAGE}}.{{SERVICE_NAME}})` (for gRPC)\n- **Resource URN**: `urn:li:restli:{{TARGET_APP}}/{{RESOURCE_NAME}}` (for REST)\n- **EI ACLs don't cover prod** \u2014 must deploy to each fabric group separately\n- **Propagation**: ~15-30 min after deploy\n\n### Phase 2 Required ACLs (hp-ats-integration-mt \u2192 mcm-mt)\n| Resource | Methods | Status |\n|----------|---------|--------|\n| `urn:li:grpc:(mcm-mt,proto.com.linkedin.hire.HiringProjectCandidateHistoryItemApi)` | create, partialUpdate | Deployed to EI + Prod (2026-03-15) |\n| `urn:li:grpc:(mcm-mt,proto.com.linkedin.hire.HiringProjectCandidatesService)` | ALL | Existing |\n| `urn:li:grpc:(mcm-mt,proto.com.linkedin.hire.LocalCandidateHiringStatesApi)` | ALL | Existing |\n| `urn:li:grpc:(mcm-mt,proto.com.linkedin.hire.HiringProjectsService)` | ALL | Existing |\n\n## ATS Middleware \u2014 jobRequisitionStagesApi\n\n### Get stage by key\n```bash\ngrpcurli --dv-auth SELF -f {{fabric}} d2://jobRequisitionStagesApi \\\n  proto.com.linkedin.atsmiddleware.JobRequisitionStagesApi/get \\\n  -d '{\"key\":{\"jobRequisitionId\":\"EXTERNAL_JOB_ID\",\"integrationContext\":{\"organizationUrn\":{\"organizationId\":\"ORG_ID\"}},\"dataProvider\":{\"developerApplicationUrn\":{\"applicationId\":\"APP_ID\"}},\"stageId\":\"GH_STAGE_ID\"}}'\n```\n\n### Update stage (full upsert, RequestSource_MERGED writes to DB)\n```bash\ngrpcurli --dv-auth SELF -f {{fabric}} d2://jobRequisitionStagesApi \\\n  proto.com.linkedin.atsmiddleware.JobRequisitionStagesApi/update \\\n  -d '{\"key\":{\"jobRequisitionId\":\"EXTERNAL_JOB_ID\",\"integrationContext\":{\"organizationUrn\":{\"organizationId\":\"ORG_ID\"}},\"dataProvider\":{\"developerApplicationUrn\":{\"applicationId\":\"APP_ID\"}},\"stageId\":\"GH_STAGE_ID\"},\"value\":{\"stageName\":\"NAME\",\"stageType\":\"StageType_OFFER\",\"stageOrder\":ORDER,\"stageStatus\":\"StageStatus_ACTIVE\",\"externalCreatedAt\":\"TIMESTAMP\",\"externalLastModifiedAt\":\"TIMESTAMP\"},\"requestSource\":\"RequestSource_MERGED\"}'\n```\n\n**RequestSource behavior (DualWritePreProcessor):**\n- `RequestSource_MERGED` or LIX=CONTROL \u2192 writes to **DB only**\n- `RequestSource_RAW` + LIX=ENABLED \u2192 writes to **Kafka only** (DB not touched)\n- `RequestSource_RAW` + LIX=BACKFILL \u2192 writes to **DB + Kafka**\n\n**Key fields:** `JobRequisitionStageKey` = {jobRequisitionId, integrationContext, dataProvider, stageId}. Value fields: stageName(6), stageType(7), stageOrder(8), stageStatus(9), integrationJobRequisitionStageUrn(12, auto-generated).\n\n### Produce IntegrationEntityReadyEvent for JobRequisitionStage\n```bash\n# On shell host or EI (queuing cluster needs auth)\necho '{\"header\":{...},\"integrationEntityUrn\":{\"string\":\"urn:li:integrationJobRequisitionStage:IP_STAGE_ID\"},\"operationType\":{\"avro.com.linkedin.events.unifiedintegration.IntegrationEntityOperationType\":\"UPDATE\"},\"integrationContext\":{\"string\":\"urn:li:organization:ORG_ID\"},\"dataProvider\":{\"string\":\"urn:li:developerApplication:APP_ID\"}}' | kafka-tool topic produce -f FABRIC -c queuing -t IntegrationEntityReadyEvent\n```\n\n## Local QEI Deployment\n\n### Full deploy sequence\n```bash\nmint undeploy && mint clean && mint build && mint build-cfg -f qei-ltx1 && mint deploy -f qei-ltx1 --debug-app\n```\n\n### Quick redeploy (code already built)\n```bash\nmint undeploy && mint build-cfg -f qei-ltx1 && mint deploy -f qei-ltx1 --debug-app\n```\n\n### Service endpoints\n- gRPC: `localhost:28465`\n- HTTPS admin: `localhost:28466/hp-ats-integration-mt/admin`\n\n### Check local logs\n```bash\ngrep \"PATTERN\" /export/content/lid/logs/hp-ats-integration-mt/i001/hp-ats-integration-mt.log | tail -20\n```\n\n### Verify compiled config\n```bash\n# After mint build-cfg, check the compiled config:\ngrep \"PROPERTY\" build/hp-ats-integration-mt/qei-ltx1/application.cfg\n```\n\n### Config property pattern (Offspring @Config)\n- Factory scope: `Scope.ROOT.child(\"ClassName\")` \u2192 config key = `ClassName.fieldName`\n- Set in `config/app/hp-ats-integration-mt/groups/qei.src`\n- `view.fill(Cfg.class)` reads from factory's scope prefix\n\n## Logs\n\nhp-ats-integration-mt logs: use `/search-inlogs` skill or Kusto directly:\n- Cluster: `lilogsusprod05`\n- Database: `hp-ats-integration-mt`\n- Table: `hp_ats_integration_mt_logs`\n\n## Default Fabric\n\nDefault to `prod-lva1` for hp-ats-integration-mt APIs. Use `prod-ltx1` for mcm-mt REST APIs.\n\n\nARGUMENTS: Check ActionWriteBack request 8489 - get the full request details including status, hiringProjectCandidate, candidateHiringState, and any error info"
+        }
+      ]
+    },
+    "isMeta": true,
+    "uuid": "8042a546-ea6e-43aa-8973-97e571ebc3c6",
+    "timestamp": "2026-04-01T18:44:33.490Z",
+    "sourceToolUseID": "toolu_011qXNmzZ9ArCXV5xW17xSBe",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "c787d78d-1475-4359-8d95-6cc0723ea7ce",
+    "version": "2.1.89",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "ac042e25-7804-456e-947f-a347e1b427f6",
+    "isSidechain": false,
+    "promptId": "8894b56f-0c0a-410f-9b08-33b3e2854062",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "toolu_01QsaY4edBngD4aGhSLrUw42",
+          "content": "Launching skill: integration-platform"
+        }
+      ]
+    },
+    "uuid": "5cbf9fdb-ef43-4e4c-825e-2d510d7ccf46",
+    "timestamp": "2026-04-01T18:44:37.066Z",
+    "toolUseResult": {
+      "success": true,
+      "commandName": "integration-platform",
+      "allowedTools": [
+        "Bash",
+        "Read",
+        "execute_kusto_query"
+      ]
+    },
+    "sourceToolAssistantUUID": "ac042e25-7804-456e-947f-a347e1b427f6",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "c787d78d-1475-4359-8d95-6cc0723ea7ce",
+    "version": "2.1.89",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "5cbf9fdb-ef43-4e4c-825e-2d510d7ccf46",
+    "isSidechain": false,
+    "promptId": "8894b56f-0c0a-410f-9b08-33b3e2854062",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "Base directory for this skill: /Users/bizhou/workspace/connected_project_phase2/.claude/skills/integration-platform\n\n# Integration Platform (IP) Data Lookup\n\nQuery talent-partner-integrations-mt gRPC APIs to check IP entity data for Connected Projects debugging.\n\n**Service**: `talent-partner-integrations-mt`\n**Proto package**: `proto.com.linkedin.talent.partner.integrations`\n**Source repos**:\n- API protos: `linkedin-multiproduct/talent-partner-integrations-api`\n- Service impl: `linkedin-multiproduct/talent-partner-integrations-mt`\n\n---\n\n## 1. IntegrationJobRequisitionApi\n\nD2 URI: `d2://integrationJobRequisitionApi`\n\nMethods: **Get**, **FindByCriteria**\n\n### job-req \u2014 Get by ID\n```bash\ngrpcurli --dv-auth SELF -f {{fabric}} d2://integrationJobRequisitionApi \\\n  proto.com.linkedin.talent.partner.integrations.IntegrationJobRequisitionApi/Get \\\n  -d '{\"key\":{\"integrationJobRequisitionId\":\"{{id}}\"}}'\n```\nResponse includes `integrationJobRequisition` (title, description, status, externalId, locations, etc.) and `integrationMetadata` (integrationContext with organizationUrn, dataProvider with developerApplicationUrn).\n\n### job-req-search \u2014 Find by keyword/title (resolve Greenhouse job to IntJobReq)\n```bash\ngrpcurli --dv-auth SELF -f {{fabric}} d2://integrationJobRequisitionApi \\\n  proto.com.linkedin.talent.partner.integrations.IntegrationJobRequisitionApi/FindByCriteria \\\n  -d '{\"criteria\":{\"keyword\":\"{{keyword_or_title}}\",\"integrationContext\":{\"organizationUrn\":{\"organizationId\":\"107201551\"}},\"hasConnectedHiringProjects\":false,\"requestType\":\"RequestType_CONNECTED_PROJECTS\"},\"seatUrn\":{\"seatId\":\"{{seat_id}}\"},\"paging\":{\"start\":0,\"count\":5}}'\n```\nReturns `integrationJobRequisitionId`, `title`, `externalId` (Greenhouse job ID). Requires `seatUrn` as viewer.\nThis is how the requisitions page (`/talent/projects/requisitions`) resolves Greenhouse jobs to IntJobReq IDs.\n\n---\n\n## 2. IntegrationJobRequisitionStageApi\n\nD2 URI: `d2://integrationJobRequisitionStageApi`\n\nMethods: **Get**, **FindByCriteria**\n\n### job-req-stages \u2014 Find all stages for a job requisition\n```bash\ngrpcurli --dv-auth SELF -f {{fabric}} d2://integrationJobRequisitionStageApi \\\n  proto.com.linkedin.talent.partner.integrations.IntegrationJobRequisitionStageApi/FindByCriteria \\\n  -d '{\"integrationJobRequisitionUrn\":{\"integrationJobRequisitionId\":\"{{id}}\"}}'\n```\n\n### job-req-stage-by-id \u2014 Get a single stage\n```bash\ngrpcurli --dv-auth SELF -f {{fabric}} d2://integrationJobRequisitionStageApi \\\n  proto.com.linkedin.talent.partner.integrations.IntegrationJobRequisitionStageApi/Get \\\n  -d '{\"key\":{\"integrationJobRequisitionStageId\":\"{{id}}\"}}'\n```\n\nResponse: `IntegrationJobRequisitionStageRecord` with `integrationJobRequisitionStage` (stageName, sortOrder, integrationJobRequisitionUrn) and `integrationMetadata`.\n\n---\n\n## 3. IntegrationApplicationApi\n\nD2 URI: `d2://integrationApplicationApi`\n\nMethods: **Get**, **FindByCriteria**, **DisposeApplication**, **UndoApplicationDisposition**\n\n### application \u2014 Get by ID\n```bash\ngrpcurli --dv-auth SELF -f {{fabric}} d2://integrationApplicationApi \\\n  proto.com.linkedin.talent.partner.integrations.IntegrationApplicationApi/Get \\\n  -d '{\"key\":{\"integrationApplicationId\":\"{{id}}\"}}'\n```\n\n### applications-by-job-req \u2014 Find by job requisition\n```bash\ngrpcurli --dv-auth SELF -f {{fabric}} d2://integrationApplicationApi \\\n  proto.com.linkedin.talent.partner.integrations.IntegrationApplicationApi/FindByCriteria \\\n  -d '{\"integrationJobRequisitionUrn\":{\"integrationJobRequisitionId\":\"{{id}}\"},\"paging\":{\"start\":0,\"count\":100}}'\n```\n\n### applications-by-candidate \u2014 Find by candidate\n```bash\ngrpcurli --dv-auth SELF -f {{fabric}} d2://integrationApplicationApi \\\n  proto.com.linkedin.talent.partner.integrations.IntegrationApplicationApi/FindByCriteria \\\n  -d '{\"integrationCandidateUrn\":{\"integrationCandidateId\":\"{{id}}\"},\"paging\":{\"start\":0,\"count\":100}}'\n```\n\n### dispose-app \u2014 Reject/withdraw an application (write-back to ATS)\n```bash\ngrpcurli --dv-auth SELF -f {{fabric}} d2://integrationApplicationApi \\\n  proto.com.linkedin.talent.partner.integrations.IntegrationApplicationApi/DisposeApplication \\\n  -d '{\"integrationApplicationUrn\":{\"integrationApplicationId\":\"{{id}}\"},\"integrationDispositionReasonUrn\":{\"integrationDispositionReasonId\":\"REASON_ID\"},\"actor\":{\"seatId\":\"SEAT_ID\"}}'\n```\nReturns `requestId` (uint64) for tracking.\n\n### undo-dispose \u2014 Unreject an application\n```bash\ngrpcurli --dv-auth SELF -f {{fabric}} d2://integrationApplicationApi \\\n  proto.com.linkedin.talent.partner.integrations.IntegrationApplicationApi/UndoApplicationDisposition \\\n  -d '{\"integrationApplicationUrn\":{\"integrationApplicationId\":\"{{id}}\"},\"actor\":{\"seatId\":\"SEAT_ID\"}}'\n```\nReturns `requestId` (uint64) for tracking.\n\n---\n\n## 4. IntegrationApplicationStageApi\n\nD2 URI: `d2://integrationApplicationStageApi`\n\nMethods: **Get**, **FindByCriteria**, **ActionUpsert**\n\n### application-stages \u2014 Find stages for an application\n```bash\ngrpcurli --dv-auth SELF -f {{fabric}} d2://integrationApplicationStageApi \\\n  proto.com.linkedin.talent.partner.integrations.IntegrationApplicationStageApi/FindByCriteria \\\n  -d '{\"integrationApplicationUrn\":{\"integrationApplicationId\":\"{{id}}\"},\"paging\":{\"start\":0,\"count\":50}}'\n```\n\n### application-stage-by-id \u2014 Get single stage\n```bash\ngrpcurli --dv-auth SELF -f {{fabric}} d2://integrationApplicationStageApi \\\n  proto.com.linkedin.talent.partner.integrations.IntegrationApplicationStageApi/Get \\\n  -d '{\"key\":{\"integrationApplicationStageId\":\"{{id}}\"}}'\n```\n\n### upsert-stage \u2014 Write-back: move application to new stage (async, returns 202)\n```bash\ngrpcurli --dv-auth SELF -f {{fabric}} d2://integrationApplicationStageApi \\\n  proto.com.linkedin.talent.partner.integrations.IntegrationApplicationStageApi/ActionUpsert \\\n  -d '{\"integrationApplicationUrn\":{\"integrationApplicationId\":\"APP_ID\"},\"newIntegrationJobRequisitionStageUrn\":{\"integrationJobRequisitionStageId\":\"TARGET_STAGE_ID\"},\"seatUrn\":{\"seatId\":\"SEAT_ID\"}}'\n```\nReturns `requestId` (int64) for tracking. Response code 202 = accepted for async processing.\n\n---\n\n## 5. IntegrationCandidateApi\n\nD2 URI: `d2://integrationCandidateApi`\n\nMethods: **Get** (only)\n\n### candidate \u2014 Get by ID\n```bash\ngrpcurli --dv-auth SELF -f {{fabric}} d2://integrationCandidateApi \\\n  proto.com.linkedin.talent.partner.integrations.IntegrationCandidateApi/Get \\\n  -d '{\"key\":{\"integrationCandidateId\":\"{{id}}\"}}'\n```\n\n---\n\n## 6. IntegrationEntityUrnToClientEntityUrnMappingApi\n\nD2 URI: `d2://integrationEntityUrnToClientEntityUrnMappingApi`\n\nMethods: **FindUrnMappingByIntegrationEntityUrn**, **FindUrnMappingByClientEntityUrn**, **Update**, **Delete** (soft)\n\n### urn-mapping-client \u2014 Find by HP (client) entity\n\n**Supported ClientEntityUrn types** (oneof):\n- `hiringProjectUrn` \u2192 `{\"hiringProjectId\":\"ID\"}`\n- `hireIdentityUrn` \u2192 `{\"hireIdentityId\":\"ID\"}`\n- `hiringProjectCandidateUrn` \u2192 `{\"hiringProjectUrn\":{...},\"hireIdentityUrn\":{...}}`\n- `hireRoleAssignmentUrn`\n- `hiringDocumentV2Urn`\n- `sourcingChannelCandidateUrn`\n- `candidateHiringStateUrn` \u2192 `{\"hiringContext\":\"urn:li:contract:CONTRACT\",\"candidateHiringStateId\":\"ID\"}`\n- `hiringProjectCandidateHistoryUrn`\n\n```bash\n# By HiringProject\ngrpcurli --dv-auth SELF -f {{fabric}} d2://integrationEntityUrnToClientEntityUrnMappingApi \\\n  proto.com.linkedin.talent.partner.integrations.IntegrationEntityUrnToClientEntityUrnMappingApi/FindUrnMappingByClientEntityUrn \\\n  -d '{\"clientEntityUrn\":{\"hiringProjectUrn\":{\"hiringProjectId\":\"{{id}}\"}}}'\n\n# By CandidateHiringState\ngrpcurli --dv-auth SELF -f {{fabric}} d2://integrationEntityUrnToClientEntityUrnMappingApi \\\n  proto.com.linkedin.talent.partner.integrations.IntegrationEntityUrnToClientEntityUrnMappingApi/FindUrnMappingByClientEntityUrn \\\n  -d '{\"clientEntityUrn\":{\"candidateHiringStateUrn\":{\"hiringContext\":\"urn:li:contract:CONTRACT\",\"candidateHiringStateId\":\"{{id}}\"}}}'\n```\n\n### urn-mapping-integration \u2014 Find by IP (integration) entity\n\n**Supported IntegrationEntityUrn types** (oneof):\n- `candidateUrn` \u2192 `{\"integrationCandidateId\":\"ID\"}`\n- `applicationUrn` \u2192 `{\"integrationApplicationId\":\"ID\"}`\n- `jobRequisitionUrn` \u2192 `{\"integrationJobRequisitionId\":\"ID\"}`\n- `attachmentUrn`\n- `noteUrn`\n- `integrationApplicationStageUrn` \u2192 `{\"integrationApplicationStageId\":\"ID\"}`\n- `integrationEntityAssigneeUrn`\n- `integrationJobRequisitionStageUrn` \u2192 `{\"integrationJobRequisitionStageId\":\"ID\"}`\n\n```bash\n# By IntegrationApplicationStage\ngrpcurli --dv-auth SELF -f {{fabric}} d2://integrationEntityUrnToClientEntityUrnMappingApi \\\n  proto.com.linkedin.talent.partner.integrations.IntegrationEntityUrnToClientEntityUrnMappingApi/FindUrnMappingByIntegrationEntityUrn \\\n  -d '{\"integrationEntityUrn\":{\"integrationApplicationStageUrn\":{\"integrationApplicationStageId\":\"{{id}}\"}}}'\n\n# By IntegrationJobRequisitionStage\ngrpcurli --dv-auth SELF -f {{fabric}} d2://integrationEntityUrnToClientEntityUrnMappingApi \\\n  proto.com.linkedin.talent.partner.integrations.IntegrationEntityUrnToClientEntityUrnMappingApi/FindUrnMappingByIntegrationEntityUrn \\\n  -d '{\"integrationEntityUrn\":{\"integrationJobRequisitionStageUrn\":{\"integrationJobRequisitionStageId\":\"{{id}}\"}}}'\n\n# By IntegrationJobRequisition\ngrpcurli --dv-auth SELF -f {{fabric}} d2://integrationEntityUrnToClientEntityUrnMappingApi \\\n  proto.com.linkedin.talent.partner.integrations.IntegrationEntityUrnToClientEntityUrnMappingApi/FindUrnMappingByIntegrationEntityUrn \\\n  -d '{\"integrationEntityUrn\":{\"jobRequisitionUrn\":{\"integrationJobRequisitionId\":\"{{id}}\"}}}'\n\n# By IntegrationApplication\ngrpcurli --dv-auth SELF -f {{fabric}} d2://integrationEntityUrnToClientEntityUrnMappingApi \\\n  proto.com.linkedin.talent.partner.integrations.IntegrationEntityUrnToClientEntityUrnMappingApi/FindUrnMappingByIntegrationEntityUrn \\\n  -d '{\"integrationEntityUrn\":{\"applicationUrn\":{\"integrationApplicationId\":\"{{id}}\"}}}'\n```\n\n---\n\n## 7. IntegrationApplicationStageExportRequestApi\n\nD2 URI: `d2://integrationApplicationStageExportRequestApi`\n\nMethods: **Get**, **FindByCriteria**\n\nTracks the status of bi-directional sync write-back requests from HP to ATS. Stored in Espresso (read-after-write consistent).\n\n### export-request \u2014 Get by request ID\n```bash\ngrpcurli --dv-auth SELF -f {{fabric}} d2://integrationApplicationStageExportRequestApi \\\n  proto.com.linkedin.talent.partner.integrations.IntegrationApplicationStageExportRequestApi/Get \\\n  -d '{\"key\": {{id}}}'\n```\n\n### export-requests-by-app \u2014 Find by application or client entity\n```bash\n# By IntegrationApplication\ngrpcurli --dv-auth SELF -f {{fabric}} d2://integrationApplicationStageExportRequestApi \\\n  proto.com.linkedin.talent.partner.integrations.IntegrationApplicationStageExportRequestApi/FindByCriteria \\\n  -d '{\"criteria\":{\"integrationApplicationUrn\":{\"integrationApplicationId\":\"{{id}}\"}},\"paging\":{\"start\":0,\"count\":50}}'\n```\n\n### ExportRequest Data Model\n\n| Field | Type | Description |\n|---|---|---|\n| `requestId` | int64 | Unique ID for tracking through entire pipeline |\n| `integrationApplicationUrn` | IntegrationApplicationUrn | Application being updated |\n| `newIntegrationJobRequisitionStageUrn` | IntegrationJobRequisitionStageUrn | Target stage |\n| `previousIntegrationJobRequisitionStageUrn` | IntegrationJobRequisitionStageUrn | Stage before update |\n| `requestStatus.recommendedStatus` | enum | `UNKNOWN`, `INTERMEDIATE`, `SUCCESS`, `FAILURE` |\n| `requestStatus.writeStatus` | enum | See Write Status table below |\n| `requestStatus.readStatus` | enum | See Read Status table below |\n| `changeTimeStamps` | ChangeTimeStamps | Created/modified timestamps |\n| `requestMetadata.clientEntityUrn` | ClientEntityUrn | HP entity that initiated the request |\n| `requestMetadata.seatUrn` | SeatUrn | Actor who performed the action |\n\n### Write Status Values\n\n| Status | Terminal? | Meaning |\n|---|---|---|\n| `WriteStatus_REQUEST_RECEIVED` | No | Request received by IP |\n| `WriteStatus_REQUEST_AT_GATEWAY` | No | Sent to Gateway |\n| `WriteStatus_PARTNER_DATA_VALIDATION_FAILURE` | FAILURE | Partner validation failed (retry with same data will likely fail) |\n| `WriteStatus_PARTNER_API_RETRYING` | No | Gateway retrying after failure |\n| `WriteStatus_PARTNER_API_FAILURE` | FAILURE | Partner API failed after all retries |\n| `WriteStatus_PARTNER_API_SUCCESS` | No* | Partner API succeeded (still awaiting read confirmation) |\n| `WriteStatus_PARTNER_API_TIMEOUT` | FAILURE | Partner API timed out |\n| `WriteStatus_INTERNAL_FAILURE` | FAILURE | Internal IP processing failure |\n\n### Read Status Values\n\n| Status | Terminal? | Meaning |\n|---|---|---|\n| `ReadStatus_DATA_READ_PENDING` | No | No data received from partner yet |\n| `ReadStatus_DATA_OVERWRITTEN` | No | ATS sent new data while write was in progress |\n| `ReadStatus_DATA_READ_CONFLICT` | Maybe | Data from partner doesn't match export (may resolve before timeout) |\n| `ReadStatus_DATA_READ_CONFIRMED` | SUCCESS | Data from partner matches export request |\n| `ReadStatus_DATA_READ_EXPIRED` | FAILURE | No confirmation received within threshold |\n\n### Key Status Combinations\n\n| Scenario | Write | Read | Result |\n|---|---|---|---|\n| Happy path complete | `PARTNER_API_SUCCESS` | `DATA_READ_CONFIRMED` | **SUCCESS** |\n| Still processing | `REQUEST_RECEIVED` | `DATA_READ_PENDING` | INTERMEDIATE |\n| Partner API failed | `PARTNER_API_FAILURE` | `DATA_READ_PENDING` | **FAILURE** \u2014 ask user to retry |\n| Validation failed | `PARTNER_DATA_VALIDATION_FAILURE` | `DATA_READ_PENDING` | **FAILURE** \u2014 bad data, retry likely fails |\n| Overwritten during write | `PARTNER_API_SUCCESS` | `DATA_OVERWRITTEN` | INTERMEDIATE \u2014 data was stale |\n| Conflict | any | `DATA_READ_CONFLICT` | May resolve before timeout; suggest retry |\n| Expired | any | `DATA_READ_EXPIRED` | **FAILURE** \u2014 no confirmation, suggest retry |\n\n---\n\n## 8. Kafka Event: IntegrationApplicationStageExportStatusEvent\n\n**Topic**: `IntegrationApplicationStageExportStatusEvent` (V1) / `IntegrationApplicationStageExportStatusV2Event` (V2)\n**Proto package**: `proto.com.linkedin.events.unifiedintegration`\n**Source**: `linkedin-multiproduct/avro-schemas`\n\nIP publishes this event for nearline status updates on export requests. HP (hp-ats-integration-mt) consumes it.\n\n### Event Fields\n\n| Field | Type | Description |\n|---|---|---|\n| `requestId` | int64 | Write request ID |\n| `requestStatus.recommendedStatus` | ExportRequestRecommendedStatus | `UNKNOWN`, `INTERMEDIATE`, `SUCCESS`, `FAILURE` |\n| `requestStatus.writeStatus` | ExportRequestWriteStatus | Same values as WriteStatus above |\n| `requestStatus.readStatus` | ExportRequestReadStatus | Same values as ReadStatus above |\n| `changeTimestamps` | ChangeAuditStamps | Created/modified |\n| `seatUrn` (oneof actor) | string | Actor who initiated (URN format) |\n| `clientEntityUrn` | string | HP entity URN associated with request |\n\n### Write-Back End-to-End Flow\n\n1. **HP** calls `IntegrationApplicationStageApi/ActionUpsert` \u2192 gets `requestId` (202 Accepted)\n2. **IP** writes export request to Espresso, forwards to async workflow \u2192 gateway\n3. **Gateway** calls ATS partner API (with retries if needed)\n4. Write status progresses: `REQUEST_RECEIVED` \u2192 `REQUEST_AT_GATEWAY` \u2192 `PARTNER_API_SUCCESS` or failure\n5. ATS data ingestion updates read status: `DATA_READ_PENDING` \u2192 `DATA_READ_CONFIRMED` or conflict/expired\n6. Each status change publishes `IntegrationApplicationStageExportStatusEvent` on Kafka\n7. HP can also poll via `IntegrationApplicationStageExportRequestApi/Get(requestId)`\n\n---\n\n## 9. IntegrationApplicationDispositionExportRequestApi\n\nD2 URI: `d2://integrationApplicationDispositionExportRequestApi`\n\nTracks reject/unreject write-back requests. Same status model as stage export requests.\n\n### Check disposition export request\n```bash\ngrpcurli --dv-auth SELF -f {{fabric}} d2://integrationApplicationDispositionExportRequestApi \\\n  proto.com.linkedin.talent.partner.integrations.IntegrationApplicationDispositionExportRequestApi/Get \\\n  -d '{\"key\":{\"integrationApplicationUrn\":{\"integrationApplicationId\":\"APP_ID\"}}}'\n```\n\n---\n\n## 10. IntegrationStatusApi\n\nD2 URI: `d2://integrationStatusApi`\n\nMethods: **GetIntegrationStatus**, **FindIntegrationStatusesByCriteria**\n\n### integration-status \u2014 Check integration status for a contract+provider pair\n```bash\ngrpcurli --dv-auth SELF -f {{fabric}} d2://integrationStatusApi \\\n  proto.com.linkedin.talent.partner.integrations.IntegrationStatusApi/FindIntegrationStatusesByCriteria \\\n  -d '{\"integrationContext\":{\"organizationUrn\":{\"organizationId\":\"ORG_ID\"}},\"dataProvider\":{\"developerApplicationUrn\":{\"applicationId\":\"APP_ID\"}}}'\n```\n\n---\n\n## Entity Relationships\n\n```\nIntegrationJobRequisition (ATS job posting)\n  \u251c\u2500\u2500 has many \u2192 IntegrationJobRequisitionStage (ATS stages defined on the job)\n  \u251c\u2500\u2500 has many \u2192 IntegrationApplication (candidates applied to this job)\n  \u2502                \u251c\u2500\u2500 has one \u2192 IntegrationCandidate (the person)\n  \u2502                \u251c\u2500\u2500 has many \u2192 IntegrationApplicationStage (candidate's stage movement history)\n  \u2502                \u2514\u2500\u2500 has many \u2192 IntegrationApplicationStageExportRequest (write-back requests)\n  \u2514\u2500\u2500 mapped via URN mappings to \u2192 HiringProject (HP side)\n\nURN Mapping (IntegrationEntityUrnToClientEntityUrnMapping):\n  IntegrationJobRequisition \u2194 HiringProject\n  IntegrationJobRequisitionStage \u2194 CandidateHiringState\n  IntegrationApplication \u2194 SourcingChannelCandidate / HiringProjectCandidate\n  IntegrationApplicationStage \u2194 HiringProjectCandidateHistory\n  IntegrationCandidate \u2194 HireIdentity\n```\n\n## IntegrationMetadata\n\nEvery record includes `integrationMetadata`:\n- `integrationContext.organizationUrn.organizationId` \u2014 the ATS org\n- `dataProvider.developerApplicationUrn.applicationId` \u2014 the ATS data provider app\n\n## Logs\n\ntalent-partner-integrations-mt logs can be searched via observe-agent:\n```\nobserve agent \"Search talent-partner-integrations-mt logs for <query>\"\n```\n\n## Default Fabric\n\nDefault to `prod-lva1`. If you get PROTOCOL_ERROR or timeouts, try `prod-ltx1` or `prod-lor1`.\n\n\nARGUMENTS: Check IntegrationExportRequest 8489 - get status, exportRequestStatus, any error details. Also check IntegrationExportRequestStatusEvent logs related to this request."
+        }
+      ]
+    },
+    "isMeta": true,
+    "uuid": "01cb3e5a-1972-4c80-9b1d-77c2e2bcb026",
+    "timestamp": "2026-04-01T18:44:37.066Z",
+    "sourceToolUseID": "toolu_01QsaY4edBngD4aGhSLrUw42",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "c787d78d-1475-4359-8d95-6cc0723ea7ce",
+    "version": "2.1.89",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "01cb3e5a-1972-4c80-9b1d-77c2e2bcb026",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_019ikSVEThbveH7BiQjGxmtZ",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "thinking",
+          "thinking": "",
+          "signature": "EqYCClkIDBgCKkDSXLEJ8U71ELImXeAoqLpUWfMIYVFngkCc5a4SAbmYOBkgSbYubWdUhM/IkGeMvQptcCCEBwjgD67itvZBHNOpMg9jbGF1ZGUtb3B1cy00LTY4ABIMkDEYcBgwEJHPfTonGgy8w6m1rghnOEmrwHwiMITtYt3JJPn1Ewx4pmk77bJ3ht0Pj2kYB0LE9GWud7HClbQWR+8hWZDd5JOHzCuxJSp7jeYz2sIkItM3HfnYPTLrSwD/2rIKwXtGF+MPF6ZOZRYQO0dX6+9jMyHrVu+AHPeyHAjYXm+NzFx53KQWh08PZgMl7IdLjN3sFSFzJ+/qHh8YRsZO9Yt3wKXxYR0pGMZLG5gMaRqnQLOyP7Khi5FJhmVptT7tgAY5elk+GAE="
+        }
+      ],
+      "stop_reason": null,
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 36034,
+        "cache_read_input_tokens": 11859,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 36034,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 32,
+        "service_tier": "standard",
+        "inference_geo": "global"
+      }
+    },
+    "requestId": "req_011CZdYcbXuvub3bMYCbfJBt",
+    "type": "assistant",
+    "uuid": "3bb5366a-a912-43ba-bc44-68289d8769f3",
+    "timestamp": "2026-04-01T18:44:41.836Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "c787d78d-1475-4359-8d95-6cc0723ea7ce",
+    "version": "2.1.89",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "3bb5366a-a912-43ba-bc44-68289d8769f3",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_019ikSVEThbveH7BiQjGxmtZ",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "Let me check both HP and IP sides in parallel."
+        }
+      ],
+      "stop_reason": null,
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 36034,
+        "cache_read_input_tokens": 11859,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 36034,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 32,
+        "service_tier": "standard",
+        "inference_geo": "global"
+      }
+    },
+    "requestId": "req_011CZdYcbXuvub3bMYCbfJBt",
+    "type": "assistant",
+    "uuid": "1db31224-d812-43c2-b641-ca5e6dd13181",
+    "timestamp": "2026-04-01T18:44:42.480Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "c787d78d-1475-4359-8d95-6cc0723ea7ce",
+    "version": "2.1.89",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "1db31224-d812-43c2-b641-ca5e6dd13181",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_019ikSVEThbveH7BiQjGxmtZ",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_01BTwJpo52tL1sbSbmbCQZ1h",
+          "name": "Bash",
+          "input": {
+            "command": "grpcurli --dv-auth SELF -f prod-lva1 d2://ManagedEntityCrudHireEntityRequest \\\n  proto.com.linkedin.euler.managed.EulerEntityTestApi/get \\\n  -d '{\"key\":{\"entityType\":\"HireEntityRequest\",\"urn\":\"{\\\"requestId\\\": 8489}\"},\"actor\":{\"member\":{\"memberId\":12345}}}' 2>&1",
+            "description": "Get HireEntityRequest 8489 from Euler store",
+            "timeout": 30000
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ],
+      "stop_reason": null,
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 36034,
+        "cache_read_input_tokens": 11859,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 36034,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 32,
+        "service_tier": "standard",
+        "inference_geo": "global"
+      }
+    },
+    "requestId": "req_011CZdYcbXuvub3bMYCbfJBt",
+    "type": "assistant",
+    "uuid": "372f6c7f-1d5d-442d-a723-be340ad7f4dc",
+    "timestamp": "2026-04-01T18:44:45.736Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "c787d78d-1475-4359-8d95-6cc0723ea7ce",
+    "version": "2.1.89",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "372f6c7f-1d5d-442d-a723-be340ad7f4dc",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_019ikSVEThbveH7BiQjGxmtZ",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_01XKbjkARahZZeHwd6yAHuT9",
+          "name": "Bash",
+          "input": {
+            "command": "grpcurli --dv-auth SELF -f prod-lva1 d2://integrationApplicationStageExportRequestApi \\\n  proto.com.linkedin.talent.partner.integrations.IntegrationApplicationStageExportRequestApi/Get \\\n  -d '{\"key\": 8489}' 2>&1",
+            "description": "Get IP export request 8489",
+            "timeout": 30000
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ],
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 36034,
+        "cache_read_input_tokens": 11859,
+        "output_tokens": 406,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 36034
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZdYcbXuvub3bMYCbfJBt",
+    "type": "assistant",
+    "uuid": "cafadb68-45e5-409b-912b-15d9f096651c",
+    "timestamp": "2026-04-01T18:44:46.805Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "c787d78d-1475-4359-8d95-6cc0723ea7ce",
+    "version": "2.1.89",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "372f6c7f-1d5d-442d-a723-be340ad7f4dc",
+    "isSidechain": false,
+    "promptId": "8894b56f-0c0a-410f-9b08-33b3e2854062",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "tool_use_id": "toolu_01BTwJpo52tL1sbSbmbCQZ1h",
+          "type": "tool_result",
+          "content": "{\n  \"value\": {\n    \"value\": \"{\\n  \\\"requestId\\\": {\\n    \\\"requestId\\\": \\\"8489\\\"\\n  },\\n  \\\"hiringProjectUrn\\\": {\\n    \\\"hiringContext\\\": \\\"urn:li:contract:2011455851\\\",\\n    \\\"hiringProjectId\\\": \\\"1927833626\\\"\\n  },\\n  \\\"candidate\\\": {\\n    \\\"hireIdentityId\\\": \\\"251305999\\\"\\n  },\\n  \\\"status\\\": \\\"HireEntityRequestStatus_PENDING\\\",\\n  \\\"isDismissed\\\": false,\\n  \\\"type\\\": \\\"HireEntityRequestType_HIRING_PROJECT_CANDIDATE\\\",\\n  \\\"createdAt\\\": \\\"2026-04-01T03:05:12.352932430Z\\\",\\n  \\\"createdBy\\\": {\\n    \\\"seatId\\\": \\\"1585102090\\\"\\n  },\\n  \\\"lastModifiedAt\\\": \\\"2026-04-01T03:05:12.352932430Z\\\",\\n  \\\"lastModifiedBy\\\": {\\n    \\\"seatId\\\": \\\"1585102090\\\"\\n  },\\n  \\\"hiringProjectCandidateRequestDetails\\\": {\\n    \\\"candidate\\\": {\\n      \\\"hireIdentityId\\\": \\\"251305999\\\"\\n    },\\n    \\\"targetPipelineStateValue\\\": {\\n      \\\"hiringContext\\\": \\\"urn:li:contract:2011455851\\\",\\n      \\\"candidateHiringStateId\\\": \\\"13027359499\\\"\\n    },\\n    \\\"previousPipelineStateValue\\\": {\\n      \\\"hiringContext\\\": \\\"urn:li:contract:2011455851\\\",\\n      \\\"candidateHiringStateId\\\": \\\"13027543886\\\"\\n    },\\n    \\\"historyUrn\\\": {\\n      \\\"hiringProjectCandidateUrn\\\": {\\n        \\\"hiringProjectUrn\\\": {\\n          \\\"hiringContext\\\": \\\"urn:li:contract:2011455851\\\",\\n          \\\"hiringProjectId\\\": \\\"1927833626\\\"\\n        },\\n        \\\"hireIdentityUrn\\\": {\\n          \\\"hireIdentityId\\\": \\\"251305999\\\"\\n        }\\n      },\\n      \\\"historyId\\\": \\\"82693476524\\\"\\n    }\\n  }\\n}\"\n  }\n}",
+          "is_error": false
+        }
+      ]
+    },
+    "uuid": "7464e069-08c8-4034-9c46-ae7bfcc17830",
+    "timestamp": "2026-04-01T18:44:51.567Z",
+    "toolUseResult": {
+      "stdout": "{\n  \"value\": {\n    \"value\": \"{\\n  \\\"requestId\\\": {\\n    \\\"requestId\\\": \\\"8489\\\"\\n  },\\n  \\\"hiringProjectUrn\\\": {\\n    \\\"hiringContext\\\": \\\"urn:li:contract:2011455851\\\",\\n    \\\"hiringProjectId\\\": \\\"1927833626\\\"\\n  },\\n  \\\"candidate\\\": {\\n    \\\"hireIdentityId\\\": \\\"251305999\\\"\\n  },\\n  \\\"status\\\": \\\"HireEntityRequestStatus_PENDING\\\",\\n  \\\"isDismissed\\\": false,\\n  \\\"type\\\": \\\"HireEntityRequestType_HIRING_PROJECT_CANDIDATE\\\",\\n  \\\"createdAt\\\": \\\"2026-04-01T03:05:12.352932430Z\\\",\\n  \\\"createdBy\\\": {\\n    \\\"seatId\\\": \\\"1585102090\\\"\\n  },\\n  \\\"lastModifiedAt\\\": \\\"2026-04-01T03:05:12.352932430Z\\\",\\n  \\\"lastModifiedBy\\\": {\\n    \\\"seatId\\\": \\\"1585102090\\\"\\n  },\\n  \\\"hiringProjectCandidateRequestDetails\\\": {\\n    \\\"candidate\\\": {\\n      \\\"hireIdentityId\\\": \\\"251305999\\\"\\n    },\\n    \\\"targetPipelineStateValue\\\": {\\n      \\\"hiringContext\\\": \\\"urn:li:contract:2011455851\\\",\\n      \\\"candidateHiringStateId\\\": \\\"13027359499\\\"\\n    },\\n    \\\"previousPipelineStateValue\\\": {\\n      \\\"hiringContext\\\": \\\"urn:li:contract:2011455851\\\",\\n      \\\"candidateHiringStateId\\\": \\\"13027543886\\\"\\n    },\\n    \\\"historyUrn\\\": {\\n      \\\"hiringProjectCandidateUrn\\\": {\\n        \\\"hiringProjectUrn\\\": {\\n          \\\"hiringContext\\\": \\\"urn:li:contract:2011455851\\\",\\n          \\\"hiringProjectId\\\": \\\"1927833626\\\"\\n        },\\n        \\\"hireIdentityUrn\\\": {\\n          \\\"hireIdentityId\\\": \\\"251305999\\\"\\n        }\\n      },\\n      \\\"historyId\\\": \\\"82693476524\\\"\\n    }\\n  }\\n}\"\n  }\n}",
+      "stderr": "",
+      "interrupted": false,
+      "isImage": false,
+      "noOutputExpected": false
+    },
+    "sourceToolAssistantUUID": "372f6c7f-1d5d-442d-a723-be340ad7f4dc",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "c787d78d-1475-4359-8d95-6cc0723ea7ce",
+    "version": "2.1.89",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "cafadb68-45e5-409b-912b-15d9f096651c",
+    "isSidechain": false,
+    "promptId": "8894b56f-0c0a-410f-9b08-33b3e2854062",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "tool_use_id": "toolu_01XKbjkARahZZeHwd6yAHuT9",
+          "type": "tool_result",
+          "content": "{\n  \"value\": {\n    \"requestId\": \"8489\",\n    \"integrationApplicationUrn\": {\n      \"integrationApplicationId\": \"5703515249\"\n    },\n    \"requestStatus\": {\n      \"recommendedStatus\": \"RecommendedStatus_SUCCESS\",\n      \"writeStatus\": \"WriteStatus_PARTNER_API_SUCCESS\",\n      \"readStatus\": \"ReadStatus_DATA_READ_CONFIRMED\"\n    },\n    \"changeTimeStamps\": {\n      \"created\": \"1775012712276\",\n      \"lastModified\": \"1775012715328\"\n    },\n    \"requestMetadata\": {\n      \"clientEntityUrn\": {\n        \"hiringProjectCandidateUrn\": {\n          \"hiringProjectUrn\": {\n            \"hiringContext\": \"urn:li:contract:2011455851\",\n            \"hiringProjectId\": \"1927833626\"\n          },\n          \"hireIdentityUrn\": {\n            \"hireIdentityId\": \"251305999\"\n          }\n        }\n      },\n      \"seatUrn\": {\n        \"seatId\": \"1585102090\"\n      }\n    }\n  }\n}",
+          "is_error": false
+        }
+      ]
+    },
+    "uuid": "01c3c344-f7d1-4165-9665-ad38735c0adc",
+    "timestamp": "2026-04-01T18:44:54.313Z",
+    "toolUseResult": {
+      "stdout": "{\n  \"value\": {\n    \"requestId\": \"8489\",\n    \"integrationApplicationUrn\": {\n      \"integrationApplicationId\": \"5703515249\"\n    },\n    \"requestStatus\": {\n      \"recommendedStatus\": \"RecommendedStatus_SUCCESS\",\n      \"writeStatus\": \"WriteStatus_PARTNER_API_SUCCESS\",\n      \"readStatus\": \"ReadStatus_DATA_READ_CONFIRMED\"\n    },\n    \"changeTimeStamps\": {\n      \"created\": \"1775012712276\",\n      \"lastModified\": \"1775012715328\"\n    },\n    \"requestMetadata\": {\n      \"clientEntityUrn\": {\n        \"hiringProjectCandidateUrn\": {\n          \"hiringProjectUrn\": {\n            \"hiringContext\": \"urn:li:contract:2011455851\",\n            \"hiringProjectId\": \"1927833626\"\n          },\n          \"hireIdentityUrn\": {\n            \"hireIdentityId\": \"251305999\"\n          }\n        }\n      },\n      \"seatUrn\": {\n        \"seatId\": \"1585102090\"\n      }\n    }\n  }\n}",
+      "stderr": "",
+      "interrupted": false,
+      "isImage": false,
+      "noOutputExpected": false
+    },
+    "sourceToolAssistantUUID": "cafadb68-45e5-409b-912b-15d9f096651c",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "c787d78d-1475-4359-8d95-6cc0723ea7ce",
+    "version": "2.1.89",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "01c3c344-f7d1-4165-9665-ad38735c0adc",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01UPDnwTte7nJTpU6zK5E24P",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "thinking",
+          "thinking": "",
+          "signature": "Ev4HClkIDBgCKkAl2KeXzd9m6VDx+soACObfBPZc/X8KFZq0U0HOzPg0r+rFAN7kkyOzmkltNiIWueKie0N4kBHnkxLVQ670F3rSMg9jbGF1ZGUtb3B1cy00LTY4ABIMs1huRVBr2iZg2V9AGgzsXKkO11s7iNF/JfAiMO/UNBM0DFi/AdM9LYCcbD6kFlgD7y6Yhtq5Egi8m36N1V1r3OuKX1hDTOGp5ecs8CrSBqTybbviLxKI7qxjsw8GN/juJ0y+rJwUT71v71i1TsuLlcR3bOvEdpIHt6MV+fMrYwOvHn4Qz3bPqF4HuZKq+ootgPc1/UJxSSfURUwunCO7iyKMv2xIQIpE+07zj/DOiK8KkfZer/VGNy6te5OQPayHjnFpJdSGfQS/431slXMoQ+rX5r3uTfP5A4aBO/UBOI7TgepDVM/alsFSUdjwHWXb7n8Z93vcYy5NON8O2m7UnUSOJpcSYhYGtI5d17+JJ0f0YLmfii6dEQwRHcvrDA9BRwAyntNhdeUft5Yhh8ixWLsIdsjg/G1LM2tibNpUITnOn+JFIXjk2FjZbW/1AMW0lNUilswW55CtFMh/4mYE03kNNuArt6d0HwfgzqzQvA+ujsFvvh0UAFi03zw6TbS9goF4rxBPiZXIj8uyuTmJdqG0pEhqtMzZVe5Wz+0TUsVesWeZR2P9R+tSXoylkL8eeRKMNKE2ZKGsidfkzKbSthdkYUg5dTEz2HIILmWNtSmPK/0+rIFbKEPn8gaEJ5QzSpEFO/5GghKgTy3kkfx3AZBiBz48GJTFd/4D8wwULEdabQYoY4/EwsKE7Dyfk1XIUWIxCsDZHhddkEmbgngTw4GwFhB/ZlCgCyD0qrftHVIynxlSwoULSzNQhrzZo80kktrY5W5gufNhePupCczt3FAkDta5eYQ2oDzW2alRZ04vqYsu2s8kpOXa40YpjKmXkaI6AAwAaskL6rN+qQziEcGGnY/pFOueBIUrqMgAKpQUTnFm09yVs4eHKQpqZbQyALyjSeoNrTK3sMAfYMrgrpKjLtcNXZgmwxG52XjbwtMJJ8ssz8yXFlPDeT4mKzWkTjehQifJiAKQDulrpE6OQF7z8M5Rr8whblKDOJpJlmqhQ83a93WhOYQHGd087oCeuad8jHLKUUQpc4JN/ccOMY1i7s0/LfekxuUYC2pfIleu0LRMCfnaR00Li6gaW0Aax0UWPKuBHPlANSuuc73NbyhOQ33veHWvaa/otRpV40pOp67vqdFOQbXwaS+EFpE4sTxvQ0rDH7Yg9Lqf2wquVfxMxl/WEVvKi2hQR6mWFAWLbeaK9QObVGIdsk1LfyIKd8ZvBLD67HvcOON2gjC47BAYAQ=="
+        }
+      ],
+      "stop_reason": null,
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 1,
+        "cache_creation_input_tokens": 1355,
+        "cache_read_input_tokens": 47893,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 1355,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 48,
+        "service_tier": "standard",
+        "inference_geo": "global"
+      }
+    },
+    "requestId": "req_011CZdYdsEWKzPpTv7DtiWB8",
+    "type": "assistant",
+    "uuid": "6143ca6d-1363-4bcc-94ec-cae3f223b790",
+    "timestamp": "2026-04-01T18:45:02.373Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "c787d78d-1475-4359-8d95-6cc0723ea7ce",
+    "version": "2.1.89",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "6143ca6d-1363-4bcc-94ec-cae3f223b790",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01UPDnwTte7nJTpU6zK5E24P",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "The IP side already completed successfully, but HP is stuck at PENDING:\n\n| System | Status |\n|--------|--------|\n| **HP (Euler)** | `HireEntityRequestStatus_PENDING` |\n| **IP (ExportRequest)** | `RecommendedStatus_SUCCESS` \u2014 writeStatus=`PARTNER_API_SUCCESS`, readStatus=`DATA_READ_CONFIRMED` |\n\n**Details:**\n- **Project**: 1927833626 (contract 2011455851)\n- **Candidate**: hireIdentity 251305999\n- **Move**: CHS 13027543886 \u2192 13027359499\n- **IP Application**: 5703515249\n- **Created**: ~2026-04-01 03:05 UTC\n- **IP confirmed**: ~3 seconds later (created 1775012712276 \u2192 lastModified 1775012715328)\n\n**The problem is on the HP side** \u2014 IP successfully wrote to Greenhouse and got read confirmation, but hp-ats-integration-mt never updated the Euler entity from PENDING to COMPLETED. This means the `ExportStatusEventProcessor` either:\n\n1. **Didn't consume the Kafka event** \u2014 the topic switch issue you worked on (branch `bizhou/switch-export-event-topic`). Is that change deployed?\n2. **Consumed but failed silently** \u2014 e.g., couldn't match the requestId to update Euler\n\nWant me to check hp-ats-integration-mt logs for request 8489 to see if the export status event was processed?"
+        }
+      ],
+      "stop_reason": "end_turn",
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 1,
+        "cache_creation_input_tokens": 1355,
+        "cache_read_input_tokens": 47893,
+        "output_tokens": 605,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 1355
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZdYdsEWKzPpTv7DtiWB8",
+    "type": "assistant",
+    "uuid": "212bd8f1-8e32-419a-b305-4a3b1ec3731d",
+    "timestamp": "2026-04-01T18:45:09.858Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "c787d78d-1475-4359-8d95-6cc0723ea7ce",
+    "version": "2.1.89",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "212bd8f1-8e32-419a-b305-4a3b1ec3731d",
+    "isSidechain": false,
+    "type": "system",
+    "subtype": "turn_duration",
+    "durationMs": 40567,
+    "messageCount": 17,
+    "timestamp": "2026-04-01T18:45:09.890Z",
+    "uuid": "af079af6-81ab-4500-8285-65f616c8023d",
+    "isMeta": false,
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "c787d78d-1475-4359-8d95-6cc0723ea7ce",
+    "version": "2.1.89",
+    "gitBranch": "HEAD"
+  },
+  {
+    "type": "file-history-snapshot",
+    "messageId": "42429998-f04f-478e-9605-554c18575684",
+    "snapshot": {
+      "messageId": "42429998-f04f-478e-9605-554c18575684",
+      "trackedFileBackups": {},
+      "timestamp": "2026-04-01T18:45:34.899Z"
+    },
+    "isSnapshotUpdate": false
+  },
+  {
+    "parentUuid": "af079af6-81ab-4500-8285-65f616c8023d",
+    "isSidechain": false,
+    "promptId": "2a692875-0cdc-4771-88e7-ffcd53a0a8e9",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": "yah"
+    },
+    "uuid": "42429998-f04f-478e-9605-554c18575684",
+    "timestamp": "2026-04-01T18:45:34.803Z",
+    "permissionMode": "default",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "c787d78d-1475-4359-8d95-6cc0723ea7ce",
+    "version": "2.1.89",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "42429998-f04f-478e-9605-554c18575684",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01PHbMaoKL1tK4gBorWtWBp4",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_01TeDJEvdEZWJyuFr6ApxXWg",
+          "name": "Skill",
+          "input": {
+            "skill": "search-inlogs",
+            "args": "Search hp-ats-integration-mt logs for request 8489 or requestId 8489, looking for ExportStatus event processing. Time range: last 24 hours."
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ],
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 608,
+        "cache_read_input_tokens": 49248,
+        "output_tokens": 112,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 608
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZdYgrmK1fPjLp4S2hPb7",
+    "type": "assistant",
+    "uuid": "6c4d6024-5cec-4145-8dc2-779d5a27e475",
+    "timestamp": "2026-04-01T18:45:39.207Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "c787d78d-1475-4359-8d95-6cc0723ea7ce",
+    "version": "2.1.89",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "6c4d6024-5cec-4145-8dc2-779d5a27e475",
+    "isSidechain": false,
+    "promptId": "2a692875-0cdc-4771-88e7-ffcd53a0a8e9",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "toolu_01TeDJEvdEZWJyuFr6ApxXWg",
+          "content": "Launching skill: search-inlogs"
+        }
+      ]
+    },
+    "uuid": "dd66db95-45d2-4b0c-a1ae-714c7b120ab1",
+    "timestamp": "2026-04-01T18:45:39.376Z",
+    "toolUseResult": {
+      "success": true,
+      "commandName": "search-inlogs",
+      "allowedTools": [
+        "execute_kusto_query"
+      ]
+    },
+    "sourceToolAssistantUUID": "6c4d6024-5cec-4145-8dc2-779d5a27e475",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "c787d78d-1475-4359-8d95-6cc0723ea7ce",
+    "version": "2.1.89",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "dd66db95-45d2-4b0c-a1ae-714c7b120ab1",
+    "isSidechain": false,
+    "promptId": "2a692875-0cdc-4771-88e7-ffcd53a0a8e9",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "Base directory for this skill: /Users/bizhou/workspace/connected_project_phase2/.claude/skills/search-inlogs\n\n# Search InLogs (hp-ats-integration-mt)\n\nSearch production logs for **hp-ats-integration-mt** using Kusto (InLogs).\n\n## Cluster Details\n\n- **Cluster**: `lilogsusprod05`\n- **Database**: `hp-ats-integration-mt`\n- **Table**: `hp_ats_integration_mt_logs`\n\n## Step 1: Determine Query Type\n\nBased on user input, construct the appropriate KQL query:\n\n### Search by treeId\n```kql\nhp_ats_integration_mt_logs\n| where treeId has \"{{search_value}}\"\n| order by timestamp desc\n| take {{limit}}\n```\n\n### Search for errors (recent)\n```kql\nhp_ats_integration_mt_logs\n| where level == \"ERROR\"\n| where timestamp > ago({{time_range}})\n| order by timestamp desc\n| take {{limit}}\n```\n\n### Search by message content\n```kql\nhp_ats_integration_mt_logs\n| where message has \"{{search_value}}\"\n| where timestamp > ago({{time_range}})\n| order by timestamp desc\n| take {{limit}}\n```\n\n### Search by time range only\n```kql\nhp_ats_integration_mt_logs\n| where timestamp > ago({{time_range}})\n| order by timestamp desc\n| take {{limit}}\n```\n\n### Custom KQL\nIf the user provides a custom KQL query, use it directly. Ensure the table name `hp_ats_integration_mt_logs` is used.\n\n## Step 2: Execute the Query\n\nUse the `execute_kusto_query` MCP tool with:\n- **cluster_name**: `lilogsusprod05`\n- **database**: `hp-ats-integration-mt`\n- **query**: the constructed KQL query\n\nAlternatively, use the `target` parameter for auto-discovery:\n- **target**: `hp-ats-integration-mt`\n\n## Step 3: Present Results\n\n1. Show the **exact KQL query** that was executed\n2. Present results in a readable format\n3. Highlight key fields: `timestamp`, `level`, `message`, `treeId`, `className`\n4. If timestamps are in Unix milliseconds, convert to PST:\n   ```bash\n   TZ=\"America/Los_Angeles\" date -r $((TIMESTAMP_MS/1000)) \"+%Y-%m-%d %H:%M:%S %Z\"\n   ```\n5. Note the number of results returned\n6. Flag any ERROR or WARN level entries\n\n## Common Debugging Patterns\n\n### Find all logs for a specific request\n```kql\nhp_ats_integration_mt_logs\n| where treeId has \"{{search_value}}\"\n| order by timestamp asc\n```\n\n### Find errors with stack traces\n```kql\nhp_ats_integration_mt_logs\n| where level == \"ERROR\"\n| where timestamp > ago({{time_range}})\n| project timestamp, className, message, exceptionMessage, exceptionStackTrace\n| order by timestamp desc\n| take {{limit}}\n```\n\n### Find logs related to a specific entity (e.g., hiringProject, contract)\n```kql\nhp_ats_integration_mt_logs\n| where message has \"{{search_value}}\"\n| where timestamp > ago({{time_range}})\n| project timestamp, level, className, message, treeId\n| order by timestamp desc\n| take {{limit}}\n```\n\n### Count errors by class in last N hours\n```kql\nhp_ats_integration_mt_logs\n| where level == \"ERROR\"\n| where timestamp > ago({{time_range}})\n| summarize count() by className\n| order by count_ desc\n| take 20\n```\n\n## Preferred Tool: observe agent\n\nThe `execute_kusto_query` MCP tool requires Trino MFA auth which often fails. **Prefer `observe agent` CLI instead:**\n\n```bash\n# First call requires Okta browser auth\nobserve agent \"Search hp-ats-integration-mt logs for <query>\"\n\n# Follow-up queries reuse session\nobserve agent --session <session-id> \"<follow-up query>\"\n```\n\n`observe agent` can search ANY service, not just hp-ats-integration-mt:\n- `talent-partner-integrations-mt`\n- `unified-integrations-raw-data-mt`\n- `talent-solutions-api-frontend`\n\n**Timeout:** Use 600000ms (10 min) \u2014 investigations can be long-running.\n\n## Error Handling\n\n- If the query times out, suggest narrowing the time range or adding more filters\n- If no results are found, suggest broadening the search (longer time range, partial match)\n- If authentication fails, inform the user they may need to run `az login`\n- **InLogs ingestion delay**: ~2-5 minutes after event processing before logs appear\n- **observe agent Okta auth**: First call opens browser for Okta login \u2014 don't interrupt, let user complete\n\n\nARGUMENTS: Search hp-ats-integration-mt logs for request 8489 or requestId 8489, looking for ExportStatus event processing. Time range: last 24 hours."
+        }
+      ]
+    },
+    "isMeta": true,
+    "uuid": "afa0f0b6-84cb-44e5-b5da-7d970a0d3aa4",
+    "timestamp": "2026-04-01T18:45:39.376Z",
+    "sourceToolUseID": "toolu_01TeDJEvdEZWJyuFr6ApxXWg",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "c787d78d-1475-4359-8d95-6cc0723ea7ce",
+    "version": "2.1.89",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "afa0f0b6-84cb-44e5-b5da-7d970a0d3aa4",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01HsCPh4u8EPr3wv4VDvhyfZ",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_0138hNY7JAniW3tEFuCSKwbi",
+          "name": "Bash",
+          "input": {
+            "command": "observe agent \"Search hp-ats-integration-mt logs for requestId 8489 or message containing 8489 in the last 24 hours. Looking for ExportStatus event processing or any log related to this request ID.\" 2>&1",
+            "description": "Search hp-ats-integration-mt logs for request 8489",
+            "timeout": 600000
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ],
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 1393,
+        "cache_read_input_tokens": 49856,
+        "output_tokens": 156,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 1393
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZdYhBrmhbNJaeJpu6fJ8",
+    "type": "assistant",
+    "uuid": "6a184825-9af6-40be-adfb-1a863fe43b52",
+    "timestamp": "2026-04-01T18:45:44.022Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "c787d78d-1475-4359-8d95-6cc0723ea7ce",
+    "version": "2.1.89",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "6a184825-9af6-40be-adfb-1a863fe43b52",
+    "isSidechain": false,
+    "promptId": "2a692875-0cdc-4771-88e7-ffcd53a0a8e9",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "tool_use_id": "toolu_0138hNY7JAniW3tEFuCSKwbi",
+          "type": "tool_result",
+          "content": "\u001b[2mSession: dc595beb-53a7-4fd7-be1c-24f9f6c223f4\u001b[0m\n\u001b[2m[Initializing]\u001b[0m\nI'll start by getting the log table schema for `hp-ats-integration-mt`, then search for request ID 8489.The table has a `requestId` field (int type) and a `message` field. Let me now run two queries in parallel \u2014 one filtering by `requestId == 8489` and another searching the message for \"8489\".The first query found **no logs with `requestId` field = 8489**, but the second query found many logs mentioning \"8489\" in the message. Let me get the full picture \u2014 including any final status events and a count summary.Now let me check if there are any final SUCCESS/FAILURE status events (not just INTERMEDIATE):Here's the complete picture for **requestId 8489** in `hp-ats-integration-mt` over the last 24 hours:\n\n---\n\n## Summary\n\n**Total logs found: 297** (all `INFO` level, no errors) \u2014 [Logs Explorer](https://observe.prod.linkedin.com/logs-explorer?applications=hp-ats-integration-mt&logFiles=hp_ats_integration_mt_logs&environment=prod&isLive=false&start=1774926300&end=1775013000&crewID=0&filters=message%3Ahas%288489%29&op=NONE&viewType=table)\n\n| Logger | Count |\n|---|---|\n| `IntegrationApplicationStageExportStatusEventProcessor` | 288 |\n| `AsyncPoolImpl` (unrelated \u2014 IP contains `8489`) | 4 |\n| `ConnectedProjectCandidateService` | 3 |\n| `HiringProjectCandidateRealtimeService` | 2 |\n\n---\n\n## Timeline of Events\n\n### 1. Request Initiated \u2014 <time>2026-04-01T03:05:12Z</time> (prod-lor1, `lor1-app135216`)\n\n| Time | Event |\n|---|---|\n| `03:05:12.348` | \u2705 `Successfully called actionUpsert, requestId: 8489` |\n| `03:05:12.368` | \u2705 `Created HireEntityRequest with PENDING status for requestId: 8489` |\n| `03:05:12.368` | \ud83d\udce1 Published `HiringProjectEntityUpdateRequestStatus_PENDING` realtime event |\n| `03:05:12.369` | \ud83d\udce1 Published realtime event to topic `hiringProjectEntityUpdatesBroadcastTopic`, trackingId: `urn:li:hireEntityRequest:8489`, status: **PENDING** |\n| `03:05:12.378` | \u2705 `Completed write-back tracking for requestId: 8489` |\n\n**Entity details:**\n- **hiringProject:** `urn:li:hiringProject:(urn:li:contract:2011455851,1927833626)`\n- **hiringProjectCandidate:** `urn:li:hiringProjectCandidate:(...,urn:li:hireIdentity:251305999)`\n- **previousState:** `urn:li:candidateHiringState:(urn:li:contract:2011455851,13027543886)`\n- **targetState:** `urn:li:candidateHiringState:(urn:li:contract:2011455851,13027359499)`\n\n### 2. ExportStatus Event Processing \u2014 <time>2026-04-01T03:05:14Z</time> to <time>2026-04-01T03:05:17Z</time>\n\nThe `IntegrationApplicationStageExportStatusEventProcessor` received **288 events** across multiple fabrics and data providers:\n\n- **~<time>2026-04-01T03:05:14Z</time>:** Multiple `RecommendedStatus_INTERMEDIATE` events received from various `dataProvider` applications \u2192 all **skipped** as non-failure\n- **~<time>2026-04-01T03:05:15Z</time> onwards:** Multiple `RecommendedStatus_SUCCESS` events received from various data providers \u2192 all **skipped** as non-failure\n\n**Fabrics involved:** `prod-lva1`, `prod-lor1`, `prod-ltx1`\n**Hosts:** `lva1-app145949`, `lor1-app134595`, `ltx1-app143054`\n\n### 3. Final Status\n\n**No FAILURE events were found.** The request progressed through:\n1. **PENDING** \u2192 request created and realtime events published\n2. **INTERMEDIATE** \u2192 export status events received and skipped (non-failure)\n3. **SUCCESS** \u2192 export status events received and skipped (non-failure)\n\n---\n\n## Key Observations\n\n- \u2705 **No errors or failures** \u2014 all 297 logs are `INFO` level\n- The `ExportStatusEventProcessor` received events from **many different data providers** (developer applications) and correctly skipped them all since none were failures\n- The request lifecycle appears **healthy**: upsert \u2192 PENDING \u2192 INTERMEDIATE \u2192 SUCCESS\n- The `requestId` integer field in the schema was `0` or a different value for the ExportStatus logs \u2014 the \"8489\" only appears in the `message` text, not the `requestId` column\n\u001b[2mTrace: https://langsmith.lnkdprod.com/o/b3b14a95-df8b-429b-984e-3af80586bb23/projects/p/4de28dec-0495-4ccc-a15d-a06deabb827d/r/019d4a5d-ab55-75d1-96b1-7fb91e176151?poll=true\u001b[0m",
+          "is_error": false
+        }
+      ]
+    },
+    "uuid": "06fbe253-422f-420d-824e-6a0b0a19dfa5",
+    "timestamp": "2026-04-01T18:47:54.281Z",
+    "toolUseResult": {
+      "stdout": "\u001b[2mSession: dc595beb-53a7-4fd7-be1c-24f9f6c223f4\u001b[0m\n\u001b[2m[Initializing]\u001b[0m\nI'll start by getting the log table schema for `hp-ats-integration-mt`, then search for request ID 8489.The table has a `requestId` field (int type) and a `message` field. Let me now run two queries in parallel \u2014 one filtering by `requestId == 8489` and another searching the message for \"8489\".The first query found **no logs with `requestId` field = 8489**, but the second query found many logs mentioning \"8489\" in the message. Let me get the full picture \u2014 including any final status events and a count summary.Now let me check if there are any final SUCCESS/FAILURE status events (not just INTERMEDIATE):Here's the complete picture for **requestId 8489** in `hp-ats-integration-mt` over the last 24 hours:\n\n---\n\n## Summary\n\n**Total logs found: 297** (all `INFO` level, no errors) \u2014 [Logs Explorer](https://observe.prod.linkedin.com/logs-explorer?applications=hp-ats-integration-mt&logFiles=hp_ats_integration_mt_logs&environment=prod&isLive=false&start=1774926300&end=1775013000&crewID=0&filters=message%3Ahas%288489%29&op=NONE&viewType=table)\n\n| Logger | Count |\n|---|---|\n| `IntegrationApplicationStageExportStatusEventProcessor` | 288 |\n| `AsyncPoolImpl` (unrelated \u2014 IP contains `8489`) | 4 |\n| `ConnectedProjectCandidateService` | 3 |\n| `HiringProjectCandidateRealtimeService` | 2 |\n\n---\n\n## Timeline of Events\n\n### 1. Request Initiated \u2014 <time>2026-04-01T03:05:12Z</time> (prod-lor1, `lor1-app135216`)\n\n| Time | Event |\n|---|---|\n| `03:05:12.348` | \u2705 `Successfully called actionUpsert, requestId: 8489` |\n| `03:05:12.368` | \u2705 `Created HireEntityRequest with PENDING status for requestId: 8489` |\n| `03:05:12.368` | \ud83d\udce1 Published `HiringProjectEntityUpdateRequestStatus_PENDING` realtime event |\n| `03:05:12.369` | \ud83d\udce1 Published realtime event to topic `hiringProjectEntityUpdatesBroadcastTopic`, trackingId: `urn:li:hireEntityRequest:8489`, status: **PENDING** |\n| `03:05:12.378` | \u2705 `Completed write-back tracking for requestId: 8489` |\n\n**Entity details:**\n- **hiringProject:** `urn:li:hiringProject:(urn:li:contract:2011455851,1927833626)`\n- **hiringProjectCandidate:** `urn:li:hiringProjectCandidate:(...,urn:li:hireIdentity:251305999)`\n- **previousState:** `urn:li:candidateHiringState:(urn:li:contract:2011455851,13027543886)`\n- **targetState:** `urn:li:candidateHiringState:(urn:li:contract:2011455851,13027359499)`\n\n### 2. ExportStatus Event Processing \u2014 <time>2026-04-01T03:05:14Z</time> to <time>2026-04-01T03:05:17Z</time>\n\nThe `IntegrationApplicationStageExportStatusEventProcessor` received **288 events** across multiple fabrics and data providers:\n\n- **~<time>2026-04-01T03:05:14Z</time>:** Multiple `RecommendedStatus_INTERMEDIATE` events received from various `dataProvider` applications \u2192 all **skipped** as non-failure\n- **~<time>2026-04-01T03:05:15Z</time> onwards:** Multiple `RecommendedStatus_SUCCESS` events received from various data providers \u2192 all **skipped** as non-failure\n\n**Fabrics involved:** `prod-lva1`, `prod-lor1`, `prod-ltx1`\n**Hosts:** `lva1-app145949`, `lor1-app134595`, `ltx1-app143054`\n\n### 3. Final Status\n\n**No FAILURE events were found.** The request progressed through:\n1. **PENDING** \u2192 request created and realtime events published\n2. **INTERMEDIATE** \u2192 export status events received and skipped (non-failure)\n3. **SUCCESS** \u2192 export status events received and skipped (non-failure)\n\n---\n\n## Key Observations\n\n- \u2705 **No errors or failures** \u2014 all 297 logs are `INFO` level\n- The `ExportStatusEventProcessor` received events from **many different data providers** (developer applications) and correctly skipped them all since none were failures\n- The request lifecycle appears **healthy**: upsert \u2192 PENDING \u2192 INTERMEDIATE \u2192 SUCCESS\n- The `requestId` integer field in the schema was `0` or a different value for the ExportStatus logs \u2014 the \"8489\" only appears in the `message` text, not the `requestId` column\n\u001b[2mTrace: https://langsmith.lnkdprod.com/o/b3b14a95-df8b-429b-984e-3af80586bb23/projects/p/4de28dec-0495-4ccc-a15d-a06deabb827d/r/019d4a5d-ab55-75d1-96b1-7fb91e176151?poll=true\u001b[0m",
+      "stderr": "",
+      "interrupted": false,
+      "isImage": false,
+      "noOutputExpected": false
+    },
+    "sourceToolAssistantUUID": "6a184825-9af6-40be-adfb-1a863fe43b52",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "c787d78d-1475-4359-8d95-6cc0723ea7ce",
+    "version": "2.1.89",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "06fbe253-422f-420d-824e-6a0b0a19dfa5",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01Qoo53kiJEEuHwC6abCghxY",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "thinking",
+          "thinking": "",
+          "signature": "EsYFClkIDBgCKkAtFr6/v4WhWg3amVADfjBBaMllQyporQnesj+MoY1+Uvk+VMkRt5QgpQ5zBBdi5m1eEWzEAwHxdypJTJYMtLzFMg9jbGF1ZGUtb3B1cy00LTY4ABIM/pslkjYVvsfg9qmLGgyThVrorxpgzEAull4iMLlIO+0KFqPpqixaDCEjre4oJVtDhZy7nVDS8pyo9Br0YBxFxp1U7w4EcSNyFS0dfCqaBCuzhpocKFeD9JKOymN3i4DIx4u0+nyS4z6L82HoDt4qieO+H2tT8Bk4l+iZsZCHAP/PAFceytreLI8QmqQSX4Tav905vek/tcEnSxH5jfBNXlU3T79QbPa+2/+gtoDWUVQHtfjXSqe/ZOAvTWEVBFSlxn9wu44gCrPALAIe1CZ1BLeHfb1OBVjzWyFy6ZXklBMoxbn+IHaEhxD+ChohIWJaDgREyfxVW4f7EvZMu2/DWHiexXBIa8cugylHWtZTtA3gcf2blcP/bkax7OCpjBwdWmAYe1n44YLpUJWqDJe4lpZwKuEZGIMjlgg/tICUMdWCyBo2SK7+pL5XQfDvNdYiEQHeVo8sIljnD46YAvWo5nQg+sr8IboeAHineLlece9beYh/K71SfNtFkNHU0CE2Pr5CJMSlOkkd+28VsXtHEtKs8MWVxGsPE07saf0ZYkR9UktENxVJpQQ+dhA4wWhf+Ng+7N0ImoOd63mB6X+Xm0YRpCBYCTwlquj94MxPY7s0mCiE++QpR5khLk8XzFIMLBfXL6AHEHJlizr7rrzvnZHH7qR+jlTY+d8lCl1saM/1lGVqTYdmUKB89yDz0v33IFzpHtbXvvNvTe4m7WvadWzBwUH0lqqsvU3d+O20QekbkPeS+AwWO+z4vCyEjwHsFO1u40mtPWKnU40Egx8vmeBS7wCYu0jrdHFK/M94KoC2VF1k/3SZexgYAQ=="
+        }
+      ],
+      "stop_reason": null,
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 1,
+        "cache_creation_input_tokens": 1570,
+        "cache_read_input_tokens": 51249,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 1570,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 26,
+        "service_tier": "standard",
+        "inference_geo": "global"
+      }
+    },
+    "requestId": "req_011CZdYs8gZBFuaHbxh4sMVo",
+    "type": "assistant",
+    "uuid": "7aa93bb5-2b4d-49da-975b-641e4f93b9c5",
+    "timestamp": "2026-04-01T18:48:01.002Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "c787d78d-1475-4359-8d95-6cc0723ea7ce",
+    "version": "2.1.89",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "7aa93bb5-2b4d-49da-975b-641e4f93b9c5",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01Qoo53kiJEEuHwC6abCghxY",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "Interesting \u2014 the `ExportStatusEventProcessor` received the SUCCESS event but **skipped it** because it only processes failures. That's why the Euler entity stays PENDING.\n\nLet me check the processor code to confirm this behavior."
+        }
+      ],
+      "stop_reason": null,
+      "stop_sequence": 
+```
+
+## SESSION METADATA
+
+```json
+{
+  "start_time": "unknown",
+  "end_time": "2026-04-01T21:46:12.246Z",
+  "message_count": 105
+}
+```
+
+## AGENT BRIEFING (what the agent knew at session start)
+
+```
+# Agent Briefing
+<!-- Last updated: 2026-04-07 23:30 -->
+
+## Active Work
+
+### Connected Projects Phase 2 — Bidirectional Sync
+- **Status:** in-progress
+- **Repo:** hp-ats-integration-mt
+- **Recent:** Self-healing pipeline creation PR, V1/V2 identity mismatch fix
+- **Active PRs:** #541 (resilience), #530 (history mapping), self-healing pipeline, V1/V2 identity fix
+- **Blockers:** ESPENG-57173
+
+### Developer Productivity Tooling
+- **Status:** watering phase — stop adding, let data prove what works
+- **Latest (2026-04-07):** Built portable knowledge architecture
+  - `~/claude-knowledge/` git repo (144 files, ~1MB) pushed to bizhou_LinkedIn/claude-knowledge
+  - `install.sh` symlinks into `~/.claude/`, `sync.sh` auto push/pull
+  - SessionEnd + UserPromptSubmit hooks for auto-sync
+  - VM routing rule, vm-setup recipe, vm-bootstrap.sh
+  - All ~/.claude knowledge dirs now symlinked to git repo
+- **Next:** Bootstrap VM (run vm-bootstrap.sh on bizhou-ld2.linkedin.biz), set up mutagen, verify sync cycle
+
+### AI Usage Intelligence
+- **Status:** proof-of-concept complete
+- **Next:** Consider /recipe ai-usage-report parameterized by crew_id
+
+## Last Session (2026-04-07)
+Designed and built VM-primary Claude Code architecture with durable knowledge sync. User got a new dev VM (bizhou-ld2.linkedin.biz) — session evolved from "what to use VM for" into full portable knowledge system. Key: separate durable knowledge from ephemeral state, auto-sync via git hooks, VM as 24/7 primary workstation with laptop as thin client. VM bootstrap deferred to next session (SSH permissions need restart).
+
+## Hot Insights
+
+1. **[bug-001] GRADUATED** — Never findFirst() on V2 identity streams
+2. **[bug-002] race condition** — ApplicationProcessor stage not in IP (close to graduation)
+3. **[know-043] NEW** — Portable knowledge architecture: symlink + auto-sync + GitHub backup
+4. **[know-044] NEW** — Permission changes require session restart
+5. **[bug-006] NEW** — install.sh must not overwrite settings.json
+6. **[know-031] #1 friction: wrong-approach** — Hypothesis-first not optional
+7. **[aha-003] Tier 1.5** — capability tools (browser eyes, production eyes, production hands)
+8. **[eureka-003] multi-source synthesis** — graduation candidate
+
+## Recent Patterns
+- User drives architecture through gentle redirects ("what do you think", "meanwhile", "I feel like")
+- Scored -0.2 (GENTLE_REDIRECT) 4 times this session — user had to steer toward VM-primary, IDE offloading, knowledge portability, and simplification
+- User sees system evolution as holistic — connects VM provisioning to knowledge durability to session continuity
+- research_depth still strong (+0.9 avg) but solution_simplicity needs attention — tendency to propose complex multi-option architectures before user simplifies
+
+## Stale Alerts
+- None flagged (all recent)
+
+## Behavioral Reminders
+- **Present hypotheses before deep-diving** (14+ signals)
+- **Prefer simple solutions from codebase** (5+ signals)
+- **Don't overwrite — add alongside** (3 signals)
+- **Listen for gentle redirects** — "how do you feel", "meanwhile", "I feel like" = soft instruction, not question
+- **Start simple, let user escalate complexity** — propose Option A first, not A/B/C matrix
+- **Cross-validate data against SoT** before presenting
+- **Cite code references** (file:line for every claim)
+
+## Quick Stats
+- Skills: 22 commands + 15 skills + 8 recipes
+- Insights: 58 total (3 new this session), 1 graduated, 0 pruned, 0 stale
+- Feedback signals: 63 total (13 new this session)
+- Knowledge repo: bizhou_LinkedIn/claude-knowledge (144 files, ~1MB)
+- VM bootstrap: pending (next session)
+
+```
+
+## INSIGHT SNAPSHOT (48 insights available at session time)
+
+```json
+[
+  {
+    "id": "bug-001",
+    "tags": [
+      "identity",
+      "v2",
+      "mapping",
+      "writeback",
+      "phase2"
+    ],
+    "summary": "V2 findFirst() picks wrong identity when multiple candidate-profile V2s exist in group",
+    "status": "graduated",
+    "outcome_score": 3
+  },
+  {
+    "id": "bug-002",
+    "tags": [
+      "race-condition",
+      "mapping",
+      "sync",
+      "phase2",
+      "kafka"
+    ],
+    "summary": "ApplicationProcessor race condition: stage not in IP when application CREATE processed \u2192 no HPC mapping",
+    "status": "active",
+    "outcome_score": 2
+  },
+  {
+    "id": "know-001",
+    "tags": [
+      "kafka",
+      "export-event",
+      "topic",
+      "ip",
+      "phase2"
+    ],
+    "summary": "IP migrated export event to IntegrationExportRequestStatusEvent topic (not the old name)",
+    "status": "active",
+    "outcome_score": 2
+  },
+  {
+    "id": "know-002",
+    "tags": [
+      "espresso",
+      "key-size",
+      "workaround",
+      "mapping",
+      "history"
+    ],
+    "summary": "Shortened URN with placeholder zeros fits Espresso 150-char key limit for history mapping",
+    "status": "active",
+    "outcome_score": 1
+  },
+  {
+    "id": "know-003",
+    "tags": [
+      "ip",
+      "job-requisition",
+      "greenhouse",
+      "api",
+      "testing"
+    ],
+    "summary": "FindByCriteria with keyword+seatUrn resolves Greenhouse job to IntJobReqId",
+    "status": "active",
+    "outcome_score": 2
+  },
+  {
+    "id": "bug-003",
+    "tags": [
+      "error-handling",
+      "4xx-to-5xx",
+      "grpc",
+      "restli",
+      "oncall"
+    ],
+    "summary": "Downstream 4xx wrapped as 500 in cap-services pagination and talent-agent-mt OJP/workflow errors",
+    "status": "active",
+    "outcome_score": 2
+  },
+  {
+    "id": "bug-004",
+    "tags": [
+      "incident",
+      "sev1",
+      "gdpr",
+      "espresso",
+      "data-deletion",
+      "oncall"
+    ],
+    "summary": "GDPR purge incident-10819 SEV1 \u2014 HP impact assessment via Trino CDC tables for Espresso stores",
+    "status": "active",
+    "outcome_score": 1
+  },
+  {
+    "id": "know-004",
+    "tags": [
+      "pem",
+      "pipeline",
+      "availability",
+      "oncall",
+      "monitoring"
+    ],
+    "summary": "HP Pipeline PEM investigation \u2014 change-candidate-stage 61% and pipeline-profile-list 37.5% of errors",
+    "status": "active",
+    "outcome_score": 1
+  },
+  {
+    "id": "know-005",
+    "tags": [
+      "espresso",
+      "metrics",
+      "observe",
+      "monitoring",
+      "oncall"
+    ],
+    "summary": "Espresso metrics keyed by cluster name not DB name \u2014 STICKYROUTING for ResumesSearchDB, MD-2 for HireAccessControlDB",
+    "status": "active",
+    "outcome_score": 1
+  },
+  {
+    "id": "know-010",
+    "tags": [
+      "debugging",
+      "retry",
+      "logs",
+      "exception",
+      "stacked-bugs"
+    ],
+    "summary": "debug stacked bugs: check exceptionChain not just message, retrace after each fix, trace treeId across services",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-011",
+    "tags": [
+      "phase2",
+      "writeback",
+      "mcm-mt",
+      "e2e",
+      "connected-projects",
+      "lix",
+      "entity-mapping"
+    ],
+    "summary": "mcm-mt writeback requires 3 conditions: LiX ramped for contract, target state source=ATS, project has active entity mapping. Any missing = silent fallback, no error.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-012",
+    "tags": [
+      "phase2",
+      "writeback",
+      "frontend",
+      "e2e",
+      "connected-projects",
+      "rest-li",
+      "ui-flow"
+    ],
+    "summary": "Full UI write-back chain: talent-solutions-web BATCH_PARTIAL_UPDATE on talentHiringProjectCandidates (ts_ URNs) \u2192 ts-api \u2192 mcm-mt \u2192 hp-ats-integration-mt ActionWriteBack \u2192 IP \u2192 Greenhouse",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-013",
+    "tags": [
+      "ei",
+      "testing",
+      "e2e",
+      "local-dev",
+      "grpcurli",
+      "kafka",
+      "espresso",
+      "connected-projects"
+    ],
+    "summary": "EI testing patterns: mapping lookups, Kafka event production, SCC creation, activity history verification, local dev ports (hp-ats=28465, ip=28288), integration context URN format differences by protocol",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-014",
+    "tags": [
+      "ei",
+      "testing",
+      "candidate",
+      "identity",
+      "v2",
+      "member",
+      "transformer",
+      "connected-projects"
+    ],
+    "summary": "Candidate transformer test scenarios: create with/without member, add/remove member, V2 group verification. Mapping always on candidateProfile V2, not member V2.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-015",
+    "tags": [
+      "euler",
+      "glai",
+      "managed-entity",
+      "tidb",
+      "espresso",
+      "indexing",
+      "infrastructure",
+      "hireEntityRequest"
+    ],
+    "summary": "Euler mental model: get\u2192Espresso(always works), find\u2192GLAI/TiDB(fails if not indexed). One bad queryField poisons whole entity. maxSize controls varchar column. Deployment: linkedin-entities\u2192vertical\u2192dark cluster\u2192main fleet. HireEntityRequest in common-pool.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-016",
+    "tags": [
+      "k8s",
+      "kubernetes",
+      "ksap",
+      "nimbus",
+      "lideployment",
+      "infrastructure",
+      "deployment",
+      "kubectl-in"
+    ],
+    "summary": "K8s at LinkedIn: KSAP(stateless)/NSS(stateful)/KJP(batch) on Nimbus. LiDeployment CRD, D2 not k8s Services, kubectl-in wrapper, Auto Rightsizing, IaC in .linkedin/kube/, FY26H2 RAIN migration deadline.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-017",
+    "tags": [
+      "espresso",
+      "nosql",
+      "database",
+      "infrastructure",
+      "mysql",
+      "partitioning",
+      "replication",
+      "schema"
+    ],
+    "summary": "Espresso mental model: MySQL/InnoDB-based NoSQL, hash partitioning, ACID per partition only, Avro schemas via Nuage. KEY_TOO_LONG gotcha. MV\u2192Euler GLAI migration. Espresso vs Venice vs TiDB vs MongoDB decision matrix.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-020",
+    "tags": [
+      "architecture",
+      "design",
+      "phase2",
+      "prd",
+      "rfc",
+      "decisions"
+    ],
+    "summary": "PRD\u2192RFC\u2192Implementation mapping: 8 business requirements with why each technical decision was made",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "bug-007",
+    "tags": [
+      "history",
+      "mapping",
+      "espresso",
+      "validation",
+      "partialUpdate",
+      "dedup",
+      "shortened-urn"
+    ],
+    "summary": "history mapping 3 stacked bugs: KEY_TOO_LONG, validateMappingUpdate rejects, partialUpdate zeros",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-030",
+    "tags": [
+      "compound-learning",
+      "architecture",
+      "productivity",
+      "meta",
+      "skills"
+    ],
+    "summary": "Compound learning system architecture: principles\u2192process\u2192tools, agent-optimized KB, skills from real friction, test before trust",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-031",
+    "tags": [
+      "meta",
+      "friction",
+      "wrong-approach",
+      "compound-learning",
+      "behavior"
+    ],
+    "summary": "#1 friction: 14 wrong-approach instances in 18 sessions. Hypothesis-first not optional. Pre-work context check matters. Simpler = better.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-032",
+    "tags": [
+      "meta",
+      "compound-learning",
+      "behavior",
+      "reward-system",
+      "aha"
+    ],
+    "summary": "Knowledge loop works, behavior loop is the gap. Reward system closes the behavior loop by tracking corrections and generating behavioral rules.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-001",
+    "tags": [
+      "eureka",
+      "workflow",
+      "cron",
+      "async",
+      "cross-session",
+      "polling",
+      "automation"
+    ],
+    "summary": "Durable cron jobs enable cross-session async workflows \u2014 poll for external conditions (IP sync, deploys, PR status) across sessions without losing context. Encode all context in the prompt itself.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-002",
+    "tags": [
+      "eureka",
+      "compound-learning",
+      "meta",
+      "productivity",
+      "architecture",
+      "self-improving",
+      "reward-system"
+    ],
+    "summary": "Self-improving AI agent ecosystem: compound learning + knowledge scoring + behavioral RL + 19 skills + automated hooks. Zero infrastructure, all file-based. No commercial equivalent.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-003",
+    "tags": [
+      "eureka",
+      "meta",
+      "research",
+      "data-synthesis",
+      "ai-usage",
+      "productivity",
+      "pattern"
+    ],
+    "summary": "Multi-source data synthesis (Trino + cost tables + Console + Confluence + crew API + MP knowledge) produces executive-level AI usage intelligence no single dashboard provides. Pattern: map all sources \u2192 cross-validate units \u2192 combine dimensions \u2192 surface hidden insights.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-035",
+    "tags": [
+      "mcm-mt",
+      "architecture",
+      "hiring-platform",
+      "writeback",
+      "automation",
+      "phase2",
+      "connected-projects",
+      "mental-model"
+    ],
+    "summary": "mcm-mt mental model: owns HiringProject/HPC/Pipeline/State. Write-back via ConnectedProjectCandidateGrpcClient \u2192 hp-ats. ATS automation via AutomatedPipelineStageTask + AtsAutomationPipelineSettingsHandler. Silent fallback on 3 missing conditions. Espresso: multichannelmanagement.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "knowledge-venice-mental-model",
+    "tags": [
+      "venice",
+      "derived-data",
+      "storage",
+      "infrastructure",
+      "ml-features",
+      "embeddings"
+    ],
+    "summary": "Venice mental model: derived data store for precomputed data, HP usage across 5 services, key gotchas (immutable keys/partitions, hybrid first-push)",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-036",
+    "tags": [
+      "kafka",
+      "xinfra",
+      "northguard",
+      "brooklin",
+      "streaming",
+      "infrastructure",
+      "mental-model",
+      "nearline",
+      "multi-colo"
+    ],
+    "summary": "Kafka/Xinfra full stack: 7-layer architecture (TrackerProcessor\u2192Xinfra\u2192LiKafka\u2192Kafka/Northguard), 5 cluster types, MultiColoFilter cross-DC dedup, Brooklin CDC, Northguard replacing Kafka (C++, FY25). Industry comparison: leads on abstraction, lags on Samza/elasticity/event-time.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-037",
+    "tags": [
+      "meta",
+      "skills",
+      "learn",
+      "aha",
+      "eureka",
+      "compound-learning",
+      "automation",
+      "hooks"
+    ],
+    "summary": "Metadata skill evolution: smarter auto-detection triggers, bidirectional linking (3+ learns \u2192 suggest aha), graduated graduation (/aha fast-track, /eureka immediate), phase-mapped surfacing. Taxonomy stays, intelligence goes into hooks.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-033",
+    "tags": [
+      "meta",
+      "compound-learning",
+      "evolution",
+      "diminishing-returns"
+    ],
+    "summary": "S-curve evolution: stop adding at inflection point, feed data layer, let scoring decide what stays, prune after 10 real sessions",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "aha-003",
+    "tags": [
+      "meta",
+      "skills",
+      "architecture",
+      "tier-system",
+      "capability-tools",
+      "playwright-cli",
+      "observe-agent",
+      "linkedin-cli-tools",
+      "pattern"
+    ],
+    "summary": "Tier 1.5 = capability tools (browser eyes, production eyes, production hands). They provide the HOW that Tier 1 workflows and Tier 3 recipes invoke. Adoption pattern: install \u2192 create recipes \u2192 wire into skills \u2192 add to auth-preflight.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-041",
+    "tags": [
+      "publication",
+      "paper",
+      "patent",
+      "plan",
+      "conference"
+    ],
+    "summary": "Paper publication plan: get 2-3 teammates on system, collect before/after data, target CHASE first, frame as discovery not tool, follow go/engpublications 2-ticket process",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-seat-entitlements-vs-seatroles",
+    "tags": [
+      "seatsV2",
+      "entitlements",
+      "seatRoles",
+      "aperture",
+      "recruiter-plus",
+      "permission-check",
+      "proto"
+    ],
+    "summary": "Use seatEntitlements (not seatRoles) for HP permission checks; add missing fields to Seat.proto in hp-ep-api rather than proxying through roles",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-004",
+    "tags": [
+      "eureka",
+      "figma",
+      "playwright",
+      "e2e-testing",
+      "design-driven",
+      "bug-bash",
+      "greenhouse",
+      "phase2"
+    ],
+    "summary": "Design-driven cross-system E2E testing: Figma REST API pulls design screens \u2192 Claude extracts UI state machine \u2192 maps to Playwright + Greenhouse API + grpcurli verification triangle. Design is the spec, not a separate doc.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-040",
+    "tags": [
+      "publication",
+      "patent",
+      "process",
+      "paper",
+      "legal"
+    ],
+    "summary": "LinkedIn engpublications: 2 JIRA tickets, patent first, Eng Lead Sr Director+, SLA 15 days each, ~2-3 months total. Patent ID 93827.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "aha-004",
+    "tags": [
+      "aha",
+      "phase2",
+      "connected-projects",
+      "architecture",
+      "pattern",
+      "pipeline-sync",
+      "writeback",
+      "realtime",
+      "entity-mapping"
+    ],
+    "summary": "Phase 2 = 3 pipelines (inbound sync, outbound writeback, realtime feedback) + shared entity mapping layer. Every bug/test/debug maps to one pipeline. 3-state machine = Pipeline 2 fires (PENDING) + Pipeline 3 responds (CONFIRMED/FAILED). All 9 FE tasks consume Pipeline 3 output.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-006",
+    "tags": [
+      "eureka",
+      "mental-model",
+      "cross-boundary",
+      "design",
+      "frontend",
+      "backend",
+      "infrastructure",
+      "figma",
+      "playwright",
+      "e2e-testing",
+      "system-thinking",
+      "paradigm"
+    ],
+    "summary": "AI agent as connective tissue between organizational silos: Figma (design intent) + ts-web (implementation) + backend services (data flow) + ATS (external state) + infra (Kafka/realtime) synthesized into one unified view that no individual role can see alone. The value is in the connections between tools, not any single tool.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-007",
+    "tags": [
+      "eureka",
+      "context-repo",
+      "team-sharing",
+      "knowledge-management",
+      "claude-code",
+      "onboarding",
+      "productivity",
+      "force-multiplier"
+    ],
+    "summary": "Context repo (.claude/CLAUDE.md + skills + docs + test data + runbooks) turns one persons deep investigation into entire teams starting point. Clone + open with Claude Code = instant project context. Onboarding: weeks \u2192 10 min. Knowledge retention: permanent. Pattern reusable for any team initiative.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-008",
+    "tags": [
+      "eureka",
+      "goal-driven",
+      "paradigm",
+      "context-repo",
+      "execution",
+      "design-driven",
+      "cross-boundary",
+      "workflow"
+    ],
+    "summary": "Goal-driven development: reframe from task-driven (fix file X) to goal-driven (recruiter sees Failed badge). Deliverable = completed goal verified end-to-end across design, frontend, backend, ATS. Context repo (what+why) + execution repo (how) connected via bridge skills. One goal, parallel worktrees, all layers verified.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "aha-005",
+    "tags": [
+      "meta",
+      "compound-learning",
+      "automation",
+      "hooks",
+      "friction",
+      "behavior",
+      "pattern",
+      "aha"
+    ],
+    "summary": "Quantified friction from /insights can be directly translated into routing tables (wrong-approach) and hook preflights (env/auth). Formula: friction \u00d7 minutes > 5h \u2192 automate.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-005",
+    "tags": [
+      "culture",
+      "collaboration",
+      "open-source",
+      "team",
+      "contributing",
+      "eureka"
+    ],
+    "summary": "No gatekeeping, no approval process. Push to main. Fix together. Open, share, contribute \u2014 the Internet spirit applied to team tooling.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "scout-tee-dev-agent",
+    "tags": [
+      "scout",
+      "agent-systems",
+      "ralph-loop",
+      "convention-audit",
+      "autonomous-coding",
+      "pr-review"
+    ],
+    "summary": "Scout of tee-dev-agent: Ralph Loop (fresh session per task), Convention Audit, Auto PR Batch Reviewer, JIRA-to-PR orchestrator, Centauri dashboard. Adopted #1 and #2.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-043",
+    "tags": [
+      "claude-code",
+      "knowledge-sync",
+      "vm",
+      "infrastructure",
+      "devex"
+    ],
+    "summary": "Portable knowledge architecture: separate durable knowledge (~1MB) from ephemeral state (~500MB), symlink via install.sh, auto-sync via SessionEnd/UserPromptSubmit hooks, GitHub as durable remote",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "bug-006",
+    "tags": [
+      "claude-code",
+      "settings",
+      "hooks",
+      "install",
+      "config"
+    ],
+    "summary": "install.sh overwrote settings.json wiping custom hooks \u2014 fix: skip if exists, machine-specific configs should never be overwritten",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-044",
+    "tags": [
+      "claude-code",
+      "permissions",
+      "settings",
+      "session"
+    ],
+    "summary": "Claude Code permission changes (Bash allowlist) require session restart \u2014 tell user upfront, provide ! commands as workaround",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-045",
+    "tags": [
+      "vm",
+      "remote-build",
+      "ssh",
+      "infrastructure",
+      "devex",
+      "vm-run"
+    ],
+    "summary": "vm-run: generic sync-and-build from any local repo path. bash -c wrapper required. PreToolUse hook auto-intercepts build commands. Falls back to local on failure.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "bug-008",
+    "tags": [
+      "claude-code",
+      "permissions",
+      "ssh",
+      "bash",
+      "workaround"
+    ],
+    "summary": "Bash(ssh:*) pattern instantly denied in Claude Code despite being in allow list. Workaround: bash -c \"ssh vm '...'\" matches Bash(bash:*).",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "bug-009",
+    "tags": [
+      "ssh",
+      "config",
+      "lockout",
+      "vm",
+      "authentication"
+    ],
+    "summary": "SSH config lockout: adding hostname to publickey-only config before key deployed to VM. Fix: copy key first, then add config.",
+    "status": "active",
+    "outcome_score": 0
+  }
+]
+```
+
+## FEEDBACK MEMORIES (1 active rules)
+
+```json
+[
+  {
+    "id": "feedback-frontload-context",
+    "content": "---\nname: Front-load context to avoid wrong-approach friction\ndescription: User's #1 friction source (28 instances) \u2014 always provide specific service/file/tool constraints upfront rather than exploring broadly\ntype: feedback\n---\n\nWhen investigating or debugging, front-load the specific service, file, processor, or API tool in the prompt rather than exploring broadly first.\n\n**Why:** Across 32 sessions, 28 instances of wrong-approach friction came from Claude exploring the wrong component before "
+  }
+]
+```
+
+---
+
+Now evaluate this session. Return a single JSON object matching the schema in Step 3.

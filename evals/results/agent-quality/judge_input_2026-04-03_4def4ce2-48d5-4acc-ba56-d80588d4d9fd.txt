@@ -1,0 +1,1963 @@
+
+# Agent Session Judge Prompt
+# Version: 1.1
+
+You are an expert evaluator assessing the quality of an AI Partner's collaborative behavior
+during a work session. You will receive a session transcript and produce a structured
+verdict for each task/interaction within the session.
+
+## Your Role
+
+You are the judge — not the AI Partner, not the human. Your job is to evaluate the
+PARTNERSHIP quality: not just "did the code come out right?" but "did the AI Partner
+collaborate effectively with the human?"
+
+This means evaluating:
+1. **Technical correctness** — Was the approach right?
+2. **Collaboration quality** — Did the AI Partner listen, adapt, and match the human's style?
+3. **Learning behavior** — Did the AI Partner use past knowledge and generate new insights?
+4. **Human behavioral awareness** — Did the AI Partner read the human's signals correctly?
+
+The human in this partnership communicates through gentle redirects ("I feel like...",
+"meanwhile...", "what do you think?"), not direct commands. The AI Partner must detect
+these soft signals as real instructions, not just suggestions.
+
+## Input Format
+
+You will receive:
+1. **Session transcript** — the full conversation between human and AI Partner, including
+   tool calls and their results
+2. **Session metadata** — date, repo context, duration, tools available
+3. **Agent briefing** — what the AI Partner knew at session start (active work, hot insights,
+   behavioral reminders)
+4. **Insight snapshot** — the full manifest.jsonl at time of session, so you can determine
+   which insights were available and whether the agent should have used them
+5. **Feedback memories** — all feedback-type memories active at session time, representing
+   rules the agent should have followed
+
+## Evaluation Process
+
+### Step 1: Segment into Tasks
+
+Break the session into discrete tasks. A task is a unit of work initiated by the user.
+Signals for task boundaries:
+- User sends a new request/instruction
+- Topic changes significantly
+- User redirects to a different area
+
+For each task, record:
+- `task_id`: sequential (T1, T2, ...)
+- `task_summary`: one-line description of what the user asked
+- `task_start`: approximate message index
+- `task_end`: approximate message index
+
+### Step 2: Evaluate Each Task
+
+For each task, answer these questions:
+
+#### 2a. Was the first approach correct?
+- **correct**: Agent's initial plan/action aligned with what the user wanted
+- **partially_correct**: Right direction but needed minor adjustment
+- **incorrect**: Agent went down the wrong path, user had to redirect
+
+#### 2b. How many redirections?
+Count the number of times the user had to correct or redirect the agent.
+- 0 = clean execution
+- 1 = minor course correction
+- 2+ = significant misalignment
+
+#### 2c. Insight & Memory Audit
+
+For each task, cross-reference against the insight snapshot and feedback memories:
+
+**Insights that SHOULD have been used:**
+Search the manifest for insights matching the task's repo, tags, and keywords.
+For each match with `status: "active"` and `outcome_score >= 0`:
+- Was the insight retrieved (visible in agent's tool calls)?
+- Was it applied (visible in agent's behavior)?
+- If not retrieved: `context_miss` — scout/retrieval failed
+- If retrieved but not applied: `context_miss` — agent ignored known knowledge
+- If correctly applied: note as `insight_hit` (positive signal)
+
+**Feedback memories that were violated:**
+Check each active feedback memory. Did the agent's behavior contradict it?
+- If violated: contributes to `wrong_approach` or `over_engineering` depending on the rule
+- If followed: note as `rule_followed` (positive signal)
+
+**Insights that WERE used:**
+Track which insights the agent retrieved. For each:
+- Did it help? → `insight_outcome: "helped"`
+- Did it mislead? → `insight_outcome: "wrong"` (candidate for pruning)
+- Irrelevant? → `insight_outcome: "irrelevant"` (retrieval noise)
+
+Record in the task verdict:
+```json
+{
+  "insight_audit": {
+    "should_have_used": ["insight-id-1", "insight-id-2"],
+    "actually_used": ["insight-id-3"],
+    "hits": [{"id": "insight-id-3", "outcome": "helped"}],
+    "misses": [{"id": "insight-id-1", "reason": "not retrieved"}],
+    "violations": [{"feedback_id": "feedback-xyz", "rule": "present hypotheses first"}]
+  }
+}
+```
+
+This directly feeds the compound learning system's outcome tracking and graduation/pruning.
+
+#### 2d. Failure classification (if not correct)
+Classify using exactly ONE primary failure type from the taxonomy (see `failure_taxonomy.md`):
+
+| Type | Code | Definition |
+|------|------|------------|
+| Wrong approach | `wrong_approach` | Agent's conceptual plan was wrong |
+| Skill deficiency | `skill_deficiency` | Right skill invoked, but skill instructions led to suboptimal result |
+| Skill gap | `skill_gap` | No skill exists for this workflow; agent improvised |
+| Context miss | `context_miss` | Relevant info existed but wasn't retrieved/used |
+| Over-engineering | `over_engineering` | Did more than asked |
+| Tool misuse | `tool_misuse` | Wrong tool or wrong tool usage |
+| User ambiguity | `user_ambiguity` | Request was genuinely unclear |
+
+If multiple failure types apply, use the PRIORITY CHAIN to pick the primary:
+```
+wrong_approach > context_miss > skill_deficiency > over_engineering > tool_misuse > skill_gap > user_ambiguity
+```
+
+Record secondary types as `contributing_types` but only one `primary_type`.
+
+#### 2e. Evidence
+Quote the specific messages (user corrections, agent wrong turns) that support your
+classification. Include message indices.
+
+#### 2f. Counterfactual
+What SHOULD the agent have done? Be specific:
+- "Should have checked `pipeline.py:142` before proposing a fix"
+- "Should have asked 'which processor?' before investigating"
+- "Should have used `curli` instead of Trino"
+
+#### 2g. Fix target
+What artifact should change to prevent this failure?
+- Specific skill file (e.g., `~/.claude/commands/investigate.md`)
+- Specific rule (e.g., `CLAUDE.md` behavioral gate)
+- Specific hook (e.g., `UserPromptSubmit`)
+- New skill/recipe to create
+- Insight to add/update
+
+### Step 3: Session-Level Metrics
+
+After evaluating all tasks, compute:
+
+```json
+{
+  "session_id": "...",
+  "session_date": "YYYY-MM-DD",
+  "repo": "repo-name or 'global'",
+  "total_tasks": N,
+  "correct_first_approach": N,
+  "agreement_rate": N/total (percentage),
+  "total_redirections": N,
+  "avg_redirections_per_task": float,
+  "failure_distribution": {
+    "wrong_approach": N,
+    "skill_deficiency": N,
+    "skill_gap": N,
+    "context_miss": N,
+    "over_engineering": N,
+    "tool_misuse": N,
+    "user_ambiguity": N
+  },
+  "dominant_failure_type": "the type with highest count (excluding user_ambiguity)",
+  "severity_weighted_score": float,
+  "insight_summary": {
+    "total_available": "N insights in manifest at session time",
+    "total_retrieved": "N insights agent actually read",
+    "total_hits": "N insights that helped",
+    "total_misses": "N insights that should have been used but weren't",
+    "total_wrong": "N insights that misled the agent",
+    "total_violations": "N feedback rules violated",
+    "retrieval_precision": "hits / retrieved",
+    "retrieval_recall": "hits / (hits + misses)",
+    "insight_ids_to_prune": ["ids with outcome 'wrong'"],
+    "insight_ids_to_graduate": ["ids with repeated 'helped' outcomes"],
+    "feedback_ids_to_strengthen": ["violated feedback memory ids"]
+  },
+  "behavioral_loop": {
+    "signals_detected": "N",
+    "signals_total": "N",
+    "signal_detection_rate": "float",
+    "adaptation_speed_distribution": {"immediate": "N", "delayed": "N", "resistant": "N"},
+    "proactive_suggestions": {"appropriate": "N", "pushy": "N", "missed": "N"}
+  },
+  "compound_learning": {
+    "retrieval_quality": "effective|partial|poor",
+    "insights_generated": "N",
+    "insights_quality": "high|medium|low",
+    "duplicates_created": "N",
+    "graduation_candidates": [],
+    "prune_candidates": [],
+    "stale_candidates": [],
+    "loop_closed": "boolean"
+  },
+  "session_score": "float (0.0-1.0, weighted composite)",
+  "tasks": [
+    {
+      "task_id": "T1",
+      "task_summary": "...",
+      "first_approach": "correct|partially_correct|incorrect",
+      "redirections": N,
+      "primary_failure_type": "type or null if correct",
+      "contributing_types": [],
+      "evidence": "...",
+      "counterfactual": "...",
+      "fix_target": "...",
+      "insight_audit": {
+        "should_have_used": [],
+        "actually_used": [],
+        "hits": [],
+        "misses": [],
+        "violations": []
+      }
+    }
+  ]
+}
+```
+
+### Step 4: Improvement Simulation
+
+For each failure type with count > 0 (excluding `user_ambiguity`):
+
+Estimate the agreement rate improvement if ALL failures of that type were fixed:
+```
+simulated_agreement = (correct_first_approach + failures_of_this_type) / total_tasks
+delta = simulated_agreement - current_agreement_rate
+```
+
+Rank failure types by `delta` (highest improvement first). This tells the improvement
+loop which failure type to fix first.
+
+## Severity Weights
+
+Used for `severity_weighted_score`:
+
+| Type | Weight | Rationale |
+|------|--------|-----------|
+| `wrong_approach` | 3.0 | Wastes 20+ minutes, erodes trust |
+| `context_miss` | 2.5 | Means learning system is failing |
+| `skill_deficiency` | 2.0 | Skill exists but isn't good enough |
+| `over_engineering` | 1.5 | Wastes time, adds complexity |
+| `tool_misuse` | 1.0 | Usually just slower, not wrong |
+| `skill_gap` | 1.0 | Latent — only matters when task arises |
+| `user_ambiguity` | 0.0 | Not agent's fault |
+
+```
+severity_weighted_score = 1 - (sum(weight × count) / (max_possible_severity × total_tasks))
+```
+
+Where `max_possible_severity = 3.0 × total_tasks` (worst case: all wrong_approach).
+
+## Grading Rubric for Edge Cases
+
+### Partially correct first approach
+- If agent was on the right track but needed 1 minor correction → `partially_correct`,
+  count 0.5 toward correct_first_approach
+- "Minor" = same component, same tool, slightly different parameters or scope
+
+### Multiple failure types on one task
+- Pick primary by priority chain
+- Record all others as contributing_types
+- Only the primary counts in failure_distribution
+
+### Agent self-corrected before user noticed
+- If agent caught its own mistake and corrected WITHOUT user intervention → count as `correct`
+- Self-correction is a positive signal, note it in evidence
+
+### User changed requirements mid-task
+- If the user shifted what they wanted after agent started → `user_ambiguity`
+- This is NOT the agent's fault
+
+### Agent asked good clarifying questions
+- If agent asked before acting and the question was appropriate → `correct`
+- Asking is always better than guessing wrong
+
+## Step 5: Human Behavioral Loop Assessment
+
+The human-AI partnership has a behavioral feedback loop:
+- Human provides gentle redirects → AI Partner should detect and adapt
+- Human confirms non-obvious approaches → AI Partner should reinforce these
+- Human's silence after a proposal = soft approval
+- Human's "what do you think?" = wants the AI Partner to lead with an opinion
+
+For each task, evaluate the AI Partner's behavioral awareness:
+
+### 5a. Signal Detection
+Did the AI Partner correctly interpret the human's communication style?
+
+| Signal Type | Example | Correct Response |
+|-------------|---------|-----------------|
+| Gentle redirect | "I feel like X" | Pivot immediately to X |
+| Soft instruction | "meanwhile can you..." | Treat as a hard requirement |
+| Thinking aloud | "what do you think?" | Lead with a recommendation |
+| Confirmation | "sounds good, do it" | Execute without over-explaining |
+| Escalation | "no, that's wrong" | Hard stop, ask what's right |
+
+Score: `signal_detection_rate` = correctly_interpreted / total_signals
+
+### 5b. Adaptation Speed
+How quickly did the AI Partner adapt after a redirect?
+- **immediate**: Pivoted in the very next response
+- **delayed**: Took 1-2 extra messages to course-correct
+- **resistant**: Continued the old approach despite redirect
+
+### 5c. Proactive Suggestions
+Did the AI Partner proactively suggest useful next steps?
+- Suggested a relevant skill at the right moment? (positive)
+- Suggested too many things / was pushy? (negative)
+- Missed an obvious suggestion opportunity? (negative)
+
+Record in the task verdict:
+```json
+{
+  "behavioral_loop": {
+    "signals_detected": N,
+    "signals_total": N,
+    "signal_detection_rate": float,
+    "adaptation_speed": "immediate|delayed|resistant",
+    "proactive_suggestions": {
+      "appropriate": N,
+      "pushy": N,
+      "missed": N
+    }
+  }
+}
+```
+
+## Step 6: Compound Learning Assessment
+
+The AI Partner operates within a compound learning system that accumulates knowledge
+across sessions. Evaluate how well this system functioned:
+
+### 6a. Knowledge Retrieval Quality
+Was the scout hook effective? Did the right insights surface?
+- Check the UserPromptSubmit hook output at session start
+- Was the agent-briefing.md content relevant to the session's work?
+- Did manifest search return useful insights?
+
+### 6b. Knowledge Generation Quality
+Did the AI Partner generate good new insights during this session?
+- Were insights actionable ("When X, do Y because Z")?
+- Were they properly categorized (bug-track vs knowledge-track)?
+- Did they overlap with existing insights (duplication)?
+- Were they too specific (won't generalize) or too vague (not actionable)?
+
+### 6c. Knowledge Lifecycle Health
+Across the session:
+- Any insights that should be **graduated** (used 3+ times, consistently helpful)?
+- Any insights that should be **pruned** (misleading, outdated)?
+- Any insights that should be **flagged stale** (>90 days, code references may be wrong)?
+- Any feedback memories that need **strengthening** (violated despite existing)?
+
+### 6d. Compound Loop Closure
+Did the AI Partner close the learning loop?
+- If significant work was done, did it run/suggest `/compound`?
+- Were outcome-log entries created for insights used?
+- Was the agent-briefing updated?
+
+Record:
+```json
+{
+  "compound_learning": {
+    "retrieval_quality": "effective|partial|poor",
+    "insights_generated": N,
+    "insights_quality": "high|medium|low",
+    "duplicates_created": N,
+    "graduation_candidates": ["insight-ids"],
+    "prune_candidates": ["insight-ids"],
+    "stale_candidates": ["insight-ids"],
+    "loop_closed": true/false
+  }
+}
+```
+
+## Integrated Session Score
+
+Combine all dimensions into a single session quality score:
+
+```
+session_score = (
+    0.35 × agreement_rate +           # Technical correctness (35%)
+    0.25 × signal_detection_rate +     # Human behavioral awareness (25%)
+    0.20 × insight_effectiveness +     # Compound learning quality (20%)
+    0.20 × (1 - redirection_rate)      # Collaboration efficiency (20%)
+)
+```
+
+Where:
+- `agreement_rate` = correct_first_approach / total_tasks
+- `signal_detection_rate` = from Step 5a
+- `insight_effectiveness` = (hits - wrong) / max(hits + misses, 1)
+- `redirection_rate` = total_redirections / (total_tasks × 3) (capped at 1.0)
+
+This score reflects the FULL partnership — not just code output, but how well the
+AI Partner collaborates, learns, and adapts.
+
+## Output Format
+
+Return a single JSON object matching the schema in Step 3, extended with:
+- `behavioral_loop` (from Step 5) at session level and per-task
+- `compound_learning` (from Step 6) at session level
+- `session_score` (from Integrated Session Score)
+- `summary`: 2-3 sentence natural language assessment of the partnership quality
+
+Include a `summary` field with a 2-3 sentence natural language assessment of the session.
+
+
+---
+
+## SESSION TRANSCRIPT
+
+```json
+[
+  {
+    "type": "permission-mode",
+    "permissionMode": "default",
+    "sessionId": "4def4ce2-48d5-4acc-ba56-d80588d4d9fd"
+  },
+  {
+    "type": "file-history-snapshot",
+    "messageId": "4f8fffe0-4209-4882-922a-d2f73ca0bdba",
+    "snapshot": {
+      "messageId": "4f8fffe0-4209-4882-922a-d2f73ca0bdba",
+      "trackedFileBackups": {},
+      "timestamp": "2026-04-03T04:11:40.173Z"
+    },
+    "isSnapshotUpdate": false
+  },
+  {
+    "parentUuid": null,
+    "isSidechain": false,
+    "promptId": "fa382301-315f-4bf7-ba83-c3849ae25223",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": "hi"
+    },
+    "uuid": "4f8fffe0-4209-4882-922a-d2f73ca0bdba",
+    "timestamp": "2026-04-03T04:11:40.097Z",
+    "permissionMode": "default",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "4def4ce2-48d5-4acc-ba56-d80588d4d9fd",
+    "version": "2.1.91",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "4f8fffe0-4209-4882-922a-d2f73ca0bdba",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01Axi3fshg5JhCww2Czx1p1B",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "\n\nHi! How can I help you today?"
+        }
+      ],
+      "stop_reason": "end_turn",
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 21074,
+        "cache_read_input_tokens": 11858,
+        "output_tokens": 13,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 21074
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZgBfWP1ApwJ7a5hEggjK",
+    "type": "assistant",
+    "uuid": "33d0b742-5a7b-421d-9330-1fb00e41c8e4",
+    "timestamp": "2026-04-03T04:11:42.983Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "4def4ce2-48d5-4acc-ba56-d80588d4d9fd",
+    "version": "2.1.91",
+    "gitBranch": "HEAD"
+  },
+  {
+    "type": "file-history-snapshot",
+    "messageId": "2a4ba7b4-3d9d-4a81-bf4b-857823e24e30",
+    "snapshot": {
+      "messageId": "2a4ba7b4-3d9d-4a81-bf4b-857823e24e30",
+      "trackedFileBackups": {},
+      "timestamp": "2026-04-03T04:11:52.693Z"
+    },
+    "isSnapshotUpdate": false
+  },
+  {
+    "parentUuid": "33d0b742-5a7b-421d-9330-1fb00e41c8e4",
+    "isSidechain": false,
+    "promptId": "94d9dcd7-67bc-4c02-b914-d6bc4a1e7269",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": "what've done today"
+    },
+    "uuid": "2a4ba7b4-3d9d-4a81-bf4b-857823e24e30",
+    "timestamp": "2026-04-03T04:11:52.610Z",
+    "permissionMode": "default",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "4def4ce2-48d5-4acc-ba56-d80588d4d9fd",
+    "version": "2.1.91",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "2a4ba7b4-3d9d-4a81-bf4b-857823e24e30",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_019bihtn7URPsXuHaJrtdwwV",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "thinking",
+          "thinking": "",
+          "signature": "EsUCClkIDBgCKkAtsYudkNgdIEME6EeKouAAVGy0kcBYqd1uY2VWt3E4MlZacpj7nNLY7echzD7kKAwZCHf/2l1zTA8ktTe5+EoYMg9jbGF1ZGUtb3B1cy00LTY4ABIMb4jiB5qOL3iZSlrjGgzSopH75a7MAkCwfa8iMKF7+6VmwI7+13GUiVqnDhpucFOTAYMabq0MUhtp3O0O+tPcz7LEkNknaudmNyVzICqZAThBNHn2IYNRldgYIdPKeY9QnqeDEcE0dtYMv4i214KKhyAAQV47I3xQnU8TPRml96HdgqIAriuo4V3KUmcarKtINvX00aNh+OeKB46ECmKZT1fy8eZ6bEHpFmL9oqU/DixHMw1Zk8tET+qCgk9p1nNoqbMjQf/bqgBl0jff0Xq2ZjjU3kpd7zaK3BWMDUTnkPPeGB6LyUp02hgB"
+        }
+      ],
+      "stop_reason": null,
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 21,
+        "cache_read_input_tokens": 32932,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 21,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 27,
+        "service_tier": "standard",
+        "inference_geo": "global"
+      }
+    },
+    "requestId": "req_011CZgBgRgkqkgLtKCwVajcc",
+    "type": "assistant",
+    "uuid": "3147fcda-3dfe-4b75-9be2-ef1f0d32f9a1",
+    "timestamp": "2026-04-03T04:11:57.620Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "4def4ce2-48d5-4acc-ba56-d80588d4d9fd",
+    "version": "2.1.91",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "3147fcda-3dfe-4b75-9be2-ef1f0d32f9a1",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_019bihtn7URPsXuHaJrtdwwV",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "Let me check today's activity."
+        }
+      ],
+      "stop_reason": null,
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 21,
+        "cache_read_input_tokens": 32932,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 21,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 27,
+        "service_tier": "standard",
+        "inference_geo": "global"
+      }
+    },
+    "requestId": "req_011CZgBgRgkqkgLtKCwVajcc",
+    "type": "assistant",
+    "uuid": "daff5275-a79f-4cd9-834f-c0d649806a90",
+    "timestamp": "2026-04-03T04:11:57.621Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "4def4ce2-48d5-4acc-ba56-d80588d4d9fd",
+    "version": "2.1.91",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "daff5275-a79f-4cd9-834f-c0d649806a90",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_019bihtn7URPsXuHaJrtdwwV",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_018arXfffPaduFwa1EsYLRnX",
+          "name": "Bash",
+          "input": {
+            "command": "for dir in */; do if [ -d \"$dir/.git\" ]; then echo \"=== $dir ===\" && git -C \"$dir\" log --oneline --since=\"2026-04-02\" --author=\"bizhou\" 2>/dev/null; fi; done",
+            "description": "Check git logs for today across all repos"
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ],
+      "stop_reason": null,
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 21,
+        "cache_read_input_tokens": 32932,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 21,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 27,
+        "service_tier": "standard",
+        "inference_geo": "global"
+      }
+    },
+    "requestId": "req_011CZgBgRgkqkgLtKCwVajcc",
+    "type": "assistant",
+    "uuid": "d12799ae-4b07-4a31-95c1-1f539086dc3f",
+    "timestamp": "2026-04-03T04:12:00.025Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "4def4ce2-48d5-4acc-ba56-d80588d4d9fd",
+    "version": "2.1.91",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "d12799ae-4b07-4a31-95c1-1f539086dc3f",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_019bihtn7URPsXuHaJrtdwwV",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_01FUFR9d8BeiscnNfhQQnBZi",
+          "name": "Bash",
+          "input": {
+            "command": "git log --oneline --since=\"2026-04-02\" --author=\"bizhou\" 2>/dev/null; ls -lt *.md 2>/dev/null | head -10",
+            "description": "Check project root for today's activity"
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ],
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 21,
+        "cache_read_input_tokens": 32932,
+        "output_tokens": 330,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 21
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZgBgRgkqkgLtKCwVajcc",
+    "type": "assistant",
+    "uuid": "e9340a55-964e-4c7c-a1d0-961aff4a26c2",
+    "timestamp": "2026-04-03T04:12:00.808Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "4def4ce2-48d5-4acc-ba56-d80588d4d9fd",
+    "version": "2.1.91",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "d12799ae-4b07-4a31-95c1-1f539086dc3f",
+    "isSidechain": false,
+    "promptId": "94d9dcd7-67bc-4c02-b914-d6bc4a1e7269",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "tool_use_id": "toolu_018arXfffPaduFwa1EsYLRnX",
+          "type": "tool_result",
+          "content": "=== hire-access-control-api/ ===\n=== hire-access-control/ ===\n=== hiring-marketplace-analytics-spark/ ===\n=== hp-ats-integration-mt/ ===\n26d15fe Address PR review: remove unused LixUtil, clean up test, revert unrelated config\n3d5075b Enhance HireEntityRequest write resilience in ActionWriteBack flow\n=== hp-dev-agents/ ===\n624a781 Add CI auto-fix to /ship skill\n2be64bd Add /ship and /wait-for skills for automated PR\u2192prod pipeline\n=== metric-defs/ ===\n=== talent-solutions-api/ ===",
+          "is_error": false
+        }
+      ]
+    },
+    "uuid": "ac90c397-3de4-4fd2-b74b-105b6cb8678f",
+    "timestamp": "2026-04-03T17:23:48.597Z",
+    "toolUseResult": {
+      "stdout": "=== hire-access-control-api/ ===\n=== hire-access-control/ ===\n=== hiring-marketplace-analytics-spark/ ===\n=== hp-ats-integration-mt/ ===\n26d15fe Address PR review: remove unused LixUtil, clean up test, revert unrelated config\n3d5075b Enhance HireEntityRequest write resilience in ActionWriteBack flow\n=== hp-dev-agents/ ===\n624a781 Add CI auto-fix to /ship skill\n2be64bd Add /ship and /wait-for skills for automated PR\u2192prod pipeline\n=== metric-defs/ ===\n=== talent-solutions-api/ ===",
+      "stderr": "",
+      "interrupted": false,
+      "isImage": false,
+      "noOutputExpected": false
+    },
+    "sourceToolAssistantUUID": "d12799ae-4b07-4a31-95c1-1f539086dc3f",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "4def4ce2-48d5-4acc-ba56-d80588d4d9fd",
+    "version": "2.1.91",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "e9340a55-964e-4c7c-a1d0-961aff4a26c2",
+    "isSidechain": false,
+    "promptId": "94d9dcd7-67bc-4c02-b914-d6bc4a1e7269",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "tool_use_id": "toolu_01FUFR9d8BeiscnNfhQQnBZi",
+          "type": "tool_result",
+          "content": "-rw-r--r--@ 1 bizhou  staff   20371 Apr  2 18:30 EI_E2E_TESTING_REFERENCE.md\n-rw-r--r--@ 1 bizhou  staff   12122 Mar 31 00:53 claude.md\n-rw-r--r--@ 1 bizhou  staff   17155 Mar 25 18:56 EI_DATA_SUMMARY.md\n-rw-r--r--@ 1 bizhou  staff   67501 Mar 25 18:12 worklog_phase2_processor_testing_2026-03-15.md\n-rw-r--r--@ 1 bizhou  staff    5894 Mar 24 16:06 worklog_cse_22364_jobs_report_403.md\n-rw-r--r--@ 1 bizhou  staff   11308 Mar 16 10:25 ip_team_ats_job_posting_missing.md\n-rw-r--r--@ 1 bizhou  staff   13860 Mar 16 09:28 espresso_schema_maxsize_fix.md\n-rw-r--r--@ 1 bizhou  staff   25957 Mar 13 18:50 worklog_export_status_processor_e2e_2026-03-13.md\n-rw-r--r--@ 1 bizhou  staff    4994 Mar  5 17:02 entitlement_investigation.md\n-rw-r--r--@ 1 bizhou  staff    1727 Mar  5 15:34 phase2_todo_notes.md",
+          "is_error": false
+        }
+      ]
+    },
+    "uuid": "f4096065-c2c5-4e58-8658-61fce6856e6d",
+    "timestamp": "2026-04-03T17:23:48.750Z",
+    "toolUseResult": {
+      "stdout": "-rw-r--r--@ 1 bizhou  staff   20371 Apr  2 18:30 EI_E2E_TESTING_REFERENCE.md\n-rw-r--r--@ 1 bizhou  staff   12122 Mar 31 00:53 claude.md\n-rw-r--r--@ 1 bizhou  staff   17155 Mar 25 18:56 EI_DATA_SUMMARY.md\n-rw-r--r--@ 1 bizhou  staff   67501 Mar 25 18:12 worklog_phase2_processor_testing_2026-03-15.md\n-rw-r--r--@ 1 bizhou  staff    5894 Mar 24 16:06 worklog_cse_22364_jobs_report_403.md\n-rw-r--r--@ 1 bizhou  staff   11308 Mar 16 10:25 ip_team_ats_job_posting_missing.md\n-rw-r--r--@ 1 bizhou  staff   13860 Mar 16 09:28 espresso_schema_maxsize_fix.md\n-rw-r--r--@ 1 bizhou  staff   25957 Mar 13 18:50 worklog_export_status_processor_e2e_2026-03-13.md\n-rw-r--r--@ 1 bizhou  staff    4994 Mar  5 17:02 entitlement_investigation.md\n-rw-r--r--@ 1 bizhou  staff    1727 Mar  5 15:34 phase2_todo_notes.md",
+      "stderr": "",
+      "interrupted": false,
+      "isImage": false,
+      "noOutputExpected": false
+    },
+    "sourceToolAssistantUUID": "e9340a55-964e-4c7c-a1d0-961aff4a26c2",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "4def4ce2-48d5-4acc-ba56-d80588d4d9fd",
+    "version": "2.1.91",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "f4096065-c2c5-4e58-8658-61fce6856e6d",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01UjuoLGZ6AkYTb2ktQJ5qVR",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "Here's what you did today (April 2):\n\n**hp-ats-integration-mt** (2 commits):\n- `26d15fe` \u2014 Address PR review: remove unused LixUtil, clean up test, revert unrelated config\n- `3d5075b` \u2014 Enhance HireEntityRequest write resilience in ActionWriteBack flow\n\n**hp-dev-agents** (2 commits):\n- `624a781` \u2014 Add CI auto-fix to /ship skill\n- `2be64bd` \u2014 Add /ship and /wait-for skills for automated PR\u2192prod pipeline\n\nYou also updated `EI_E2E_TESTING_REFERENCE.md` (touched at 6:30 PM).\n\nLooks like a mix of PR review fixes on the ActionWriteBack resilience work and tooling improvements (new `/ship` and `/wait-for` skills). Want to dig into any of these?"
+        }
+      ],
+      "stop_reason": "end_turn",
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 1,
+        "cache_creation_input_tokens": 27130,
+        "cache_read_input_tokens": 11858,
+        "output_tokens": 211,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 27130
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZhE53RS5FjhxkkK7mygi",
+    "type": "assistant",
+    "uuid": "4cf3a4fa-f238-40a5-bab5-9f8af024d84d",
+    "timestamp": "2026-04-03T17:23:58.264Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "4def4ce2-48d5-4acc-ba56-d80588d4d9fd",
+    "version": "2.1.91",
+    "gitBranch": "HEAD"
+  },
+  {
+    "type": "file-history-snapshot",
+    "messageId": "5aab457c-4c05-4d61-bcbb-bf9dd8ee69da",
+    "snapshot": {
+      "messageId": "5aab457c-4c05-4d61-bcbb-bf9dd8ee69da",
+      "trackedFileBackups": {},
+      "timestamp": "2026-04-03T18:05:59.948Z"
+    },
+    "isSnapshotUpdate": false
+  },
+  {
+    "parentUuid": "4cf3a4fa-f238-40a5-bab5-9f8af024d84d",
+    "isSidechain": false,
+    "promptId": "6176c5e1-ecbf-4355-af1f-4af6c9c59e80",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": "could you list all open incident, and see anything related to us"
+    },
+    "uuid": "5aab457c-4c05-4d61-bcbb-bf9dd8ee69da",
+    "timestamp": "2026-04-03T18:05:59.854Z",
+    "permissionMode": "default",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "4def4ce2-48d5-4acc-ba56-d80588d4d9fd",
+    "version": "2.1.91",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "5aab457c-4c05-4d61-bcbb-bf9dd8ee69da",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01Aq9e2JHHThdYREMcvLAiU4",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "thinking",
+          "thinking": "",
+          "signature": "EuECClkIDBgCKkA5z1dfzt1NGxD0gz/zNNIgDODGBqtOX7HWAw9iO7QVqYJRNB6Qwyf4/MTmQx2Yhu1/+BExyipGMtdT2/uqTIvqMg9jbGF1ZGUtb3B1cy00LTY4ABIMaZS8hFSYeOVAIploGgwbQuwh+xa5MDEY0MIiMNV5fqftI6/5wKdO6RPGPHhA5JPkV8vLwMxvYFO90nKsRtgRjjnItprZHZ6/8byJkiq1ARJ/rWQ/SWVu6oeOm+VtlTJNk605+d532bLzD1Jvb8WXm8HZ0ds1vKhk17QuUxKshKeNzxHwJz/rPBDoaQZ9RsMZnheriWhz2zKa+EtXVcVIY0vQ9G5yruxIfBcYm2l7fbHZTXvgD7UPI/M3lVs9IVexpaZk9M5fYddjIT1HM5vGTlZ+8JKVZwO3qwshZ90BVk9jOKy6pfiH4ojltu7tNWuin6y6sWk7Ufg7/5fPzNAnxMa7o+QYAQ=="
+        }
+      ],
+      "stop_reason": null,
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 27355,
+        "cache_read_input_tokens": 11858,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 27355,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 30,
+        "service_tier": "standard",
+        "inference_geo": "global"
+      }
+    },
+    "requestId": "req_011CZhHHeXjVRh897kwQqebw",
+    "type": "assistant",
+    "uuid": "9de11d14-0a43-40b1-8a73-a2d517fbcf33",
+    "timestamp": "2026-04-03T18:06:05.703Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "4def4ce2-48d5-4acc-ba56-d80588d4d9fd",
+    "version": "2.1.91",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "9de11d14-0a43-40b1-8a73-a2d517fbcf33",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_01Aq9e2JHHThdYREMcvLAiU4",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_015XuarcvmQQNF9DrftJ3Kn4",
+          "name": "ToolSearch",
+          "input": {
+            "query": "select:mcp__captain__fetch_incidents,mcp__captain__get_incidents",
+            "max_results": 2
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ],
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 27355,
+        "cache_read_input_tokens": 11858,
+        "output_tokens": 143,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 27355
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZhHHeXjVRh897kwQqebw",
+    "type": "assistant",
+    "uuid": "ff3b89f8-334e-4aa9-8779-c6edc42e51c0",
+    "timestamp": "2026-04-03T18:06:06.555Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "4def4ce2-48d5-4acc-ba56-d80588d4d9fd",
+    "version": "2.1.91",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "ff3b89f8-334e-4aa9-8779-c6edc42e51c0",
+    "isSidechain": false,
+    "promptId": "6176c5e1-ecbf-4355-af1f-4af6c9c59e80",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "toolu_015XuarcvmQQNF9DrftJ3Kn4",
+          "content": [
+            {
+              "type": "tool_reference",
+              "tool_name": "mcp__captain__fetch_incidents"
+            },
+            {
+              "type": "tool_reference",
+              "tool_name": "mcp__captain__get_incidents"
+            }
+          ]
+        }
+      ]
+    },
+    "uuid": "6d58a6a4-7a99-4d52-8c7a-a171119db39b",
+    "timestamp": "2026-04-03T18:06:06.668Z",
+    "toolUseResult": {
+      "matches": [
+        "mcp__captain__fetch_incidents",
+        "mcp__captain__get_incidents"
+      ],
+      "query": "select:mcp__captain__fetch_incidents,mcp__captain__get_incidents",
+      "total_deferred_tools": 78
+    },
+    "sourceToolAssistantUUID": "ff3b89f8-334e-4aa9-8779-c6edc42e51c0",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "4def4ce2-48d5-4acc-ba56-d80588d4d9fd",
+    "version": "2.1.91",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "6d58a6a4-7a99-4d52-8c7a-a171119db39b",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_019PNHbFYNibStKgw9PHUq5X",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "thinking",
+          "thinking": "",
+          "signature": "EvABClkIDBgCKkBHisWeFKHNwWknoP7TCUyBqnS0P2BZrDpn/MZHuE6sOuo7fZJzUt6OcWn/9K/b09eEbW2UJVUzlWALj7vsJao0Mg9jbGF1ZGUtb3B1cy00LTY4ABIMeuSwg5gm0X6W/ZlRGgxkgmriDCNNGPsedx4iMBMhnRwj9H+tLBOR0wELjQ6JTYxsEOPS9VxMYfhY2IPo9nuS1MpHtFxvIdFyUidnbipFwQppuG/P3BgkpJkklQ/Ez6QUEGy2HC4icZu+lqQCnrONREfaAQpignOLIlLwRNbhqrqw0ipWCoUJbySvmU0vo8odyP+4GAE="
+        }
+      ],
+      "stop_reason": null,
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 1580,
+        "cache_read_input_tokens": 39213,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 1580,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 35,
+        "service_tier": "standard",
+        "inference_geo": "global"
+      }
+    },
+    "requestId": "req_011CZhHJ7qJj4ZkHVWYsCVVm",
+    "type": "assistant",
+    "uuid": "d1f1882e-ac92-43d2-ad7c-958f2118c6fc",
+    "timestamp": "2026-04-03T18:06:09.819Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "4def4ce2-48d5-4acc-ba56-d80588d4d9fd",
+    "version": "2.1.91",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "d1f1882e-ac92-43d2-ad7c-958f2118c6fc",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_019PNHbFYNibStKgw9PHUq5X",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_017pJSR9kK1gFNNsEZevS331",
+          "name": "mcp__captain__get_incidents",
+          "input": {
+            "start_time": "2026-03-27 00:00:00",
+            "end_time": "2026-04-03 23:59:59",
+            "statuses": [
+              "started",
+              "open",
+              "mitigated"
+            ]
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ],
+      "stop_reason": null,
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 1580,
+        "cache_read_input_tokens": 39213,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 1580,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 35,
+        "service_tier": "standard",
+        "inference_geo": "global"
+      }
+    },
+    "requestId": "req_011CZhHJ7qJj4ZkHVWYsCVVm",
+    "type": "assistant",
+    "uuid": "e42180d3-8b96-4c4f-8f80-e53f236c17ff",
+    "timestamp": "2026-04-03T18:06:10.787Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "4def4ce2-48d5-4acc-ba56-d80588d4d9fd",
+    "version": "2.1.91",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "e42180d3-8b96-4c4f-8f80-e53f236c17ff",
+    "isSidechain": false,
+    "message": {
+      "model": "claude-opus-4-6",
+      "id": "msg_019PNHbFYNibStKgw9PHUq5X",
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_01HuZkgj7hx1PdMePYoDfiZs",
+          "name": "mcp__captain__fetch_incidents",
+          "input": {
+            "active": true,
+            "start_time": "7 days ago"
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ],
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3,
+        "cache_creation_input_tokens": 1580,
+        "cache_read_input_tokens": 39213,
+        "output_tokens": 219,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 1580
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      }
+    },
+    "requestId": "req_011CZhHJ7qJj4ZkHVWYsCVVm",
+    "type": "assistant",
+    "uuid": "ae6e1269-078c-4ee2-924a-f2267443b978",
+    "timestamp": "2026-04-03T18:06:11.247Z",
+    "userType": "external",
+    "entrypoint": "cli",
+    "cwd": "/Users/bizhou/workspace/connected_project_phase2",
+    "sessionId": "4def4ce2-48d5-4acc-ba56-d80588d4d9fd",
+    "version": "2.1.91",
+    "gitBranch": "HEAD"
+  },
+  {
+    "parentUuid": "e42180d3-8b96-4c4f-8f80-e53f236c17ff",
+    "isSidechain": false,
+    "promptId": "6176c5e1-ecbf-4355-af1f-4af6c9c59e80",
+    "type": "user",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "tool_use_id": "toolu_017pJSR9kK1gFNNsEZevS331",
+          "type": "tool_result",
+          "content": "<persisted-output>\nOutput too large (72.9KB). Full output saved to: /Users/bizhou/.claude/projects/-Users-bizhou-workspace-connected-project-phase2/4def4ce2-48d5-4acc-ba56-d80588d4d9fd/tool-results/toolu_017pJSR9kK1gFNNsEZevS331.txt\n\nPreview (first 2KB):\n{\"incidents\":[{\"incident_id\":\"incident-10995\",\"status\":\"started\",\"severity\":\"SEV3\",\"title\":\"PEM Availability for Recruiter Search and Hiring Platform Apply\",\"summary\":\"Hiring Platform - Job Applicant / Apply Starters Management:Web, Recruiter - Search:Web\",\"started_at\":\"2026-04-03T16:53:00+00:00\",\"updated_at\":\"2026-04-03T18:06:00+00:00\",\"mitigated_at\":null,\"environments\":[\"PROD-LOR1\"],\"impacted_teams\":[],\"responsible_teams\":[],\"impacted_services\":[],\"responsible_services\":[],\"impacted_products\":[],\"rootly_url\":\"https://go/rootly 10995\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10995\"},{\"incident_id\":\"incident-10991\",\"status\":\"started\",\"severity\":\"SEV4\",\"title\":\"Premium Badge for members not being displayed\",\"summary\":\"We are not able to see Premium badges next to member names across all apps and in profile as well.\",\"started_at\":\"2026-04-03T15:00:00+00:00\",\"updated_at\":\"2026-04-03T17:41:22+00:00\",\"mitigated_at\":null,\"environments\":[\"PROD GLOBAL\"],\"impacted_teams\":[\"Premium Biz SKU Crew (ID: #561)\",\"Premium (ID: #550)\",\"Profile Nile API (ID: #12908)\"],\"responsible_teams\":[],\"impacted_services\":[\"voyager-api-identity\",\"badge-backend\"],\"responsible_services\":[],\"impacted_products\":[\"Profile\",\"Flagship Premium\"],\"rootly_url\":\"https://go/rootly 10991\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10991\"},{\"incident_id\":\"incident-10988\",\"status\":\"started\",\"severity\":\"SEV4\",\"title\":\"ltx1-pb44-asw13.nw.linkedin.com Unreachable\",\"summary\":\"ltx1-pb44-asw13.nw.linkedin.com Unreachable\",\"started_at\":\"2026-04-03T13:04:00+00:00\",\"updated_at\":\"2026-04-03T13:23:23+00:00\",\"mitigated_at\":null,\"environments\":[\"PROD-LTX1\"],\"impacted_teams\":[\"Crew - 6196 (ID: #6196)\"],\"responsible_teams\":[],\"impacted_services\":[\"netops-oncall-handoff\"],\"responsible_services\":[],\"impacted_products\":[\"Network oncall\"],\"rootly_url\":\"https://go/rootly 10988\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10988\"},{\"incident_id\":\"incident-10\n...\n</persisted-output>"
+        }
+      ]
+    },
+    "uuid": "aa73423f-ab87-4d23-94b3-2d59720cc938",
+    "timestamp": "2026-04-03T18:06:30.709Z",
+    "toolUseResult": "{\"incidents\":[{\"incident_id\":\"incident-10995\",\"status\":\"started\",\"severity\":\"SEV3\",\"title\":\"PEM Availability for Recruiter Search and Hiring Platform Apply\",\"summary\":\"Hiring Platform - Job Applicant / Apply Starters Management:Web, Recruiter - Search:Web\",\"started_at\":\"2026-04-03T16:53:00+00:00\",\"updated_at\":\"2026-04-03T18:06:00+00:00\",\"mitigated_at\":null,\"environments\":[\"PROD-LOR1\"],\"impacted_teams\":[],\"responsible_teams\":[],\"impacted_services\":[],\"responsible_services\":[],\"impacted_products\":[],\"rootly_url\":\"https://go/rootly 10995\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10995\"},{\"incident_id\":\"incident-10991\",\"status\":\"started\",\"severity\":\"SEV4\",\"title\":\"Premium Badge for members not being displayed\",\"summary\":\"We are not able to see Premium badges next to member names across all apps and in profile as well.\",\"started_at\":\"2026-04-03T15:00:00+00:00\",\"updated_at\":\"2026-04-03T17:41:22+00:00\",\"mitigated_at\":null,\"environments\":[\"PROD GLOBAL\"],\"impacted_teams\":[\"Premium Biz SKU Crew (ID: #561)\",\"Premium (ID: #550)\",\"Profile Nile API (ID: #12908)\"],\"responsible_teams\":[],\"impacted_services\":[\"voyager-api-identity\",\"badge-backend\"],\"responsible_services\":[],\"impacted_products\":[\"Profile\",\"Flagship Premium\"],\"rootly_url\":\"https://go/rootly 10991\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10991\"},{\"incident_id\":\"incident-10988\",\"status\":\"started\",\"severity\":\"SEV4\",\"title\":\"ltx1-pb44-asw13.nw.linkedin.com Unreachable\",\"summary\":\"ltx1-pb44-asw13.nw.linkedin.com Unreachable\",\"started_at\":\"2026-04-03T13:04:00+00:00\",\"updated_at\":\"2026-04-03T13:23:23+00:00\",\"mitigated_at\":null,\"environments\":[\"PROD-LTX1\"],\"impacted_teams\":[\"Crew - 6196 (ID: #6196)\"],\"responsible_teams\":[],\"impacted_services\":[\"netops-oncall-handoff\"],\"responsible_services\":[],\"impacted_products\":[\"Network oncall\"],\"rootly_url\":\"https://go/rootly 10988\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10988\"},{\"incident_id\":\"incident-10993\",\"status\":\"started\",\"severity\":\"SEV4\",\"title\":\"New application onboarding is blocked on KSAP in prod-ltx1\",\"summary\":\"New application deployments are failing in prod-ltx1\",\"started_at\":\"2026-04-03T13:00:00+00:00\",\"updated_at\":\"2026-04-03T17:50:45+00:00\",\"mitigated_at\":null,\"environments\":[\"PROD-LTX1\"],\"impacted_teams\":[\"Nimbus Online Scheduler (ID: #14457)\"],\"responsible_teams\":[\"Nimbus Online Scheduler (ID: #14457)\"],\"impacted_services\":[\"k8s-deployment-operator\"],\"responsible_services\":[\"k8s-deployment-operator\"],\"impacted_products\":[\"Nimbus Stateless Workload Management\"],\"rootly_url\":\"https://go/rootly 10993\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10993\"},{\"incident_id\":\"incident-10987\",\"status\":\"mitigated\",\"severity\":\"SEV3\",\"title\":\"SPS members seeing CPS experience in LOR1 and LVA1\",\"summary\":\"Elevated error rate in Flagship Semantic People Search L3 ranking API causing degraded result quality for SPS (People SRP and BSERP) and no calls to GPU RAR resulting in CPS experience.\\n\",\"started_at\":\"2026-04-03T11:00:00+00:00\",\"updated_at\":\"2026-04-03T15:23:06+00:00\",\"mitigated_at\":\"2026-04-03T14:50:00+00:00\",\"environments\":[\"PROD-LOR1\",\"PROD-LVA1\"],\"impacted_teams\":[\"NG-AI-Infra Crew (ID: #519)\",\"SPS Crew (ID: #12530)\"],\"responsible_teams\":[],\"impacted_services\":[\"growth-relevance-backend\",\"flagship-search-midtier\"],\"responsible_services\":[],\"impacted_products\":[\"Flagship Search\",\"NetworkGrowth Infra\"],\"rootly_url\":\"https://go/rootly 10987\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10987\"},{\"incident_id\":\"incident-10985\",\"status\":\"mitigated\",\"severity\":\"SEV4\",\"title\":\"1 missing HDFS block on holdem-01\",\"summary\":\"There are 1 missing blocks on holdem-01. The following files may be corrupted:\\n\\n\\nblk_168973482075 /jobs/msftgenai/consun/postsData/2026-03-31/part-00470-41c7b913-510a-4ad2-9448-7762920c1255-c000.snappy.parquet []\",\"started_at\":\"2026-04-03T08:03:00+00:00\",\"updated_at\":\"2026-04-03T09:30:32+00:00\",\"mitigated_at\":\"2026-04-03T09:07:00+00:00\",\"environments\":[\"PROD-LTX1\"],\"impacted_teams\":[\"DLSS-Core - HDFS - Crew (ID: #4848)\"],\"responsible_teams\":[\"DLSS-Core - HDFS - Crew (ID: #4848)\"],\"impacted_services\":[\"datanode\"],\"responsible_services\":[\"datanode\"],\"impacted_products\":[\"HDFS\"],\"rootly_url\":\"https://go/rootly 10985\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10985\"},{\"incident_id\":\"incident-10997\",\"status\":\"started\",\"severity\":\"SEV4\",\"title\":\"Order line data missing issue in offline table\",\"summary\":\"some order line data before 3/25 is missing in the offline table\",\"started_at\":\"2026-04-03T07:00:00+00:00\",\"updated_at\":\"2026-04-03T17:25:16+00:00\",\"mitigated_at\":null,\"environments\":[\"PROD GLOBAL\"],\"impacted_teams\":[],\"responsible_teams\":[],\"impacted_services\":[\"commerce-ordering\"],\"responsible_services\":[],\"impacted_products\":[],\"rootly_url\":\"https://go/rootly 10997\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10997\"},{\"incident_id\":\"incident-10984\",\"status\":\"mitigated\",\"severity\":\"SEV4\",\"title\":\"QCS throttling in reg-fe due to attack is leading to signups drop\",\"summary\":\"QCS throttling in reg-fe due to attack is leading to signups drop\",\"started_at\":\"2026-04-02T22:40:00+00:00\",\"updated_at\":\"2026-04-03T06:44:41+00:00\",\"mitigated_at\":\"2026-04-03T06:39:00+00:00\",\"environments\":[\"PROD GLOBAL\"],\"impacted_teams\":[\"onboarding-eng (ID: #3537)\"],\"responsible_teams\":[\"onboarding-eng (ID: #3537)\"],\"impacted_services\":[\"registration-frontend\"],\"responsible_services\":[\"registration-frontend\"],\"impacted_products\":[\"Flagship TopOfFunnel\"],\"rootly_url\":\"https://go/rootly 10984\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10984\"},{\"incident_id\":\"incident-10973\",\"status\":\"mitigated\",\"severity\":\"SEV1\",\"title\":\"PEM Lag caused missing metrics and Flink job failures\",\"summary\":\"PEM Availability Metrics were lagging in PROD-LOR1 due to a non-scheduled restart that caused the samza-pem-degradation-tracking job to fail and become stuck in DEPLOYINPROGRESS, an issue that also triggered widespread Flink deployment failures across LOR1; the problem was mitigated with a LOR1 failout, and the team performed an adhoc restart of the PEM job which eventually moved to RUNNING and restored PEM metrics, while other teams (stream-processing, Flink, Nimbus-K8s-Infra) investigated broader infra/root-cause issues such as resource shortages and deployment reconciliation, with DNS/artifactory slowness noted in some chatter\",\"started_at\":\"2026-04-02T21:12:00+00:00\",\"updated_at\":\"2026-04-03T17:15:50+00:00\",\"mitigated_at\":\"2026-04-02T21:36:00+00:00\",\"environments\":[\"PROD-LOR1\"],\"impacted_teams\":[\"Member Observability: Data Platforms & Insights (ID: #3767)\"],\"responsible_teams\":[\"Member Observability: Data Platforms & Insights (ID: #3767)\"],\"impacted_services\":[\"samza-pem-degradation-tracking\"],\"responsible_services\":[\"samza-pem-degradation-tracking\"],\"impacted_products\":[\"Product Experience Monitoring (PEM)\"],\"rootly_url\":\"https://go/rootly 10973\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10973\"},{\"incident_id\":\"incident-10975\",\"status\":\"started\",\"severity\":\"SEV4\",\"title\":\"Namespace tenants are being changed from NSS to KSAP\",\"summary\":\"Namespace tenants are being changed from NSS to KSAP\",\"started_at\":\"2026-04-02T19:33:00+00:00\",\"updated_at\":\"2026-04-02T22:00:15+00:00\",\"mitigated_at\":null,\"environments\":[\"EI GLOBAL\"],\"impacted_teams\":[\"Ads Serving Infra Team (ID: #104)\"],\"responsible_teams\":[],\"impacted_services\":[\"tscp-tracking\",\"tscp-serving-frontend-web\",\"tscp-data-publisher-ads-index\",\"tscp-serving-fe-web\"],\"responsible_services\":[],\"impacted_products\":[\"Ads Serving and LAN\"],\"rootly_url\":\"https://go/rootly 10975\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10975\"},{\"incident_id\":\"incident-10969\",\"status\":\"mitigated\",\"severity\":\"SEV4\",\"title\":\"reg-mt version bump in reg-fe causing error spike leading to signups drop\",\"summary\":\"https://linkedin-randd.slack.com/archives/C04K49VKLBH/p1775158221562329?thread_ts=1774571575.058769&cid=C04K49VKLBH\",\"started_at\":\"2026-04-02T19:22:00+00:00\",\"updated_at\":\"2026-04-03T00:16:02+00:00\",\"mitigated_at\":\"2026-04-02T19:57:00+00:00\",\"environments\":[\"PROD GLOBAL\"],\"impacted_teams\":[\"onboarding-eng (ID: #3537)\"],\"responsible_teams\":[\"onboarding-eng (ID: #3537)\"],\"impacted_services\":[\"registration-frontend\"],\"responsible_services\":[\"registration-frontend\"],\"impacted_products\":[\"Flagship TopOfFunnel\"],\"rootly_url\":\"https://go/rootly 10969\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10969\"},{\"incident_id\":\"incident-10960\",\"status\":\"started\",\"severity\":\"SEV4\",\"title\":\"voyager-api-identity deployment blocked \",\"summary\":\"EKG failure blocking deployment\",\"started_at\":\"2026-04-02T16:56:00+00:00\",\"updated_at\":\"2026-04-02T16:58:20+00:00\",\"mitigated_at\":null,\"environments\":[\"PROD-LOR1\",\"PROD GLOBAL\"],\"impacted_teams\":[\"Profile Nile API (ID: #12908)\"],\"responsible_teams\":[],\"impacted_services\":[\"voyager-api-identity-dash\"],\"responsible_services\":[],\"impacted_products\":[\"Profile\"],\"rootly_url\":\"https://go/rootly 10960\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10960\"},{\"incident_id\":\"incident-10981\",\"status\":\"mitigated\",\"severity\":\"SEV4\",\"title\":\"UMP Holdem job failing with data casting issues; delaying DED report\",\"summary\":\"UMP Holdem executions handle generating ads engagement metrics which are input to DED runs.\",\"started_at\":\"2026-04-02T08:40:00+00:00\",\"updated_at\":\"2026-04-03T16:17:32+00:00\",\"mitigated_at\":\"2026-04-03T16:14:00+00:00\",\"environments\":[\"PROD GLOBAL\"],\"impacted_teams\":[\"UMP (ID: #1065)\"],\"responsible_teams\":[\"Ads Reporting Platform (ID: #78)\"],\"impacted_services\":[\"dedumpmon\"],\"responsible_services\":[\"tscp_reporting_spark_v2_airflow\"],\"impacted_products\":[],\"rootly_url\":\"https://go/rootly 10981\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10981\"},{\"incident_id\":\"incident-10967\",\"status\":\"started\",\"severity\":\"SEV4\",\"title\":\"Jira integrations down in InfoSec SEEK apps\",\"summary\":\"Atlassian Cloud team initiated a transition for Jira environments related to incident-8976 to deprecate basic authentication and transition to OAuth 2.0 Authentication. Support for basic authentication ended on 4/1/26. This impacts 5 of our apps: gungnir-midtier, infosec-incidents-orca, infosec-defense-zto, infosec-defense-zto-scheduler, and moonbase-cjdata-orca. However, since our Jira service account is shared with another team's app (infosec-jira-automation), the DEPEND ticket for this migration was assigned to this team instead of SEEK.\",\"started_at\":\"2026-04-02T07:01:00+00:00\",\"updated_at\":\"2026-04-02T18:44:13+00:00\",\"mitigated_at\":null,\"environments\":[\"PROD GLOBAL\",\"CORP GLOBAL\"],\"impacted_teams\":[\"SEEK DI & NAMER IR (ID: #276)\"],\"responsible_teams\":[],\"impacted_services\":[\"gungnir-midtier\",\"infosec-defense-zto\",\"infosec-incidents-orca\",\"moonbase-cjdata-orca-jirasync\"],\"responsible_services\":[],\"impacted_products\":[\"SEEK On-prem Security Log Ingestion\",\"SEEK Scheduled Jobs\",\"Zero Touch Onboarding\"],\"rootly_url\":\"https://go/rootly 10967\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10967\"},{\"incident_id\":\"incident-10990\",\"status\":\"started\",\"severity\":\"SEV4\",\"title\":\"Trunk blocked due to simulator crash during tests\",\"summary\":\"WCT and Post-merge are both failing due to simulator crash.\",\"started_at\":\"2026-04-02T07:00:00+00:00\",\"updated_at\":\"2026-04-03T15:27:53+00:00\",\"mitigated_at\":null,\"environments\":[\"CORP GLOBAL\"],\"impacted_teams\":[\"SDUI Crew (ID: #1244)\"],\"responsible_teams\":[],\"impacted_services\":[\"sdui-flagship\"],\"responsible_services\":[],\"impacted_products\":[\"SDUI\"],\"rootly_url\":\"https://go/rootly 10990\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10990\"},{\"incident_id\":\"incident-10977\",\"status\":\"mitigated\",\"severity\":\"SEV4\",\"title\":\"k8s-32 kruise-webhook-service outage\",\"summary\":\"We've been experiencing multiple job failures today (2026-04-02) due to what appears to be a kruise-webhook-service outage on k8s-32 in prod-lva1. The failures affected several of our DAGs across a ~1.5 hour window (06:35\u201307:50 PDT):\\n\\n\u00a0 - delivery-and-interaction-tracking-data-generation_war \u2014 tasks interactionDataGeneration and deliveryAndInteractionTrackingDataGeneration\\n- campaign-parallel-targeting-hourly_war \u2014 task job_alert_validation\\n\\n  All failures have the same root cause:\\n  KubernetesClientException: failed calling webhook \\\"mpod.kb.io\\\":\\n  no endpoints available for service \\\"kruise-webhook-service\\\"\\n  on k8s-32.apiserver.prod-lva1\",\"started_at\":\"2026-04-02T05:24:00+00:00\",\"updated_at\":\"2026-04-03T01:00:58+00:00\",\"mitigated_at\":\"2026-04-03T04:00:00+00:00\",\"environments\":[\"PROD-LVA1\"],\"impacted_teams\":[\"Seeker Comms Crew (ID: #4212)\"],\"responsible_teams\":[\"Nimbus Online Scheduler (ID: #14457)\"],\"impacted_services\":[\"careers_campaign_targeting_offline_azkaban_airflow\"],\"responsible_services\":[\"k8s-kruise-controllers\"],\"impacted_products\":[\"Careers Comms\"],\"rootly_url\":\"https://go/rootly 10977\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10977\"},{\"incident_id\":\"incident-10950\",\"status\":\"started\",\"severity\":\"SEV4\",\"title\":\"NSS operation for nuage-quota prod-lva1 stuck for 17 hours blocking deployments\",\"summary\":\"NSS operation for one of the swap operation is stuck for more than 17 hours, causing the deployments to be stuck - https://engx.corp.linkedin.com/nimbus/operation?fabric=prod-lva1&cluster=prod-lva1-k8s-1&namespace=nuage-quota-eee7f&objectName=swap1bebd9ea8745ed18&tab=instances\",\"started_at\":\"2026-04-02T04:30:00+00:00\",\"updated_at\":\"2026-04-02T06:29:14+00:00\",\"mitigated_at\":null,\"environments\":[\"PROD-LVA1\"],\"impacted_teams\":[\"Liminal (ID: #12167)\"],\"responsible_teams\":[],\"impacted_services\":[\"nuage-quota\"],\"responsible_services\":[],\"impacted_products\":[\"Liminal\"],\"rootly_url\":\"https://go/rootly 10950\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10950\"},{\"incident_id\":\"incident-10951\",\"status\":\"started\",\"severity\":\"SEV4\",\"title\":\"More than 50% of dataset and there flows are not progressing in war. Many DED datasets SLA missed.\",\"summary\":\"More than 50% of dataset and there flows are not progressing in war stucked till airflow timeout and get killed. Many DED datasets has SLA missed.\",\"started_at\":\"2026-04-02T03:30:00+00:00\",\"updated_at\":\"2026-04-02T09:27:58+00:00\",\"mitigated_at\":null,\"environments\":[\"PROD-LVA1\"],\"impacted_teams\":[\"Source of Truth and Exec Reporting (ID: #913)\",\"Opal Crew (ID: #1289)\",\"UMP (ID: #1065)\"],\"responsible_teams\":[],\"impacted_services\":[\"incremental_ingestion_ded_dags\"],\"responsible_services\":[],\"impacted_products\":[],\"rootly_url\":\"https://go/rootly 10951\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10951\"},{\"incident_id\":\"incident-10949\",\"status\":\"mitigated\",\"severity\":\"SEV4\",\"title\":\"KSudo Identity Fail Ratio - ltx1-holdemnn02 HDFS Issue\",\"summary\":\"Elevated KSudo authentication failures on prod-ltx1, caused by ltx1-holdemnn02.\",\"started_at\":\"2026-04-02T03:00:00+00:00\",\"updated_at\":\"2026-04-02T21:15:00+00:00\",\"mitigated_at\":\"2026-04-02T06:07:00+00:00\",\"environments\":[\"PROD-LTX1\"],\"impacted_teams\":[\"DS & Analytics Platform-Darwin,Retina,UMP,Tracking (ID: #1063)\",\"OpenHouse Crew (ID: #1099)\",\"Opal Crew (ID: #1289)\",\"Data Quality Platform (ID: #13503)\",\"PSM DS LSS Datasets (ID: #14146)\"],\"responsible_teams\":[\"Blr Grid SRE (ID: #767)\"],\"impacted_services\":[\"ksudo-service\"],\"responsible_services\":[\"grid-aureole\",\"balancer\"],\"impacted_products\":[\"KSUDO\"],\"rootly_url\":\"https://go/rootly 10949\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10949\"},{\"incident_id\":\"incident-10970\",\"status\":\"started\",\"severity\":\"SEV4\",\"title\":\"tscp-serving release blcoked at crt and ekg\",\"summary\":\"tscp-serving release blcoked at crt and ekg\",\"started_at\":\"2026-04-02T00:00:00+00:00\",\"updated_at\":\"2026-04-02T20:14:44+00:00\",\"mitigated_at\":null,\"environments\":[\"PROD GLOBAL\"],\"impacted_teams\":[\"Ads Serving Infra Team (ID: #104)\"],\"responsible_teams\":[],\"impacted_services\":[\"tscp-serving\"],\"responsible_services\":[],\"impacted_products\":[\"Ads Serving and LAN\"],\"rootly_url\":\"https://go/rootly 10970\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10970\"},{\"incident_id\":\"incident-10947\",\"status\":\"mitigated\",\"severity\":\"SEV3\",\"title\":\"Intermittent Holdem Azkaban Worker Pod Startup Failures\",\"summary\":\"We are seeing intermittent worker pod startup failures in all Holdem Azkaban clusters.\",\"started_at\":\"2026-04-01T23:20:00+00:00\",\"updated_at\":\"2026-04-02T08:21:34+00:00\",\"mitigated_at\":\"2026-04-02T06:56:00+00:00\",\"environments\":[\"PROD-LTX1\"],\"impacted_teams\":[\"DS & Analytics Platform-Darwin,Retina,UMP,Tracking (ID: #1063)\",\"Opal Crew (ID: #1289)\",\"UMP (ID: #1065)\",\"PSM DS LSS Datasets (ID: #14146)\"],\"responsible_teams\":[\"K8s-infra-crew (ID: #1300)\"],\"impacted_services\":[\"-azkaban\",\"metric-defs-provider\"],\"responsible_services\":[\"k8s-cluster-management-configs\"],\"impacted_products\":[\"UMP\"],\"rootly_url\":\"https://go/rootly 10947\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10947\"},{\"incident_id\":\"incident-10942\",\"status\":\"started\",\"severity\":\"SEV3\",\"title\":\"[feed-infra-sre_gcn-early-alerting::feed-mixer] Homepage Error Rate\",\"summary\":\"feed-mixer:feed-mixer.{production,flagship,guest} homepage error rate. Appears to be false positive and is being correlated to PEM lag issues causing false positive alerting under incident-10876\",\"started_at\":\"2026-04-01T23:02:00+00:00\",\"updated_at\":\"2026-04-01T23:43:02+00:00\",\"mitigated_at\":null,\"environments\":[\"PROD-LVA1\"],\"impacted_teams\":[\"Federation (ID: #6387)\"],\"responsible_teams\":[],\"impacted_services\":[\"feed-mixer\"],\"responsible_services\":[],\"impacted_products\":[\"Feed Federation\"],\"rootly_url\":\"https://go/rootly 10942\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10942\"},{\"incident_id\":\"incident-10943\",\"status\":\"started\",\"severity\":\"SEV4\",\"title\":\"grid-access-authorization-service deployment is blocked due to no nodes available in prod-ltx1-k8s-15\",\"summary\":\"\u23fa The Events section tells you exactly why. Out of 5384 nodes in the cluster, every single one is eliminated:\\n\\n  \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\\n  \u2502          Reason           \u2502    Nodes      \u2502                          Explanation                           \u2502\\n  \u2502                           \u2502  eliminated   \u2502                                                                \u2502\\n  \u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u253c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u253c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524\\n  \u2502 Node affinity/selector    \u2502 ~5,160        \u2502 The vast majority of nodes don't match your pod's placement    \u2502\\n  \u2502 mismatch                  \u2502               \u2502 constraints (tenant, topology, etc.)                           \u2502\\n  \u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u253c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u253c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524\\n  \u2502 Insufficient CPU          \u2502 ~155          \u2502 Of the remaining eligible nodes, these don't have 20 CPU cores \u2502\\n  \u2502                           \u2502               \u2502  free                                                          \u2502\\n  \u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u253c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u253c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524\\n  \u2502 Insufficient memory       \u2502 ~110          \u2502 These don't have 18G memory free                               \u2502\\n  \u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u253c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u253c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524\\n  \u2502 Cordoned nodes            \u2502 ~55           \u2502 Under maintenance, not accepting pods                          \u2502\\n  \u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u253c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u253c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524\\n  \u2502 Port conflicts            \u2502 5             \u2502 Ports 25505/25506/25508 already in use (hostPort)              \u2502\\n  \u251c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u253c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u253c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2524\\n  \u2502 Unschedulable             \u2502 6             \u2502 Manually drained                                               \u2502\\n  \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\\n\\n  Root cause: Your pod requests 20 CPU cores and 18G memory with hostPort networking, and the eligible node pool\\n  (after affinity filtering) is too small/saturated to fit 3 more pods.\\n\\n  The preemptionPolicy=Never on your priority class (stateless-default-nopreempt) means the scheduler won't evict\\n  lower-priority pods to make room \u2014 it just waits.\",\"started_at\":\"2026-04-01T21:30:00+00:00\",\"updated_at\":\"2026-04-02T17:02:27+00:00\",\"mitigated_at\":null,\"environments\":[\"PROD-LTX1\"],\"impacted_teams\":[\"Grid Security Crew (ID: #3796)\"],\"responsible_teams\":[\"Nimbus Workload Runtime (ID: #1330)\"],\"impacted_services\":[\"grid-access-authorization-service\"],\"responsible_services\":[\"ksap-migration-server\"],\"impacted_products\":[\"Grid Storage Spaces\"],\"rootly_url\":\"https://go/rootly 10943\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10943\"},{\"incident_id\":\"incident-10959\",\"status\":\"mitigated\",\"severity\":\"SEV3\",\"title\":\"multiproduct-backend errors\",\"summary\":\"A trust-bridge failure caused multiproduct-backend DNS lookups to fail for a subset of prod-ltx1 connections, leading to local invocations not returning and impacting more than 10 engineers; the issue appeared during the AZL3 rollout and was detected via user reports, with the event started on 2026-04-01 21:30 UTC and mitigated on 2026-04-02 18:10 UTC. Investigators narrowed the problem to prod-ltx1 trustbridge, observed transient failures between trust-bridge and the updog/mp backend, and implemented a recovery plan that included batch reimaging the affected hosts to mariner with bind 9.11 (starting with 12%, then 25%, then 50% cohorts for prod-ltx1 and then prod-lor1) while continuing RCA and validating fixes in non-production environments; the mitigation message was \u201cWe failed out of trustbridge ltx1.\u201d\\n\",\"started_at\":\"2026-04-01T21:30:00+00:00\",\"updated_at\":\"2026-04-02T22:42:34+00:00\",\"mitigated_at\":\"2026-04-02T18:10:38+00:00\",\"environments\":[\"CORP GLOBAL\"],\"impacted_teams\":[\"OSUA (ID: #4789)\",\"PSSE Build team (ID: #673)\",\"Corporate Identity IAM (ID: #4523)\"],\"responsible_teams\":[\"Corporate Identity IAM (ID: #4523)\"],\"impacted_services\":[\"DNS\"],\"responsible_services\":[\"DNS\"],\"impacted_products\":[\"CorpID Misc\"],\"rootly_url\":\"https://go/rootly 10959\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10959\"},{\"incident_id\":\"incident-10980\",\"status\":\"mitigated\",\"severity\":\"SEV4\",\"title\":\"Critical: Total Lag for t3-convergence-chooserplanaction-nearline.i001 when partitions are stalled/stopped\",\"summary\":\"This is a Flink Tier0 critical alert for Kafka consumer lag on t3-convergence-chooserplanaction-nearline in prod-lva1. The alert fires when total lag velocity exceeds 0.5 for 45+ minutes with stalled/stopped partitions.\",\"started_at\":\"2026-04-01T21:00:00+00:00\",\"updated_at\":\"2026-04-03T01:52:15+00:00\",\"mitigated_at\":\"2026-04-03T01:46:00+00:00\",\"environments\":[\"PROD GLOBAL\"],\"impacted_teams\":[\"premium\"],\"responsible_teams\":[\"premium\"],\"impacted_services\":[\"t3-convergence-chooserplanaction-nearline\"],\"responsible_services\":[\"t3-convergence-chooserplanaction-nearline\"],\"impacted_products\":[\"Premium Flink\"],\"rootly_url\":\"https://go/rootly 10980\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10980\"},{\"incident_id\":\"incident-10964\",\"status\":\"mitigated\",\"severity\":\"SEV4\",\"title\":\"Long running txs are getting killed for mlops-io\",\"summary\":\"Long running transaction are getting terminated due to which we are seeing failures in the model foundry dashboard\",\"started_at\":\"2026-04-01T21:00:00+00:00\",\"updated_at\":\"2026-04-02T22:18:57+00:00\",\"mitigated_at\":\"2026-04-02T22:15:00+00:00\",\"environments\":[\"CORP-LTX1\"],\"impacted_teams\":[\"ML Observability (ID: #5939)\"],\"responsible_teams\":[\"ML Observability (ID: #5939)\"],\"impacted_services\":[\"insights-lab\"],\"responsible_services\":[\"insights-lab\"],\"impacted_products\":[\"MLOps Observability\"],\"rootly_url\":\"https://go/rootly 10964\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10964\"},{\"incident_id\":\"incident-10971\",\"status\":\"started\",\"severity\":\"SEV2\",\"title\":\"Jackson ObjectMapper Remediation\",\"summary\":\"Fleet-wide Jackson objectMapper remediation to ensure we don't have any more Sev1 incidents caused by Jackson\u2019s default ObjectMapper throws an unchecked exception.\",\"started_at\":\"2026-04-01T20:22:00+00:00\",\"updated_at\":\"2026-04-03T17:57:05+00:00\",\"mitigated_at\":null,\"environments\":[\"PROD GLOBAL\"],\"impacted_teams\":[],\"responsible_teams\":[\"Site Foundation (ID: #5908)\"],\"impacted_services\":[\"none\"],\"responsible_services\":[\"incident-data-mt\"],\"impacted_products\":[],\"rootly_url\":\"https://go/rootly 10971\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10971\"},{\"incident_id\":\"incident-10936\",\"status\":\"started\",\"severity\":\"SEV3\",\"title\":\"[feed-infra-sre_gcn-early-alerting::feed-mixer] Homepage Error Rate\",\"summary\":\"feed-mixer:feed-mixer.{production,flagship,guest}\",\"started_at\":\"2026-04-01T20:09:00+00:00\",\"updated_at\":\"2026-04-01T23:24:06+00:00\",\"mitigated_at\":null,\"environments\":[\"PROD-LOR1\"],\"impacted_teams\":[\"Federation (ID: #6387)\"],\"responsible_teams\":[],\"impacted_services\":[\"feed-mixer\"],\"responsible_services\":[],\"impacted_products\":[\"Feed Federation\"],\"rootly_url\":\"https://go/rootly 10936\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10936\"},{\"incident_id\":\"incident-10944\",\"status\":\"started\",\"severity\":\"SEV4\",\"title\":\"trendingMemberPostV2_azkabanWar_war__content-fanout stuck causing P0 flows to fail due to no input\",\"summary\":\"https://war.oklahoma-airflow.grid.linkedin.com/dags/trendingMemberPostV2_azkabanWar_war__content-fanout/grid?tab=details&task_id=GenerateTrendingPost&dag_run_id=scheduled__2026-04-01T03%3A00%3A00%2B00%3A00\\ncontent-fanout job has been stuck at \",\"started_at\":\"2026-04-01T20:00:00+00:00\",\"updated_at\":\"2026-04-02T00:34:45+00:00\",\"mitigated_at\":null,\"environments\":[\"PROD GLOBAL\"],\"impacted_teams\":[\"Comms Generation Platform (ID: #1248)\",\"Lifecycle AI (ID: #898)\"],\"responsible_teams\":[],\"impacted_services\":[\"beehive_workflow_airflow\",\"content_fanout_workflow_airflow\"],\"responsible_services\":[],\"impacted_products\":[\"beehive\",\"ToF AI - Foundation\"],\"rootly_url\":\"https://go/rootly 10944\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10944\"},{\"incident_id\":\"incident-10945\",\"status\":\"mitigated\",\"severity\":\"SEV4\",\"title\":\"IRPS Creation Failed Despite CR Workflow showing success\",\"summary\":\"go/cr/1397482 deployment showed successful on mira dashboard, but go-status is showing only canary of each colo has been deployed.\",\"started_at\":\"2026-04-01T19:00:00+00:00\",\"updated_at\":\"2026-04-02T04:08:06+00:00\",\"mitigated_at\":\"2026-04-02T03:00:00+00:00\",\"environments\":[\"PROD GLOBAL\"],\"impacted_teams\":[\"Ranking Platform (ID: #4809)\"],\"responsible_teams\":[\"Search Platform (ID: #1134)\"],\"impacted_services\":[\"generative-recommender-service\"],\"responsible_services\":[\"nuage-hostedsearch\"],\"impacted_products\":[\"Pytorch Ranking\"],\"rootly_url\":\"https://go/rootly 10945\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10945\"},{\"incident_id\":\"incident-10922\",\"status\":\"mitigated\",\"severity\":\"SEV3\",\"title\":\"PEM Availability Degradation - Voyager Feed, Careers Open To Work, and Premium Chooser Flow (All Platforms)\",\"summary\":\"  PEM availability degradation was observed across Voyager Feed (iOS, Android, Web), Careers Open To Work (Android), and Premium Chooser Flow (Android, iOS,\\n   Web) starting at 7:12 AM PDT. Impact was limited to prod-lor1. The incident self-recovered at 7:16 AM PDT with no manual intervention required. Total\\n  duration: ~4 minutes.\",\"started_at\":\"2026-04-01T14:12:00+00:00\",\"updated_at\":\"2026-04-01T17:36:40+00:00\",\"mitigated_at\":\"2026-04-01T14:35:00+00:00\",\"environments\":[\"PROD-LOR1\"],\"impacted_teams\":[\"voyager-api-premium\"],\"responsible_teams\":[\"voyager-api-premium\"],\"impacted_services\":[\"voyager-api-premium-dash\"],\"responsible_services\":[\"voyager-api-premium-dash\"],\"impacted_products\":[\"Flagship Premium\"],\"rootly_url\":\"https://go/rootly 10922\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10922\"},{\"incident_id\":\"incident-10921\",\"status\":\"mitigated\",\"severity\":\"SEV4\",\"title\":\"Ingestion latency for lilogsusflinkprod00 impacted\",\"summary\":\"Ingestion latency for lilogsusflinkprod00 impacted\",\"started_at\":\"2026-04-01T10:12:00+00:00\",\"updated_at\":\"2026-04-01T15:08:34+00:00\",\"mitigated_at\":\"2026-04-01T15:05:00+00:00\",\"environments\":[\"PROD GLOBAL\"],\"impacted_teams\":[\"Euler Crew (ID: #3834)\"],\"responsible_teams\":[],\"impacted_services\":[\"euler-index-builder\",\"topicality-actor-interaction-features-generation\"],\"responsible_services\":[\"topicality-actor-interaction-features-generation\"],\"impacted_products\":[\"Euler\"],\"rootly_url\":\"https://go/rootly 10921\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10921\"},{\"incident_id\":\"incident-10920\",\"status\":\"mitigated\",\"severity\":\"SEV4\",\"title\":\"lix DB - java.sql.SQLException: Connection is closed\",\"summary\":\"lix DB throwing java.sql.SQLException: Connection is closed\\n\\nError logs: https://paste.corp.linkedin.com/show/72017731/\",\"started_at\":\"2026-04-01T08:31:00+00:00\",\"updated_at\":\"2026-04-02T10:41:16+00:00\",\"mitigated_at\":\"2026-04-01T14:34:00+00:00\",\"environments\":[\"CORP-LCA1\"],\"impacted_teams\":[\"T-REX Ramp Experience (ID: #3488)\"],\"responsible_teams\":[\"MySQL Crew (ID: #4844)\"],\"impacted_services\":[\"trex-mt\"],\"responsible_services\":[\"mysql\"],\"impacted_products\":[\"T-REX\"],\"rootly_url\":\"https://go/rootly 10920\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10920\"},{\"incident_id\":\"incident-10917\",\"status\":\"mitigated\",\"severity\":\"SEV4\",\"title\":\"Geo Downstream Unavailable\",\"summary\":\"JSAA is calling geo downstream for various query engine and guide flows. The Geo call is erroring out for connection refused. The error rate is not subsiding either. Seems to be prod lor1 only.\",\"started_at\":\"2026-04-01T07:00:56+00:00\",\"updated_at\":\"2026-04-01T12:30:05+00:00\",\"mitigated_at\":\"2026-04-01T12:28:00+00:00\",\"environments\":[\"PROD-LOR1\"],\"impacted_teams\":[\"Seeker Agent and Hearing Back/Post Apply (ID: #377)\"],\"responsible_teams\":[\"Seeker Agent and Hearing Back/Post Apply (ID: #377)\"],\"impacted_services\":[\"job-seeker-agents-ai\"],\"responsible_services\":[\"job-seeker-agents-ai\"],\"impacted_products\":[\"Job Seeker Agent\"],\"rootly_url\":\"https://go/rootly 10917\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10917\"},{\"incident_id\":\"incident-10961\",\"status\":\"mitigated\",\"severity\":\"SEV4\",\"title\":\"ACM Pipelines are stuck for all TIDB ACM endpoints in ei fabrics and prod-lva1/prod-ltx1 fabrics.\",\"summary\":\"ACM Pipelines are stuck for all TIDB ACM endpoints in ei fabrics and prod-lva1/prod-ltx1 fabrics. This is causing deployment and disruption operations to be stuck in Approval Pending state.\",\"started_at\":\"2026-04-01T07:00:00+00:00\",\"updated_at\":\"2026-04-03T07:26:56+00:00\",\"mitigated_at\":\"2026-04-02T18:00:00+00:00\",\"environments\":[\"EI GLOBAL\",\"PROD-LTX1\",\"PROD-LVA1\"],\"impacted_teams\":[\"TiDB (ID: #1303)\"],\"responsible_teams\":[\"Helix ACM (ID: #12657)\"],\"impacted_services\":[\"pd-runner\",\"tidb-runner\"],\"responsible_services\":[\"helixacm-service\"],\"impacted_products\":[\"TiDB\"],\"rootly_url\":\"https://go/rootly 10961\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10961\"},{\"incident_id\":\"incident-10938\",\"status\":\"mitigated\",\"severity\":\"SEV4\",\"title\":\"Members and Jobs, qualifications interprete/evaluate 500s\",\"summary\":\"Errors were observed in job-qualifications-agent-service for interpretQualifications and evaluateQualificationsForMember. Traced to   \\n  unhealthy pods on k8s \u2014 killed the pods and errors resolved.                                                                                                                             \\n                                                                                                                                                                                           \\n  During investigation, a new deployment (0.0.241) rolled out to prod-lor1, causing timeout errors and latency spikes with many pods showing as UNAVAILABLE. Attempted rollback to 0.0.236 \\n  and 0.0.235, but newly started pods crash-looped due to USR prompt validation errors (num_rows: 450 below Atomic library minimum of 600).\\n                                                                                                                                                                                           \\nSuccessfully rolled back all prod fabrics to 0.0.234, which reads prompts locally and bypasses the bad USR registry value. prod-lor1 fully recovered\",\"started_at\":\"2026-04-01T07:00:00+00:00\",\"updated_at\":\"2026-04-02T04:14:18+00:00\",\"mitigated_at\":\"2026-04-02T03:48:00+00:00\",\"environments\":[\"PROD-LOR1\"],\"impacted_teams\":[\"Jobs Marketplace Core - KT (ID: #369)\"],\"responsible_teams\":[\"Jobs Marketplace Core - KT (ID: #369)\"],\"impacted_services\":[\"job-qualifications-agent-service\"],\"responsible_services\":[\"job-qualifications-agent-service\"],\"impacted_products\":[\"Jobs Marketplace L2\"],\"rootly_url\":\"https://go/rootly 10938\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10938\"},{\"incident_id\":\"incident-10915\",\"status\":\"mitigated\",\"severity\":\"SEV4\",\"title\":\"Topic info not found due to caching at Xinfra client\",\"summary\":\"Topic info not found due to caching at Xinfra client\",\"started_at\":\"2026-04-01T00:00:00+00:00\",\"updated_at\":\"2026-04-02T18:10:51+00:00\",\"mitigated_at\":\"2026-04-01T07:30:00+00:00\",\"environments\":[\"PROD GLOBAL\"],\"impacted_teams\":[\"Brooklin (ID: #1281)\"],\"responsible_teams\":[],\"impacted_services\":[\"brooklin-service\"],\"responsible_services\":[\"xinfra-clients-cert\"],\"impacted_products\":[\"Brooklin\"],\"rootly_url\":\"https://go/rootly 10915\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10915\"},{\"incident_id\":\"incident-10911\",\"status\":\"mitigated\",\"severity\":\"SEV4\",\"title\":\"Degraded quality and timeouts in SPS/HPS explainability in prod-ltx1\",\"summary\":\"Bad pod with high latency in the LLM serving irp-sps-explain-snippets-embeddings LTX1 cluster causes timeouts and degraded quality of SPS/HPS explainability snippets on BSERP and People SERP\",\"started_at\":\"2026-03-31T23:39:00+00:00\",\"updated_at\":\"2026-04-01T06:06:14+00:00\",\"mitigated_at\":\"2026-04-01T05:50:00+00:00\",\"environments\":[\"PROD-LTX1\"],\"impacted_teams\":[\"PAI-API (ID: #533)\",\"SPS Crew (ID: #12530)\"],\"responsible_teams\":[\"LLM Serving Team (ID: #1070)\"],\"impacted_services\":[\"flagship-api\",\"exhaustive-search-infra\"],\"responsible_services\":[\"llm-inference-sglang\"],\"impacted_products\":[\"Frontend API Framework (Adda)\",\"Flagship Search\"],\"rootly_url\":\"https://go/rootly 10911\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10911\"},{\"incident_id\":\"incident-10908\",\"status\":\"mitigated\",\"severity\":\"SEV4\",\"title\":\"Guide Prompts Not Working Intermittently\",\"summary\":\"guide prompts on web in LOR1 will fail, but then render once another prompt is clicked. intermittent issue for users only in LOR1 on web.\",\"started_at\":\"2026-03-31T22:30:00+00:00\",\"updated_at\":\"2026-04-01T03:40:57+00:00\",\"mitigated_at\":\"2026-04-01T03:37:00+00:00\",\"environments\":[\"PROD-LOR1\"],\"impacted_teams\":[\"coach-platform-online-dev (ID: #3348)\",\"Seeker Agent and Hearing Back/Post Apply (ID: #377)\"],\"responsible_teams\":[\"Messaging Platform Crew (ID: #661)\",\"coach-platform-online-dev (ID: #3348)\"],\"impacted_services\":[\"guide-mt\",\"job-seeker-agents-ai\"],\"responsible_services\":[\"realtime-frontend\",\"guide-mt\",\"messaging-realtime-mt\"],\"impacted_products\":[\"Flagship Coach Platform\",\"Job Seeker Agent\"],\"rootly_url\":\"https://go/rootly 10908\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10908\"},{\"incident_id\":\"incident-10901\",\"status\":\"mitigated\",\"severity\":\"SEV3\",\"title\":\"Voyager - Organization - ProductMarketPlace_Member_Tier_2:iOS\",\"summary\":\"Voyager - Organization - ProductMarketPlace_Member_Tier_2:iOS\",\"started_at\":\"2026-03-31T22:25:00+00:00\",\"updated_at\":\"2026-04-02T17:52:22+00:00\",\"mitigated_at\":\"2026-03-31T22:38:00+00:00\",\"environments\":[\"PROD GLOBAL\"],\"impacted_teams\":[\"Merlin Crew (ID: #222)\"],\"responsible_teams\":[\"Merlin Crew (ID: #222)\"],\"impacted_services\":[\"pages\"],\"responsible_services\":[\"pages\"],\"impacted_products\":[\"Merlin\"],\"rootly_url\":\"https://go/rootly 10901\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10901\"},{\"incident_id\":\"incident-10894\",\"status\":\"mitigated\",\"severity\":\"SEV4\",\"title\":\"LOR Euler - Liquid Match Rate Dip\",\"summary\":\"LOR match rate dropped for the following:\\nFabric-prod-lor1-Query.Full.Name-organization-util:organizationutil:GetSchoolsForOrgs-Ramper.UseCase-GLAI_ENGINE_ROUTER\\n\\n\\n\\nFabric-prod-lor1-Query.Full.Name-organization-util:organizationutil:GetOrgsForSchools-Ramper.UseCase-GLAI_ENGINE_ROUTER\",\"started_at\":\"2026-03-31T19:55:00+00:00\",\"updated_at\":\"2026-03-31T21:14:55+00:00\",\"mitigated_at\":\"2026-03-31T20:30:00+00:00\",\"environments\":[\"PROD-LOR1\"],\"impacted_teams\":[\"Graph Infra Virtual Crew (ID: #12328)\"],\"responsible_teams\":[\"Graph Infra Virtual Crew (ID: #12328)\"],\"impacted_services\":[\"euler-graph\"],\"responsible_services\":[\"euler-graph\"],\"impacted_products\":[\"Liquid\"],\"rootly_url\":\"https://go/rootly 10894\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10894\"},{\"incident_id\":\"incident-10983\",\"status\":\"started\",\"severity\":\"SEV4\",\"title\":\"Pinot Deployments blocked because Helix tags are not cleaned up for hosts\",\"summary\":\"Deployments are blocked for Pinot Scalesets because swap operations are stuck. \\n\\nSwap operations are stuck because Helix acm did not cleanup the EVACUATE state and helix tag as a part of old swap operations that successfully completed \",\"started_at\":\"2026-03-31T19:44:00+00:00\",\"updated_at\":\"2026-04-03T00:38:18+00:00\",\"mitigated_at\":null,\"environments\":[\"PROD-LTX1\"],\"impacted_teams\":[],\"responsible_teams\":[\"Helix ACM (ID: #12657)\"],\"impacted_services\":[\"pinot-server\"],\"responsible_services\":[\"helixacm-service\"],\"impacted_products\":[],\"rootly_url\":\"https://go/rootly 10983\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10983\"},{\"incident_id\":\"incident-10986\",\"status\":\"mitigated\",\"severity\":\"SEV4\",\"title\":\"Identity-mt -> ucf traffic dropped to 0 for PROFILE_BACKGROUND_IMAGE and PROFILE_PICTURE_INFO ucf checks\",\"summary\":\"The classification traffic for PROFILE_BACKGROUND_IMAGE  and PROFILE_PICTURE_INFO became zero due to this any policy  violating image which was uploading during incident time will be uploaded and visible on platform. ~150 is the catch volume for this,\",\"started_at\":\"2026-03-31T19:30:00+00:00\",\"updated_at\":\"2026-04-03T16:49:50+00:00\",\"mitigated_at\":\"2026-04-03T13:07:00+00:00\",\"environments\":[\"PROD GLOBAL\"],\"impacted_teams\":[\"Content Abuse Infra (ID: #573)\"],\"responsible_teams\":[\"ISB and Profile Platform (ID: #613)\"],\"impacted_services\":[\"kryptonite-public-content\"],\"responsible_services\":[\"identity-mt\"],\"impacted_products\":[\"Content Abuse T4G\"],\"rootly_url\":\"https://go/rootly 10986\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10986\"},{\"incident_id\":\"incident-10932\",\"status\":\"mitigated\",\"severity\":\"SEV4\",\"title\":\"MySQL Long Running Transaction Change Caused 500 Error In Merlin Production\",\"summary\":\"The recent change to reduce MySQL long running transaction limit from 15s to 5s is causing 500 error in Merlin production. The page cannot be loaded successfully and affecting the end users (sale reps) to use Merlin\",\"started_at\":\"2026-03-31T19:00:00+00:00\",\"updated_at\":\"2026-04-01T20:26:21+00:00\",\"mitigated_at\":\"2026-04-01T19:10:00+00:00\",\"environments\":[\"PROD GLOBAL\",\"CORP GLOBAL\"],\"impacted_teams\":[\"Merlin Crew (ID: #222)\"],\"responsible_teams\":[\"MySQL Crew (ID: #4844)\"],\"impacted_services\":[\"merlin\"],\"responsible_services\":[\"mysql\"],\"impacted_products\":[\"Merlin\"],\"rootly_url\":\"https://go/rootly 10932\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10932\"},{\"incident_id\":\"incident-10966\",\"status\":\"started\",\"severity\":\"SEV3\",\"title\":\"capi-tokenized-conversion-attribution-daily failure due to schema mismatch issue\",\"summary\":\"Caused by: com.linkedin.spark.wrapper.SparkJobFailedException: Spark job failed (exitCode=1). Diagnostics: User class threw exception: liopenhouse.relocated.org.apache.iceberg.exceptions.BadRequestException: 400 , {\\\"status\\\":\\\"BAD_REQUEST\\\",\\\"error\\\":\\\"Bad Request\\\",\\\"message\\\":\\\"schema : duplicate column names found [oatmlidvalue, originid, originidsource] in struct field 'identityMappingResults.[]'. Column names must be unique (case-insensitive).\\\",\\\"stacktrace\\\":null,\\\"cause\\\":\\\"Not Available\\\"}\\n\\tat liopenhouse.relocated.com.linkedin.openhouse.javaclient.OpenHouseTableOperations.handleCreateUpdateHttpError(OpenHouseTableOperations.java:377)\\n\\tat liopenhouse.relocated.com.linkedin.openhouse.javaclient.OpenHouseTableOperations.lambda$createUpdateTable$4(OpenHouseTableOperations.java:160)\\nat com.linkedin.openhouse.migration.tool.utils.OpenHouseTableUtils$.writeToPartitionedTable(OpenHouseTableUtils.scala:708)\\n\\t\\n2026/04/02 17:49:54.626 +0000 [ INFO] \\t\\tat com.linkedin.openhouse.migration.tool.utils.OpenHouseTableUtils$.loadDataAndWrite(OpenHouseTableUtils.scala:750)\\n\\t\\n2026/04/02 17:49:54.626 +0000 [ INFO] \\t\\tat com.linkedin.openhouse.migration.tool.utils.OpenHouseTableUtils$.writeToOpenHouseTableCore(OpenHouseTableUtils.scala:487)\\n\\t\\n2026/04/02 17:49:54.626 +0000 [ INFO] \\t\\tat com.linkedin.openhouse.migration.tool.utils.OpenHouseTableUtils$.writeToOpenHouseTableWithSchema(OpenHouseTableUtils.scala:192)\\n\\t\\n2026/04/02 17:49:54.626 +0000 [ INFO] \\t\\tat com.linkedin.offsitetracking.common.utils.OpenHouseTableWriter$.writeIntoDailyPartitionedOpenHouseTableWithDateRange(OpenHouseTableWriter.scala:182)\\n\\t\\n2026/04/02 17:49:54.626 +0000 [ INFO] \\t\\tat com.linkedin.offsitetracking.attribution.jobs.Stage5MergeCapiUserConversionEventJob$.reprocessAndRewriteCapiUCEWithLatestConversions(Stage5MergeCapiUserConversionEventJob.scala:122)\\n\\t\\n2026/04/02 17:49:54.626 +0000 [ INFO] \\t\\tat com.linkedin.offsitetracking.attribution.jobs.Stage5MergeCapiUserConversionEventJob$.write(Stage5MergeCapiUserConversionEventJob.scala:82)\\n\\t\\n2026/04/02 17:49:54.626 +0000 [ INFO] \\t\\tat com.linkedin.offsitetracking.attribution.jobs.Stage5MergeCapiUserConversionEventJob$.write(Stage5MergeCapiUserConversionEventJob.scala:41)\",\"started_at\":\"2026-03-31T19:00:00+00:00\",\"updated_at\":\"2026-04-02T20:01:12+00:00\",\"mitigated_at\":null,\"environments\":[\"PROD-LVA1\"],\"impacted_teams\":[\"LMS Attribution Crew (ID: #85)\"],\"responsible_teams\":[],\"impacted_services\":[\"offsite_tracking_attribution_job_airflow\"],\"responsible_services\":[],\"impacted_products\":[\"Measurement - Conversion Attribution\"],\"rootly_url\":\"https://go/rootly 10966\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10966\"},{\"incident_id\":\"incident-10996\",\"status\":\"started\",\"severity\":\"SEV4\",\"title\":\"Offline Batch Inference Failing for Illuminator two days\",\"summary\":\"Illuminator metrics are blocked due to Offline Inference Failing. Error is not transient due to it being seen twice after two recoveries and once on another day. There was no change in code and recoveries are expensive taking upwards of 10 hours before failure\",\"started_at\":\"2026-03-31T17:17:00+00:00\",\"updated_at\":\"2026-04-03T17:21:10+00:00\",\"mitigated_at\":null,\"environments\":[\"CORP-LVA1\"],\"impacted_teams\":[\"Offline Model Serving (ID: #5641)\"],\"responsible_teams\":[],\"impacted_services\":[\"proxima-offline-oc\"],\"responsible_services\":[],\"impacted_products\":[\"Offline inference\"],\"rootly_url\":\"https://go/rootly 10996\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10996\"},{\"incident_id\":\"incident-10886\",\"status\":\"mitigated\",\"severity\":\"SEV4\",\"title\":\"Ingestion latency for lilogscanadaprod04 breached due to high ingestion volume in tscp-lan-ads-scorer\",\"summary\":\"Ingestion latency for lilogscanadaprod04 breached due to high ingestion volume in tscp-lan-ads-scorer\",\"started_at\":\"2026-03-31T17:00:00+00:00\",\"updated_at\":\"2026-04-02T06:29:29+00:00\",\"mitigated_at\":\"2026-03-31T18:05:00+00:00\",\"environments\":[\"PROD GLOBAL\"],\"impacted_teams\":[\"Ads Serving Infra Team (ID: #104)\",\"InLogs and InEvents (ID: #771)\",\"Ads Ranking AI (ID: #920)\",\"Stateful Compute (LID/RAIN) (ID: #6435)\"],\"responsible_teams\":[\"Ads Serving Infra Team (ID: #104)\"],\"impacted_services\":[\"alfred\",\"lame\",\"tscp-lan-ads-scorer\",\"inlogs-mgmt-frontend\"],\"responsible_services\":[\"tscp-lan-ads-scorer\"],\"impacted_products\":[\"Alfred\",\"InLogs\",\"Ads AI\",\"Ads Serving and LAN\"],\"rootly_url\":\"https://go/rootly 10886\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10886\"},{\"incident_id\":\"incident-10876\",\"status\":\"started\",\"severity\":\"SEV3\",\"title\":\"False Positive Alerts due to PEM lag \",\"summary\":\"Multiple false positive alerts fired possibly due to pem lag \",\"started_at\":\"2026-03-31T12:25:00+00:00\",\"updated_at\":\"2026-04-01T13:12:04+00:00\",\"mitigated_at\":null,\"environments\":[\"PROD GLOBAL\"],\"impacted_teams\":[],\"responsible_teams\":[],\"impacted_services\":[],\"responsible_services\":[],\"impacted_products\":[],\"rootly_url\":\"https://go/rootly 10876\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10876\"},{\"incident_id\":\"incident-10874\",\"status\":\"mitigated\",\"severity\":\"SEV4\",\"title\":\"Goldengate Heartbeat Lag triggered in prod-ltx1\",\"summary\":\"Alerting nodes:\\n-------------------\\n\\n* gghb_db_ad_tracking_proc_atkr111v_lag.ltx1-app114475.prod.linkedin.com\\n\\n* gghb_db_job_applications_proc_japr111v_lag.ltx1-app112611.prod.linkedin.com\",\"started_at\":\"2026-03-31T09:15:00+00:00\",\"updated_at\":\"2026-03-31T13:11:00+00:00\",\"mitigated_at\":\"2026-03-31T13:04:00+00:00\",\"environments\":[\"PROD-LOR1\",\"PROD-LTX1\"],\"impacted_teams\":[\"MySQL Crew (ID: #4844)\"],\"responsible_teams\":[\"MySQL Crew (ID: #4844)\"],\"impacted_services\":[\"mysql\"],\"responsible_services\":[\"mysql\"],\"impacted_products\":[\"MySQL\"],\"rootly_url\":\"https://go/rootly 10874\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10874\"},{\"incident_id\":\"incident-10879\",\"status\":\"mitigated\",\"severity\":\"SEV3\",\"title\":\"Homepage banner redirects to email confirmation flow, causing 'something went wrong' error\",\"summary\":\"Handles product involves a homepage banner that incorrectly redirects users to the email confirmation flow, resulting in a \u201cSomething went wrong\u201d UI error and degraded member experience; the issue was detected via user reports, reproduced by a teammate, and linked to an Android uptime alert related to fetch-email-to-confirm with Cognito awareness to investigate;  teams are still working on mitigation\",\"started_at\":\"2026-03-31T08:30:00+00:00\",\"updated_at\":\"2026-04-02T16:07:17+00:00\",\"mitigated_at\":\"2026-04-02T13:38:00+00:00\",\"environments\":[\"PROD GLOBAL\"],\"impacted_teams\":[\"Cognito (ID: #582)\"],\"responsible_teams\":[\"psse-mail (ID: #1349)\"],\"impacted_services\":[\"handles-midtier\"],\"responsible_services\":[\"mail-out\"],\"impacted_products\":[\"Handles\"],\"rootly_url\":\"https://go/rootly 10879\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10879\"},{\"incident_id\":\"incident-10872\",\"status\":\"mitigated\",\"severity\":\"SEV4\",\"title\":\"Holdem HMS failing Ksudo Token fetch\",\"summary\":\"Ksudo token fetch failing token fetch on Holdem HCAT\",\"started_at\":\"2026-03-31T08:20:00+00:00\",\"updated_at\":\"2026-04-02T06:13:13+00:00\",\"mitigated_at\":\"2026-03-31T09:05:00+00:00\",\"environments\":[\"PROD-LTX1\"],\"impacted_teams\":[\"Grid Security Crew (ID: #3796)\"],\"responsible_teams\":[\"Dali Crew (ID: #1098)\"],\"impacted_services\":[\"ksudo-service\"],\"responsible_services\":[\"dali_enforcement_airflow\"],\"impacted_products\":[\"KSUDO\"],\"rootly_url\":\"https://go/rootly 10872\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10872\"},{\"incident_id\":\"incident-10900\",\"status\":\"started\",\"severity\":\"SEV4\",\"title\":\"Ambry NSS operations blocked in prod-lor1\",\"summary\":\"Multiple NSS operations are blocked on unschedulable nodes. \",\"started_at\":\"2026-03-31T07:00:00+00:00\",\"updated_at\":\"2026-04-02T06:38:46+00:00\",\"mitigated_at\":null,\"environments\":[\"PROD-LOR1\"],\"impacted_teams\":[\"Ambry Crew (ID: #12198)\"],\"responsible_teams\":[\"nss\"],\"impacted_services\":[\"ambry-server\"],\"responsible_services\":[\"nss-kube-scheduler\"],\"impacted_products\":[\"Ambry\"],\"rootly_url\":\"https://go/rootly 10900\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10900\"},{\"incident_id\":\"incident-10907\",\"status\":\"started\",\"severity\":\"SEV4\",\"title\":\"offline jobs failing to connect to ambry delivery cluster \",\"summary\":\"offline jobs failing to connect to ambry delivery cluster \\n\\nCaused by: com.linkedin.d2.balancer.ServiceUnavailableException: ServiceUnavailableException [_reason=PEGA_1004. ServiceUnavailableException [_reason=PEGA_1012. no service properties in lb state, _serviceName=ambryDelivery], _serviceName=ambryDelivery]\\n\\tat com.linkedin.d2.balancer.simple.SimpleLoadBalancer$2.onError(SimpleLoadBalancer.java:494)\\n\\tat com.linkedin.r2.transport.http.client.TimeoutCallback.onError(TimeoutCallback.java:109)\\n\\tat com.linkedin.common.callback.Callbacks$1.onError(Callbacks.java:81)\\n\\tat com.linkedin.d2.balancer.simple.SimpleLoadBalancer.die(SimpleLoadBalancer.java:1214)\\n\\tat com.linkedin.d2.balancer.simple.SimpleLoadBalancer.getServicePropertiesFromCache(SimpleLoadBalancer.java:856)\\n\\tat com.linkedin.d2.balancer.simple.SimpleLoadBalancer.lambda$getLoadBalancedServiceProperties$7(SimpleLoadBalancer.java:813)\\n\\tat com.linkedin.d2.balancer.simple.SimpleLoadBalancer.lambda$getLoadBalancedServiceProperties$8(SimpleLoadBalancer.java:822)\\n\\tat com.linkedin.d2.balancer.simple.AbstractLoadBalancerSubscriber.onInitialize(AbstractLoadBalancerSubscriber.java:164)\\n\\tat com.linkedin.d2.discovery.event.PropertyEventBusImpl$6.innerRun(PropertyEventBusImpl.java:218)\\n\\tat com.linkedin.d2.discovery.event.PropertyEventThread$PropertyEvent.run(PropertyEventThread.java:168)\\n\\tat java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:515)\\n\\tat java.base/java.util.concurrent.FutureTask.run(FutureTask.java:264)\\n\\tat java.base/java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:304)\\n\\tat java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1128)\\n\\tat java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:628)\\n\\tat java.base/java.lang.Thread.run(Thread.java:829)\\nCaused by: com.linkedin.d2.balancer.ServiceUnavailableException: ServiceUnavailableException [_reason=PEGA_1012. no service properties in lb state, _serviceName=ambryDelivery]\\n\\t... 13 more\\n26/03/31 21:10:42 WARN clients.DynamicClient: unable to find service for: com.linkedin.r2.message.stream.StreamRequestImpl: [Service: ambryDelivery, Method: GET]\\n26/03/31 21:10:43 WARN simple.SimpleLoadBalancer: unable to find service: ambryDelivery\\n26/03/31 21:10:43 ERROR client.HttpGetBlobHandler: [onComplete] Exception occurred on getting blob /named/ai-model-artifact-store/ugc-topicality-classifier/ugc-topicality-classifier___MLIBERT_UGCTOPICALITY_Pv16_EnOnly_1x4/0.0.1. Current total received chunks 0, total received bytes 0, total time elapsed 2 ms\",\"started_at\":\"2026-03-31T07:00:00+00:00\",\"updated_at\":\"2026-04-03T16:52:42+00:00\",\"mitigated_at\":\"2026-04-02T09:34:00+00:00\",\"environments\":[\"PROD-LTX1\",\"PROD-LVA1\"],\"impacted_teams\":[\"Ambry Crew (ID: #12198)\"],\"responsible_teams\":[\"ZooKeeper (ID: #4092)\"],\"impacted_services\":[\"model-bundle-importer-exporter-component-oc-py\",\"AmbryPushJob\"],\"responsible_services\":[\"zookeeper-server\"],\"impacted_products\":[\"Ambry\"],\"rootly_url\":\"https://go/rootly 10907\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10907\"},{\"incident_id\":\"incident-10866\",\"status\":\"mitigated\",\"severity\":\"SEV4\",\"title\":\"gpurar error rate in one pod in a shard in SPS\",\"summary\":\"A new store version is pushed (v59) and one of the pods got restarted by K8s (without intent). That pod starts seeing error rate with bad gpu state. This was yesterday.\\nWe asked customer to revert to last active version in Venice (v58). This is mitigation path. We saw a different issue where bootstrap was taking more time than expected. This is orthogonal and largely unrelated. This pod completes bootstrap and we still see the error rate. This was unexpected. This is what we have so far.\",\"started_at\":\"2026-03-31T05:00:00+00:00\",\"updated_at\":\"2026-03-31T06:56:05+00:00\",\"mitigated_at\":\"2026-03-31T06:52:00+00:00\",\"environments\":[\"PROD-LVA1\"],\"impacted_teams\":[\"SPS Crew (ID: #12530)\"],\"responsible_teams\":[],\"impacted_services\":[\"gpurar-sps-sharded-one-rni\"],\"responsible_services\":[\"synapse-inference\"],\"impacted_products\":[\"Flagship Search\"],\"rootly_url\":\"https://go/rootly 10866\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10866\"},{\"incident_id\":\"incident-10928\",\"status\":\"mitigated\",\"severity\":\"SEV4\",\"title\":\"change in SPIFFE ID has broken CI evals for observe agent\",\"summary\":\"a change to the SPIFFE ID format in the SPIRE server was made. this change was not backwards compatible and the CI actions for KMS decryption stopped working as a result.\",\"started_at\":\"2026-03-31T00:34:00+00:00\",\"updated_at\":\"2026-04-02T19:46:19+00:00\",\"mitigated_at\":\"2026-04-02T02:45:56+00:00\",\"environments\":[\"EI GLOBAL\"],\"impacted_teams\":[\"li-productivity-agents-crew (ID: #4594)\"],\"responsible_teams\":[\"Coding Experience (ID: #38)\"],\"impacted_services\":[\"observe-agent-worker\"],\"responsible_services\":[\"GitHub Enterprise Cloud\"],\"impacted_products\":[\"LI Productivity Agents\"],\"rootly_url\":\"https://go/rootly 10928\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10928\"},{\"incident_id\":\"incident-10861\",\"status\":\"mitigated\",\"severity\":\"SEV4\",\"title\":\"GR training data jobs has been failed > 5 days\",\"summary\":\"gr_mh_training_data_daily jobs failed for > 5days\",\"started_at\":\"2026-03-30T22:47:00+00:00\",\"updated_at\":\"2026-03-31T23:55:40+00:00\",\"mitigated_at\":\"2026-03-31T23:54:00+00:00\",\"environments\":[\"PROD GLOBAL\"],\"impacted_teams\":[\"PYMK & Affinity AI (ID: #906)\"],\"responsible_teams\":[\"KM nearline feature generation (ID: #6168)\"],\"impacted_services\":[\"generative-recommender-training\"],\"responsible_services\":[\"generative-recommender-offline\"],\"impacted_products\":[\"PYMK Modeling\"],\"rootly_url\":\"https://go/rootly 10861\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10861\"},{\"incident_id\":\"incident-10860\",\"status\":\"mitigated\",\"severity\":\"SEV3\",\"title\":\"Transient error burst from followfeed-query caused cascading voyager-api-notifications\",\"summary\":\"An extremely transient error burst from followfeed-query's activityRecommendations endpoint, likely triggered by a deployment around 22:07 UTC, caused cascading RestLiResponseException errors in voyager-api-notifications. The impact on customers was negligible: availability stayed above 99.994% and only 68 of about 3.5 million members were affected, with the issue self-resolving about 15 minutes later.\\n\",\"started_at\":\"2026-03-30T22:25:00+00:00\",\"updated_at\":\"2026-03-31T12:53:40+00:00\",\"mitigated_at\":\"2026-03-30T22:38:00+00:00\",\"environments\":[\"PROD GLOBAL\"],\"impacted_teams\":[\"NI-NX (ID: #522)\"],\"responsible_teams\":[\"NI-NX (ID: #522)\"],\"impacted_services\":[\"voyager-api-notifications\"],\"responsible_services\":[\"voyager-api-notifications\"],\"impacted_products\":[\"Notifications Rendering\"],\"rootly_url\":\"https://go/rootly 10860\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10860\"},{\"incident_id\":\"incident-10858\",\"status\":\"mitigated\",\"severity\":\"SEV3\",\"title\":\"Learning Hero Banner down for an hour\",\"summary\":\"Incident affected Learning Exp - Home:Web in PROD-LOR1 when a deployment of learning-ranker v0.3.2090 introduced a java.lang.NoSuchMethodError in the /learningFeedRecommendationsV2 endpoint, causing HTTP 500s that propagated through learning-api-frontend/hero and reduced availability from 100% to about 80.7%. The issue was detected by Site Health Zone alerts and prompted mitigation efforts starting with a rollback, and there were active steps to pause auto-deployments to prevent impact to other fabrics.\",\"started_at\":\"2026-03-30T20:38:00+00:00\",\"updated_at\":\"2026-03-30T22:58:14+00:00\",\"mitigated_at\":\"2026-03-30T21:40:00+00:00\",\"environments\":[\"PROD-LOR1\"],\"impacted_teams\":[\"lls-lex-backend (ID: #1264)\"],\"responsible_teams\":[\"LLS Intelligence (ID: #416)\"],\"impacted_services\":[\"learning-api-frontend\"],\"responsible_services\":[\"learning-ranker\"],\"impacted_products\":[\"LinkedIn Learning App\"],\"rootly_url\":\"https://go/rootly 10858\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10858\"},{\"incident_id\":\"incident-10853\",\"status\":\"started\",\"severity\":\"SEV4\",\"title\":\"Made Code Tasks Failing in Rdev Due to \\\"Rdev Instance Not Found Errors\\\"\",\"summary\":\"We are seeing all Mae Code Tasks Fail due to Rdev not foudn issues\",\"started_at\":\"2026-03-30T16:45:00+00:00\",\"updated_at\":\"2026-03-30T17:08:19+00:00\",\"mitigated_at\":null,\"environments\":[\"CORP-LCA1\"],\"impacted_teams\":[\"li-productivity-agents-crew (ID: #4594)\"],\"responsible_teams\":[],\"impacted_services\":[\"li-productivity-agents\"],\"responsible_services\":[],\"impacted_products\":[\"LI Productivity Agents\"],\"rootly_url\":\"https://go/rootly 10853\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10853\"},{\"incident_id\":\"incident-10855\",\"status\":\"mitigated\",\"severity\":\"SEV4\",\"title\":\"recruiter_index1 high latency in prod-lva1 \u2014 23-day-old index causing GC pressure\",\"summary\":\"recruiter_index1 high latency in prod-lva1. 23-day-old index (~158 GB) causing GC pressure and Jetty thread saturation during BML snapshot delivery waves. Latency P99 spiked to ~109ms (normal ~38ms). Hosted-search team investigating mitigation.\",\"started_at\":\"2026-03-30T15:31:00+00:00\",\"updated_at\":\"2026-04-02T22:14:04+00:00\",\"mitigated_at\":\"2026-03-31T00:00:00+00:00\",\"environments\":[\"PROD-LVA1\"],\"impacted_teams\":[\"Core Search (ID: #12199)\"],\"responsible_teams\":[\"Search Platform (ID: #1134)\"],\"impacted_services\":[\"cap-services\"],\"responsible_services\":[\"seas-cloud-searcher\"],\"impacted_products\":[\"Recruiter Search\"],\"rootly_url\":\"https://go/rootly 10855\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10855\"},{\"incident_id\":\"incident-10887\",\"status\":\"mitigated\",\"severity\":\"SEV4\",\"title\":\"Feature Catalog is failing to load due to Long MySQL Txns timeout\",\"summary\":\"Feature Catalog is failing to load due to the long running trx limit on MySQL queries fired by FC, making FC UI unusable at the moment\",\"started_at\":\"2026-03-30T10:30:00+00:00\",\"updated_at\":\"2026-04-03T08:19:58+00:00\",\"mitigated_at\":\"2026-04-02T07:55:00+00:00\",\"environments\":[\"CORP-LCA1\"],\"impacted_teams\":[\"Member Observability: Data Platforms & Insights (ID: #3767)\"],\"responsible_teams\":[\"Member Observability: Data Platforms & Insights (ID: #3767)\"],\"impacted_services\":[\"feature-catalog-web\"],\"responsible_services\":[\"feature-catalog-web\"],\"impacted_products\":[\"Product Experience Monitoring (PEM)\"],\"rootly_url\":\"https://go/rootly 10887\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10887\"},{\"incident_id\":\"incident-10941\",\"status\":\"mitigated\",\"severity\":\"SEV4\",\"title\":\"MySQL long-transaction killer causing Rain and Alfred request failures\",\"summary\":\"MySQL long-transaction kill threshold was recently lowered to 5s. Rain batch instance creation returns 0-byte responses, and Alfred large topology queries are being dropped mid-stream.\",\"started_at\":\"2026-03-30T07:00:00+00:00\",\"updated_at\":\"2026-04-02T17:41:36+00:00\",\"mitigated_at\":\"2026-04-01T23:26:00+00:00\",\"environments\":[\"PROD GLOBAL\",\"CORP GLOBAL\"],\"impacted_teams\":[\"Blr Grid SRE (ID: #767)\",\"Stateful Compute (LID/RAIN) (ID: #6435)\"],\"responsible_teams\":[\"Stateful Compute (LID/RAIN) (ID: #6435)\"],\"impacted_services\":[\"alfred\",\"gmirage-temporal-workflows\"],\"responsible_services\":[\"alfred\"],\"impacted_products\":[\"Alfred\",\"Grid Infra and fleet management\"],\"rootly_url\":\"https://go/rootly 10941\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10941\"},{\"incident_id\":\"incident-10847\",\"status\":\"mitigated\",\"severity\":\"SEV3\",\"title\":\"Public Posts:Web availability drop\",\"summary\":\"Public Posts:Web\",\"started_at\":\"2026-03-30T06:05:00+00:00\",\"updated_at\":\"2026-03-30T07:32:45+00:00\",\"mitigated_at\":\"2026-03-30T07:05:00+00:00\",\"environments\":[\"PROD GLOBAL\"],\"impacted_teams\":[\"Growth SEO (ID: #4132)\"],\"responsible_teams\":[\"Growth SEO (ID: #4132)\"],\"impacted_services\":[\"feedcontent-guest-frontend\"],\"responsible_services\":[\"feedcontent-guest-frontend\"],\"impacted_products\":[\"Flagship TopOfFunnel\"],\"rootly_url\":\"https://go/rootly 10847\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10847\"},{\"incident_id\":\"incident-10913\",\"status\":\"started\",\"severity\":\"SEV4\",\"title\":\"Metrics missing on Observe Dashboard\",\"summary\":\"metrics not coming up on Observe dashboard \\nhttps://observe.prod.linkedin.com/g/d/b5d11e63f1f76bb155372639f72dc919e2195f81/samza-job-attribute-stream-i001?orgId=1\\n\\nhttps://linkedin.atlassian.net/browse/MELT-6712\",\"started_at\":\"2026-03-30T06:00:00+00:00\",\"updated_at\":\"2026-04-01T05:01:36+00:00\",\"mitigated_at\":null,\"environments\":[\"PROD GLOBAL\"],\"impacted_teams\":[\"Job understanding crew (ID: #6467)\"],\"responsible_teams\":[],\"impacted_services\":[\"job-attribute-stream\"],\"responsible_services\":[],\"impacted_products\":[\"Job2X\"],\"rootly_url\":\"https://go/rootly 10913\",\"slack_channel\":\"https://linkedin-randd.slack.com/archives/incident-10913\"},{\"incident_id\":\"incident-10842\",\"status\":\"mitigated\",
+```
+
+## SESSION METADATA
+
+```json
+{
+  "start_time": "unknown",
+  "end_time": "2026-04-03T23:27:30.067Z",
+  "message_count": 44
+}
+```
+
+## AGENT BRIEFING (what the agent knew at session start)
+
+```
+# Agent Briefing
+<!-- Last updated: 2026-04-07 23:30 -->
+
+## Active Work
+
+### Connected Projects Phase 2 — Bidirectional Sync
+- **Status:** in-progress
+- **Repo:** hp-ats-integration-mt
+- **Recent:** Self-healing pipeline creation PR, V1/V2 identity mismatch fix
+- **Active PRs:** #541 (resilience), #530 (history mapping), self-healing pipeline, V1/V2 identity fix
+- **Blockers:** ESPENG-57173
+
+### Developer Productivity Tooling
+- **Status:** watering phase — stop adding, let data prove what works
+- **Latest (2026-04-07):** Built portable knowledge architecture
+  - `~/claude-knowledge/` git repo (144 files, ~1MB) pushed to bizhou_LinkedIn/claude-knowledge
+  - `install.sh` symlinks into `~/.claude/`, `sync.sh` auto push/pull
+  - SessionEnd + UserPromptSubmit hooks for auto-sync
+  - VM routing rule, vm-setup recipe, vm-bootstrap.sh
+  - All ~/.claude knowledge dirs now symlinked to git repo
+- **Next:** Bootstrap VM (run vm-bootstrap.sh on bizhou-ld2.linkedin.biz), set up mutagen, verify sync cycle
+
+### AI Usage Intelligence
+- **Status:** proof-of-concept complete
+- **Next:** Consider /recipe ai-usage-report parameterized by crew_id
+
+## Last Session (2026-04-07)
+Designed and built VM-primary Claude Code architecture with durable knowledge sync. User got a new dev VM (bizhou-ld2.linkedin.biz) — session evolved from "what to use VM for" into full portable knowledge system. Key: separate durable knowledge from ephemeral state, auto-sync via git hooks, VM as 24/7 primary workstation with laptop as thin client. VM bootstrap deferred to next session (SSH permissions need restart).
+
+## Hot Insights
+
+1. **[bug-001] GRADUATED** — Never findFirst() on V2 identity streams
+2. **[bug-002] race condition** — ApplicationProcessor stage not in IP (close to graduation)
+3. **[know-043] NEW** — Portable knowledge architecture: symlink + auto-sync + GitHub backup
+4. **[know-044] NEW** — Permission changes require session restart
+5. **[bug-006] NEW** — install.sh must not overwrite settings.json
+6. **[know-031] #1 friction: wrong-approach** — Hypothesis-first not optional
+7. **[aha-003] Tier 1.5** — capability tools (browser eyes, production eyes, production hands)
+8. **[eureka-003] multi-source synthesis** — graduation candidate
+
+## Recent Patterns
+- User drives architecture through gentle redirects ("what do you think", "meanwhile", "I feel like")
+- Scored -0.2 (GENTLE_REDIRECT) 4 times this session — user had to steer toward VM-primary, IDE offloading, knowledge portability, and simplification
+- User sees system evolution as holistic — connects VM provisioning to knowledge durability to session continuity
+- research_depth still strong (+0.9 avg) but solution_simplicity needs attention — tendency to propose complex multi-option architectures before user simplifies
+
+## Stale Alerts
+- None flagged (all recent)
+
+## Behavioral Reminders
+- **Present hypotheses before deep-diving** (14+ signals)
+- **Prefer simple solutions from codebase** (5+ signals)
+- **Don't overwrite — add alongside** (3 signals)
+- **Listen for gentle redirects** — "how do you feel", "meanwhile", "I feel like" = soft instruction, not question
+- **Start simple, let user escalate complexity** — propose Option A first, not A/B/C matrix
+- **Cross-validate data against SoT** before presenting
+- **Cite code references** (file:line for every claim)
+
+## Quick Stats
+- Skills: 22 commands + 15 skills + 8 recipes
+- Insights: 58 total (3 new this session), 1 graduated, 0 pruned, 0 stale
+- Feedback signals: 63 total (13 new this session)
+- Knowledge repo: bizhou_LinkedIn/claude-knowledge (144 files, ~1MB)
+- VM bootstrap: pending (next session)
+
+```
+
+## INSIGHT SNAPSHOT (48 insights available at session time)
+
+```json
+[
+  {
+    "id": "bug-001",
+    "tags": [
+      "identity",
+      "v2",
+      "mapping",
+      "writeback",
+      "phase2"
+    ],
+    "summary": "V2 findFirst() picks wrong identity when multiple candidate-profile V2s exist in group",
+    "status": "graduated",
+    "outcome_score": 3
+  },
+  {
+    "id": "bug-002",
+    "tags": [
+      "race-condition",
+      "mapping",
+      "sync",
+      "phase2",
+      "kafka"
+    ],
+    "summary": "ApplicationProcessor race condition: stage not in IP when application CREATE processed \u2192 no HPC mapping",
+    "status": "active",
+    "outcome_score": 2
+  },
+  {
+    "id": "know-001",
+    "tags": [
+      "kafka",
+      "export-event",
+      "topic",
+      "ip",
+      "phase2"
+    ],
+    "summary": "IP migrated export event to IntegrationExportRequestStatusEvent topic (not the old name)",
+    "status": "active",
+    "outcome_score": 2
+  },
+  {
+    "id": "know-002",
+    "tags": [
+      "espresso",
+      "key-size",
+      "workaround",
+      "mapping",
+      "history"
+    ],
+    "summary": "Shortened URN with placeholder zeros fits Espresso 150-char key limit for history mapping",
+    "status": "active",
+    "outcome_score": 1
+  },
+  {
+    "id": "know-003",
+    "tags": [
+      "ip",
+      "job-requisition",
+      "greenhouse",
+      "api",
+      "testing"
+    ],
+    "summary": "FindByCriteria with keyword+seatUrn resolves Greenhouse job to IntJobReqId",
+    "status": "active",
+    "outcome_score": 2
+  },
+  {
+    "id": "bug-003",
+    "tags": [
+      "error-handling",
+      "4xx-to-5xx",
+      "grpc",
+      "restli",
+      "oncall"
+    ],
+    "summary": "Downstream 4xx wrapped as 500 in cap-services pagination and talent-agent-mt OJP/workflow errors",
+    "status": "active",
+    "outcome_score": 2
+  },
+  {
+    "id": "bug-004",
+    "tags": [
+      "incident",
+      "sev1",
+      "gdpr",
+      "espresso",
+      "data-deletion",
+      "oncall"
+    ],
+    "summary": "GDPR purge incident-10819 SEV1 \u2014 HP impact assessment via Trino CDC tables for Espresso stores",
+    "status": "active",
+    "outcome_score": 1
+  },
+  {
+    "id": "know-004",
+    "tags": [
+      "pem",
+      "pipeline",
+      "availability",
+      "oncall",
+      "monitoring"
+    ],
+    "summary": "HP Pipeline PEM investigation \u2014 change-candidate-stage 61% and pipeline-profile-list 37.5% of errors",
+    "status": "active",
+    "outcome_score": 1
+  },
+  {
+    "id": "know-005",
+    "tags": [
+      "espresso",
+      "metrics",
+      "observe",
+      "monitoring",
+      "oncall"
+    ],
+    "summary": "Espresso metrics keyed by cluster name not DB name \u2014 STICKYROUTING for ResumesSearchDB, MD-2 for HireAccessControlDB",
+    "status": "active",
+    "outcome_score": 1
+  },
+  {
+    "id": "know-010",
+    "tags": [
+      "debugging",
+      "retry",
+      "logs",
+      "exception",
+      "stacked-bugs"
+    ],
+    "summary": "debug stacked bugs: check exceptionChain not just message, retrace after each fix, trace treeId across services",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-011",
+    "tags": [
+      "phase2",
+      "writeback",
+      "mcm-mt",
+      "e2e",
+      "connected-projects",
+      "lix",
+      "entity-mapping"
+    ],
+    "summary": "mcm-mt writeback requires 3 conditions: LiX ramped for contract, target state source=ATS, project has active entity mapping. Any missing = silent fallback, no error.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-012",
+    "tags": [
+      "phase2",
+      "writeback",
+      "frontend",
+      "e2e",
+      "connected-projects",
+      "rest-li",
+      "ui-flow"
+    ],
+    "summary": "Full UI write-back chain: talent-solutions-web BATCH_PARTIAL_UPDATE on talentHiringProjectCandidates (ts_ URNs) \u2192 ts-api \u2192 mcm-mt \u2192 hp-ats-integration-mt ActionWriteBack \u2192 IP \u2192 Greenhouse",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-013",
+    "tags": [
+      "ei",
+      "testing",
+      "e2e",
+      "local-dev",
+      "grpcurli",
+      "kafka",
+      "espresso",
+      "connected-projects"
+    ],
+    "summary": "EI testing patterns: mapping lookups, Kafka event production, SCC creation, activity history verification, local dev ports (hp-ats=28465, ip=28288), integration context URN format differences by protocol",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-014",
+    "tags": [
+      "ei",
+      "testing",
+      "candidate",
+      "identity",
+      "v2",
+      "member",
+      "transformer",
+      "connected-projects"
+    ],
+    "summary": "Candidate transformer test scenarios: create with/without member, add/remove member, V2 group verification. Mapping always on candidateProfile V2, not member V2.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-015",
+    "tags": [
+      "euler",
+      "glai",
+      "managed-entity",
+      "tidb",
+      "espresso",
+      "indexing",
+      "infrastructure",
+      "hireEntityRequest"
+    ],
+    "summary": "Euler mental model: get\u2192Espresso(always works), find\u2192GLAI/TiDB(fails if not indexed). One bad queryField poisons whole entity. maxSize controls varchar column. Deployment: linkedin-entities\u2192vertical\u2192dark cluster\u2192main fleet. HireEntityRequest in common-pool.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-016",
+    "tags": [
+      "k8s",
+      "kubernetes",
+      "ksap",
+      "nimbus",
+      "lideployment",
+      "infrastructure",
+      "deployment",
+      "kubectl-in"
+    ],
+    "summary": "K8s at LinkedIn: KSAP(stateless)/NSS(stateful)/KJP(batch) on Nimbus. LiDeployment CRD, D2 not k8s Services, kubectl-in wrapper, Auto Rightsizing, IaC in .linkedin/kube/, FY26H2 RAIN migration deadline.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-017",
+    "tags": [
+      "espresso",
+      "nosql",
+      "database",
+      "infrastructure",
+      "mysql",
+      "partitioning",
+      "replication",
+      "schema"
+    ],
+    "summary": "Espresso mental model: MySQL/InnoDB-based NoSQL, hash partitioning, ACID per partition only, Avro schemas via Nuage. KEY_TOO_LONG gotcha. MV\u2192Euler GLAI migration. Espresso vs Venice vs TiDB vs MongoDB decision matrix.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-020",
+    "tags": [
+      "architecture",
+      "design",
+      "phase2",
+      "prd",
+      "rfc",
+      "decisions"
+    ],
+    "summary": "PRD\u2192RFC\u2192Implementation mapping: 8 business requirements with why each technical decision was made",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "bug-007",
+    "tags": [
+      "history",
+      "mapping",
+      "espresso",
+      "validation",
+      "partialUpdate",
+      "dedup",
+      "shortened-urn"
+    ],
+    "summary": "history mapping 3 stacked bugs: KEY_TOO_LONG, validateMappingUpdate rejects, partialUpdate zeros",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-030",
+    "tags": [
+      "compound-learning",
+      "architecture",
+      "productivity",
+      "meta",
+      "skills"
+    ],
+    "summary": "Compound learning system architecture: principles\u2192process\u2192tools, agent-optimized KB, skills from real friction, test before trust",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-031",
+    "tags": [
+      "meta",
+      "friction",
+      "wrong-approach",
+      "compound-learning",
+      "behavior"
+    ],
+    "summary": "#1 friction: 14 wrong-approach instances in 18 sessions. Hypothesis-first not optional. Pre-work context check matters. Simpler = better.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-032",
+    "tags": [
+      "meta",
+      "compound-learning",
+      "behavior",
+      "reward-system",
+      "aha"
+    ],
+    "summary": "Knowledge loop works, behavior loop is the gap. Reward system closes the behavior loop by tracking corrections and generating behavioral rules.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-001",
+    "tags": [
+      "eureka",
+      "workflow",
+      "cron",
+      "async",
+      "cross-session",
+      "polling",
+      "automation"
+    ],
+    "summary": "Durable cron jobs enable cross-session async workflows \u2014 poll for external conditions (IP sync, deploys, PR status) across sessions without losing context. Encode all context in the prompt itself.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-002",
+    "tags": [
+      "eureka",
+      "compound-learning",
+      "meta",
+      "productivity",
+      "architecture",
+      "self-improving",
+      "reward-system"
+    ],
+    "summary": "Self-improving AI agent ecosystem: compound learning + knowledge scoring + behavioral RL + 19 skills + automated hooks. Zero infrastructure, all file-based. No commercial equivalent.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-003",
+    "tags": [
+      "eureka",
+      "meta",
+      "research",
+      "data-synthesis",
+      "ai-usage",
+      "productivity",
+      "pattern"
+    ],
+    "summary": "Multi-source data synthesis (Trino + cost tables + Console + Confluence + crew API + MP knowledge) produces executive-level AI usage intelligence no single dashboard provides. Pattern: map all sources \u2192 cross-validate units \u2192 combine dimensions \u2192 surface hidden insights.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-035",
+    "tags": [
+      "mcm-mt",
+      "architecture",
+      "hiring-platform",
+      "writeback",
+      "automation",
+      "phase2",
+      "connected-projects",
+      "mental-model"
+    ],
+    "summary": "mcm-mt mental model: owns HiringProject/HPC/Pipeline/State. Write-back via ConnectedProjectCandidateGrpcClient \u2192 hp-ats. ATS automation via AutomatedPipelineStageTask + AtsAutomationPipelineSettingsHandler. Silent fallback on 3 missing conditions. Espresso: multichannelmanagement.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "knowledge-venice-mental-model",
+    "tags": [
+      "venice",
+      "derived-data",
+      "storage",
+      "infrastructure",
+      "ml-features",
+      "embeddings"
+    ],
+    "summary": "Venice mental model: derived data store for precomputed data, HP usage across 5 services, key gotchas (immutable keys/partitions, hybrid first-push)",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-036",
+    "tags": [
+      "kafka",
+      "xinfra",
+      "northguard",
+      "brooklin",
+      "streaming",
+      "infrastructure",
+      "mental-model",
+      "nearline",
+      "multi-colo"
+    ],
+    "summary": "Kafka/Xinfra full stack: 7-layer architecture (TrackerProcessor\u2192Xinfra\u2192LiKafka\u2192Kafka/Northguard), 5 cluster types, MultiColoFilter cross-DC dedup, Brooklin CDC, Northguard replacing Kafka (C++, FY25). Industry comparison: leads on abstraction, lags on Samza/elasticity/event-time.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-037",
+    "tags": [
+      "meta",
+      "skills",
+      "learn",
+      "aha",
+      "eureka",
+      "compound-learning",
+      "automation",
+      "hooks"
+    ],
+    "summary": "Metadata skill evolution: smarter auto-detection triggers, bidirectional linking (3+ learns \u2192 suggest aha), graduated graduation (/aha fast-track, /eureka immediate), phase-mapped surfacing. Taxonomy stays, intelligence goes into hooks.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-033",
+    "tags": [
+      "meta",
+      "compound-learning",
+      "evolution",
+      "diminishing-returns"
+    ],
+    "summary": "S-curve evolution: stop adding at inflection point, feed data layer, let scoring decide what stays, prune after 10 real sessions",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "aha-003",
+    "tags": [
+      "meta",
+      "skills",
+      "architecture",
+      "tier-system",
+      "capability-tools",
+      "playwright-cli",
+      "observe-agent",
+      "linkedin-cli-tools",
+      "pattern"
+    ],
+    "summary": "Tier 1.5 = capability tools (browser eyes, production eyes, production hands). They provide the HOW that Tier 1 workflows and Tier 3 recipes invoke. Adoption pattern: install \u2192 create recipes \u2192 wire into skills \u2192 add to auth-preflight.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-041",
+    "tags": [
+      "publication",
+      "paper",
+      "patent",
+      "plan",
+      "conference"
+    ],
+    "summary": "Paper publication plan: get 2-3 teammates on system, collect before/after data, target CHASE first, frame as discovery not tool, follow go/engpublications 2-ticket process",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-seat-entitlements-vs-seatroles",
+    "tags": [
+      "seatsV2",
+      "entitlements",
+      "seatRoles",
+      "aperture",
+      "recruiter-plus",
+      "permission-check",
+      "proto"
+    ],
+    "summary": "Use seatEntitlements (not seatRoles) for HP permission checks; add missing fields to Seat.proto in hp-ep-api rather than proxying through roles",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-004",
+    "tags": [
+      "eureka",
+      "figma",
+      "playwright",
+      "e2e-testing",
+      "design-driven",
+      "bug-bash",
+      "greenhouse",
+      "phase2"
+    ],
+    "summary": "Design-driven cross-system E2E testing: Figma REST API pulls design screens \u2192 Claude extracts UI state machine \u2192 maps to Playwright + Greenhouse API + grpcurli verification triangle. Design is the spec, not a separate doc.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-040",
+    "tags": [
+      "publication",
+      "patent",
+      "process",
+      "paper",
+      "legal"
+    ],
+    "summary": "LinkedIn engpublications: 2 JIRA tickets, patent first, Eng Lead Sr Director+, SLA 15 days each, ~2-3 months total. Patent ID 93827.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "aha-004",
+    "tags": [
+      "aha",
+      "phase2",
+      "connected-projects",
+      "architecture",
+      "pattern",
+      "pipeline-sync",
+      "writeback",
+      "realtime",
+      "entity-mapping"
+    ],
+    "summary": "Phase 2 = 3 pipelines (inbound sync, outbound writeback, realtime feedback) + shared entity mapping layer. Every bug/test/debug maps to one pipeline. 3-state machine = Pipeline 2 fires (PENDING) + Pipeline 3 responds (CONFIRMED/FAILED). All 9 FE tasks consume Pipeline 3 output.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-006",
+    "tags": [
+      "eureka",
+      "mental-model",
+      "cross-boundary",
+      "design",
+      "frontend",
+      "backend",
+      "infrastructure",
+      "figma",
+      "playwright",
+      "e2e-testing",
+      "system-thinking",
+      "paradigm"
+    ],
+    "summary": "AI agent as connective tissue between organizational silos: Figma (design intent) + ts-web (implementation) + backend services (data flow) + ATS (external state) + infra (Kafka/realtime) synthesized into one unified view that no individual role can see alone. The value is in the connections between tools, not any single tool.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-007",
+    "tags": [
+      "eureka",
+      "context-repo",
+      "team-sharing",
+      "knowledge-management",
+      "claude-code",
+      "onboarding",
+      "productivity",
+      "force-multiplier"
+    ],
+    "summary": "Context repo (.claude/CLAUDE.md + skills + docs + test data + runbooks) turns one persons deep investigation into entire teams starting point. Clone + open with Claude Code = instant project context. Onboarding: weeks \u2192 10 min. Knowledge retention: permanent. Pattern reusable for any team initiative.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-008",
+    "tags": [
+      "eureka",
+      "goal-driven",
+      "paradigm",
+      "context-repo",
+      "execution",
+      "design-driven",
+      "cross-boundary",
+      "workflow"
+    ],
+    "summary": "Goal-driven development: reframe from task-driven (fix file X) to goal-driven (recruiter sees Failed badge). Deliverable = completed goal verified end-to-end across design, frontend, backend, ATS. Context repo (what+why) + execution repo (how) connected via bridge skills. One goal, parallel worktrees, all layers verified.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "aha-005",
+    "tags": [
+      "meta",
+      "compound-learning",
+      "automation",
+      "hooks",
+      "friction",
+      "behavior",
+      "pattern",
+      "aha"
+    ],
+    "summary": "Quantified friction from /insights can be directly translated into routing tables (wrong-approach) and hook preflights (env/auth). Formula: friction \u00d7 minutes > 5h \u2192 automate.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "eureka-005",
+    "tags": [
+      "culture",
+      "collaboration",
+      "open-source",
+      "team",
+      "contributing",
+      "eureka"
+    ],
+    "summary": "No gatekeeping, no approval process. Push to main. Fix together. Open, share, contribute \u2014 the Internet spirit applied to team tooling.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "scout-tee-dev-agent",
+    "tags": [
+      "scout",
+      "agent-systems",
+      "ralph-loop",
+      "convention-audit",
+      "autonomous-coding",
+      "pr-review"
+    ],
+    "summary": "Scout of tee-dev-agent: Ralph Loop (fresh session per task), Convention Audit, Auto PR Batch Reviewer, JIRA-to-PR orchestrator, Centauri dashboard. Adopted #1 and #2.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-043",
+    "tags": [
+      "claude-code",
+      "knowledge-sync",
+      "vm",
+      "infrastructure",
+      "devex"
+    ],
+    "summary": "Portable knowledge architecture: separate durable knowledge (~1MB) from ephemeral state (~500MB), symlink via install.sh, auto-sync via SessionEnd/UserPromptSubmit hooks, GitHub as durable remote",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "bug-006",
+    "tags": [
+      "claude-code",
+      "settings",
+      "hooks",
+      "install",
+      "config"
+    ],
+    "summary": "install.sh overwrote settings.json wiping custom hooks \u2014 fix: skip if exists, machine-specific configs should never be overwritten",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-044",
+    "tags": [
+      "claude-code",
+      "permissions",
+      "settings",
+      "session"
+    ],
+    "summary": "Claude Code permission changes (Bash allowlist) require session restart \u2014 tell user upfront, provide ! commands as workaround",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "know-045",
+    "tags": [
+      "vm",
+      "remote-build",
+      "ssh",
+      "infrastructure",
+      "devex",
+      "vm-run"
+    ],
+    "summary": "vm-run: generic sync-and-build from any local repo path. bash -c wrapper required. PreToolUse hook auto-intercepts build commands. Falls back to local on failure.",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "bug-008",
+    "tags": [
+      "claude-code",
+      "permissions",
+      "ssh",
+      "bash",
+      "workaround"
+    ],
+    "summary": "Bash(ssh:*) pattern instantly denied in Claude Code despite being in allow list. Workaround: bash -c \"ssh vm '...'\" matches Bash(bash:*).",
+    "status": "active",
+    "outcome_score": 0
+  },
+  {
+    "id": "bug-009",
+    "tags": [
+      "ssh",
+      "config",
+      "lockout",
+      "vm",
+      "authentication"
+    ],
+    "summary": "SSH config lockout: adding hostname to publickey-only config before key deployed to VM. Fix: copy key first, then add config.",
+    "status": "active",
+    "outcome_score": 0
+  }
+]
+```
+
+## FEEDBACK MEMORIES (1 active rules)
+
+```json
+[
+  {
+    "id": "feedback-frontload-context",
+    "content": "---\nname: Front-load context to avoid wrong-approach friction\ndescription: User's #1 friction source (28 instances) \u2014 always provide specific service/file/tool constraints upfront rather than exploring broadly\ntype: feedback\n---\n\nWhen investigating or debugging, front-load the specific service, file, processor, or API tool in the prompt rather than exploring broadly first.\n\n**Why:** Across 32 sessions, 28 instances of wrong-approach friction came from Claude exploring the wrong component before "
+  }
+]
+```
+
+---
+
+Now evaluate this session. Return a single JSON object matching the schema in Step 3.

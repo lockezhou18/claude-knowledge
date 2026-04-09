@@ -1,0 +1,177 @@
+[
+  {
+    "session_id": "2026-04-01_c787d78d-1475-4359-8d95-6cc0723ea7ce",
+    "status": "pending_judge",
+    "judge_input_path": "/Users/bizhou/claude-knowledge/evals/results/agent-quality/judge_input_2026-04-01_c787d78d-1475-4359-8d95-6cc0723ea7ce.txt"
+  },
+  {
+    "session_id": "2026-04-01_cf729783-3c2a-401f-95ad-542c97cfdbc2",
+    "status": "pending_judge",
+    "judge_input_path": "/Users/bizhou/claude-knowledge/evals/results/agent-quality/judge_input_2026-04-01_cf729783-3c2a-401f-95ad-542c97cfdbc2.txt"
+  },
+  {
+    "session_id": "2026-04-02_189807c7-a5b5-4604-b5c9-9c9991e92fd7",
+    "status": "pending_judge",
+    "judge_input_path": "/Users/bizhou/claude-knowledge/evals/results/agent-quality/judge_input_2026-04-02_189807c7-a5b5-4604-b5c9-9c9991e92fd7.txt"
+  },
+  {
+    "session_id": "2026-04-02_2d3bcd96-194a-4c3d-86cb-a5debac35c8b",
+    "status": "pending_judge",
+    "judge_input_path": "/Users/bizhou/claude-knowledge/evals/results/agent-quality/judge_input_2026-04-02_2d3bcd96-194a-4c3d-86cb-a5debac35c8b.txt"
+  },
+  {
+    "session_id": "2026-04-02_47e925b0-0c28-4dfb-a5d8-30ac716f198b",
+    "status": "pending_judge",
+    "judge_input_path": "/Users/bizhou/claude-knowledge/evals/results/agent-quality/judge_input_2026-04-02_47e925b0-0c28-4dfb-a5d8-30ac716f198b.txt"
+  },
+  {
+    "session_id": "2026-04-02_e2281f86-85bf-46e6-abdb-0b367f56ce35",
+    "status": "pending_judge",
+    "judge_input_path": "/Users/bizhou/claude-knowledge/evals/results/agent-quality/judge_input_2026-04-02_e2281f86-85bf-46e6-abdb-0b367f56ce35.txt"
+  },
+  {
+    "session_id": "2026-04-02_f6d4cfb6-2450-4b5d-badb-dc00943e7a22",
+    "status": "pending_judge",
+    "judge_input_path": "/Users/bizhou/claude-knowledge/evals/results/agent-quality/judge_input_2026-04-02_f6d4cfb6-2450-4b5d-badb-dc00943e7a22.txt"
+  },
+  {
+    "session_id": "2026-04-02_fba0f391-fb59-4174-96fc-191fbe1b3f65",
+    "status": "pending_judge",
+    "judge_input_path": "/Users/bizhou/claude-knowledge/evals/results/agent-quality/judge_input_2026-04-02_fba0f391-fb59-4174-96fc-191fbe1b3f65.txt"
+  },
+  {
+    "session_id": "2026-04-03_338b665d-f323-4da1-83a6-33508ee5b938",
+    "status": "pending_judge",
+    "judge_input_path": "/Users/bizhou/claude-knowledge/evals/results/agent-quality/judge_input_2026-04-03_338b665d-f323-4da1-83a6-33508ee5b938.txt"
+  },
+  {
+    "session_id": "2026-04-03_3cbe5e5a-c1b6-4328-b4b8-5982a6aee3c0",
+    "status": "pending_judge",
+    "judge_input_path": "/Users/bizhou/claude-knowledge/evals/results/agent-quality/judge_input_2026-04-03_3cbe5e5a-c1b6-4328-b4b8-5982a6aee3c0.txt"
+  },
+  {
+    "session_id": "2026-04-03_4def4ce2-48d5-4acc-ba56-d80588d4d9fd",
+    "status": "pending_judge",
+    "judge_input_path": "/Users/bizhou/claude-knowledge/evals/results/agent-quality/judge_input_2026-04-03_4def4ce2-48d5-4acc-ba56-d80588d4d9fd.txt"
+  },
+  {
+    "session_id": "2026-04-03_8ba638f2-4792-4777-8b1b-9fd8954aa274",
+    "status": "pending_judge",
+    "judge_input_path": "/Users/bizhou/claude-knowledge/evals/results/agent-quality/judge_input_2026-04-03_8ba638f2-4792-4777-8b1b-9fd8954aa274.txt"
+  },
+  {
+    "session_id": "2026-04-05_180f55da-950b-40a1-9581-0f30dd8a48f2",
+    "status": "pending_judge",
+    "judge_input_path": "/Users/bizhou/claude-knowledge/evals/results/agent-quality/judge_input_2026-04-05_180f55da-950b-40a1-9581-0f30dd8a48f2.txt"
+  },
+  {
+    "session_id": "2026-04-05_2eac8367-91de-4429-ae52-807ef278291b",
+    "status": "pending_judge",
+    "judge_input_path": "/Users/bizhou/claude-knowledge/evals/results/agent-quality/judge_input_2026-04-05_2eac8367-91de-4429-ae52-807ef278291b.txt"
+  },
+  {
+    "session_id": "2026-04-05_383081c8-2751-4f6c-a9d1-dfe1b23233b6",
+    "status": "pending_judge",
+    "judge_input_path": "/Users/bizhou/claude-knowledge/evals/results/agent-quality/judge_input_2026-04-05_383081c8-2751-4f6c-a9d1-dfe1b23233b6.txt"
+  },
+  {
+    "session_id": "2026-04-05_4851dc38-86b6-4f37-81f9-2578b3312250",
+    "status": "pending_judge",
+    "judge_input_path": "/Users/bizhou/claude-knowledge/evals/results/agent-quality/judge_input_2026-04-05_4851dc38-86b6-4f37-81f9-2578b3312250.txt"
+  },
+  {
+    "session_id": "2026-04-05_5abcc009-a003-4360-a96d-cda01ec3bc11",
+    "status": "pending_judge",
+    "judge_input_path": "/Users/bizhou/claude-knowledge/evals/results/agent-quality/judge_input_2026-04-05_5abcc009-a003-4360-a96d-cda01ec3bc11.txt"
+  },
+  {
+    "session_id": "2026-04-05_f445cdc2-6d6e-43a3-b68f-5e5499328088",
+    "status": "pending_judge",
+    "judge_input_path": "/Users/bizhou/claude-knowledge/evals/results/agent-quality/judge_input_2026-04-05_f445cdc2-6d6e-43a3-b68f-5e5499328088.txt"
+  },
+  {
+    "session_id": "2026-04-07_31e7df46-500c-47a7-ac88-76e6d2eda7d5",
+    "status": "pending_judge",
+    "judge_input_path": "/Users/bizhou/claude-knowledge/evals/results/agent-quality/judge_input_2026-04-07_31e7df46-500c-47a7-ac88-76e6d2eda7d5.txt"
+  },
+  {
+    "session_id": "2026-04-07_46e88919-bf2a-4208-8da0-91d538f939f3",
+    "status": "pending_judge",
+    "judge_input_path": "/Users/bizhou/claude-knowledge/evals/results/agent-quality/judge_input_2026-04-07_46e88919-bf2a-4208-8da0-91d538f939f3.txt"
+  },
+  {
+    "session_id": "2026-04-07_4fdae01d-34c0-47e7-85fb-3395e74dc6da",
+    "status": "pending_judge",
+    "judge_input_path": "/Users/bizhou/claude-knowledge/evals/results/agent-quality/judge_input_2026-04-07_4fdae01d-34c0-47e7-85fb-3395e74dc6da.txt"
+  },
+  {
+    "session_id": "2026-04-07_5460a0b5-f4c0-403c-8c9f-a4b43aec9006",
+    "status": "pending_judge",
+    "judge_input_path": "/Users/bizhou/claude-knowledge/evals/results/agent-quality/judge_input_2026-04-07_5460a0b5-f4c0-403c-8c9f-a4b43aec9006.txt"
+  },
+  {
+    "session_id": "2026-04-07_ad16f905-a29c-48bd-b1a0-6e597ba9fd11",
+    "status": "pending_judge",
+    "judge_input_path": "/Users/bizhou/claude-knowledge/evals/results/agent-quality/judge_input_2026-04-07_ad16f905-a29c-48bd-b1a0-6e597ba9fd11.txt"
+  },
+  {
+    "session_id": "2026-04-07_ef0ffdbe-55eb-4886-b55e-4371ce64aa43",
+    "status": "pending_judge",
+    "judge_input_path": "/Users/bizhou/claude-knowledge/evals/results/agent-quality/judge_input_2026-04-07_ef0ffdbe-55eb-4886-b55e-4371ce64aa43.txt"
+  },
+  {
+    "session_id": "2026-04-07_f5372293-87cf-4bff-b8bd-1331ec9f4ac5",
+    "status": "pending_judge",
+    "judge_input_path": "/Users/bizhou/claude-knowledge/evals/results/agent-quality/judge_input_2026-04-07_f5372293-87cf-4bff-b8bd-1331ec9f4ac5.txt"
+  },
+  {
+    "session_id": "2026-04-07_f6439e6a-3821-42c7-ae64-971797c80354",
+    "status": "pending_judge",
+    "judge_input_path": "/Users/bizhou/claude-knowledge/evals/results/agent-quality/judge_input_2026-04-07_f6439e6a-3821-42c7-ae64-971797c80354.txt"
+  },
+  {
+    "session_id": "2026-04-08_0f5e71e6-364d-4827-96d1-2a462f47b0de",
+    "status": "pending_judge",
+    "judge_input_path": "/Users/bizhou/claude-knowledge/evals/results/agent-quality/judge_input_2026-04-08_0f5e71e6-364d-4827-96d1-2a462f47b0de.txt"
+  },
+  {
+    "session_id": "2026-04-08_27db5d4c-f39d-4ca8-b029-b22a12079f15",
+    "status": "pending_judge",
+    "judge_input_path": "/Users/bizhou/claude-knowledge/evals/results/agent-quality/judge_input_2026-04-08_27db5d4c-f39d-4ca8-b029-b22a12079f15.txt"
+  },
+  {
+    "session_id": "2026-04-08_3c47921e-99b4-40ad-b3a0-55edb8a19389",
+    "status": "pending_judge",
+    "judge_input_path": "/Users/bizhou/claude-knowledge/evals/results/agent-quality/judge_input_2026-04-08_3c47921e-99b4-40ad-b3a0-55edb8a19389.txt"
+  },
+  {
+    "session_id": "2026-04-08_5c8f31b2-f07c-45f9-9f2b-8fdd537db5dd",
+    "status": "pending_judge",
+    "judge_input_path": "/Users/bizhou/claude-knowledge/evals/results/agent-quality/judge_input_2026-04-08_5c8f31b2-f07c-45f9-9f2b-8fdd537db5dd.txt"
+  },
+  {
+    "session_id": "2026-04-08_89e7322e-2fc7-4340-96e4-a33fdcc60e3a",
+    "status": "pending_judge",
+    "judge_input_path": "/Users/bizhou/claude-knowledge/evals/results/agent-quality/judge_input_2026-04-08_89e7322e-2fc7-4340-96e4-a33fdcc60e3a.txt"
+  },
+  {
+    "session_id": "2026-04-08_bc7ac0bd-923b-4dc4-b7a3-b0d76a6a46fb",
+    "status": "pending_judge",
+    "judge_input_path": "/Users/bizhou/claude-knowledge/evals/results/agent-quality/judge_input_2026-04-08_bc7ac0bd-923b-4dc4-b7a3-b0d76a6a46fb.txt"
+  },
+  {
+    "session_id": "2026-04-08_c07726c8-f994-4080-a984-a8c5c523f963",
+    "status": "pending_judge",
+    "judge_input_path": "/Users/bizhou/claude-knowledge/evals/results/agent-quality/judge_input_2026-04-08_c07726c8-f994-4080-a984-a8c5c523f963.txt"
+  },
+  {
+    "session_id": "2026-04-08_d07ef355-6638-4efb-84df-d949212c6573",
+    "status": "pending_judge",
+    "judge_input_path": "/Users/bizhou/claude-knowledge/evals/results/agent-quality/judge_input_2026-04-08_d07ef355-6638-4efb-84df-d949212c6573.txt"
+  },
+  {
+    "session_id": "2026-04-08_d5a5e66c-b905-46d3-a2de-71368ef8b56f",
+    "status": "pending_judge",
+    "judge_input_path": "/Users/bizhou/claude-knowledge/evals/results/agent-quality/judge_input_2026-04-08_d5a5e66c-b905-46d3-a2de-71368ef8b56f.txt"
+  }
+]
