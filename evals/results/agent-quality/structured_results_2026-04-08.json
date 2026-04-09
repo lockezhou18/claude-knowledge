@@ -1,0 +1,5260 @@
+{
+  "report": {
+    "run_date": "2026-04-08T17:39:48.708742",
+    "sessions_evaluated": 35,
+    "total_tasks": 124,
+    "total_correct": 94.5,
+    "agreement_rate": 76.2,
+    "avg_redirections": 0.4,
+    "severity_weighted_score": 0.821,
+    "failure_distribution": {
+      "wrong_approach": 12,
+      "tool_misuse": 11,
+      "over_engineering": 10,
+      "user_ambiguity": 3,
+      "skill_deficiency": 1,
+      "context_miss": 1,
+      "skill_gap": 0
+    },
+    "dominant_failure_type": "wrong_approach",
+    "insight_stats": {
+      "total_hits": 4,
+      "total_misses": 1,
+      "total_wrong": 0,
+      "total_violations": 1
+    },
+    "behavioral_loop": {
+      "signal_detection_rate": 0.797,
+      "signals_detected": 110,
+      "signals_total": 138,
+      "adaptation_speeds": {
+        "immediate": 94,
+        "delayed": 10,
+        "resistant": 1
+      },
+      "proactive_suggestions": {
+        "appropriate": 45,
+        "pushy": 2,
+        "missed": 8
+      }
+    },
+    "compound_learning": {
+      "insights_generated": 9,
+      "duplicates_created": 0,
+      "loops_closed": 4,
+      "sessions_total": 35,
+      "loop_closure_rate": 0.11,
+      "graduation_candidates": [
+        "espresso-table-traffic",
+        "know-012"
+      ],
+      "prune_candidates": [],
+      "stale_candidates": []
+    },
+    "principle_adherence": {
+      "total_applicable": 0,
+      "total_followed": 0,
+      "total_violated": 0,
+      "adherence_rate": 0.0,
+      "foundation_score": null,
+      "most_violated": null,
+      "violation_count_by_principle": {},
+      "total_violation_details": 0
+    },
+    "avg_session_score": 0.761,
+    "session_summaries": [
+      {
+        "session_id": "c787d78d-1475-4359-8d95-6cc0723ea7ce",
+        "session_date": "2026-04-01",
+        "agreement_rate": 0.75,
+        "dominant_failure": "wrong_approach",
+        "session_score": 0.74,
+        "tasks": 3,
+        "correct": 2
+      },
+      {
+        "session_id": "cf729783-3c2a-401f-95ad-542c97cfdbc2",
+        "session_date": "2026-04-01",
+        "agreement_rate": 0.58,
+        "dominant_failure": "tool_misuse",
+        "session_score": 0.66,
+        "tasks": 3,
+        "correct": 1.5
+      },
+      {
+        "session_id": "189807c7-a5b5-4604-b5c9-9c9991e92fd7",
+        "session_date": "2026-04-02",
+        "agreement_rate": 0.5,
+        "dominant_failure": "tool_misuse",
+        "session_score": 0.73,
+        "tasks": 2,
+        "correct": 1
+      },
+      {
+        "session_id": "2d3bcd96-194a-4c3d-86cb-a5debac35c8b",
+        "session_date": "2026-04-02",
+        "agreement_rate": 0.71,
+        "dominant_failure": "wrong_approach",
+        "session_score": 0.71,
+        "tasks": 7,
+        "correct": 4.5
+      },
+      {
+        "session_id": "47e925b0-0c28-4dfb-a5d8-30ac716f198b",
+        "session_date": "2026-04-02",
+        "agreement_rate": 1.0,
+        "dominant_failure": null,
+        "session_score": 0.95,
+        "tasks": 5,
+        "correct": 5
+      },
+      {
+        "session_id": "e2281f86-85bf-46e6-abdb-0b367f56ce35",
+        "session_date": "2026-04-02",
+        "agreement_rate": 0.69,
+        "dominant_failure": "over_engineering",
+        "session_score": 0.67,
+        "tasks": 4,
+        "correct": 2.5
+      },
+      {
+        "session_id": "f6d4cfb6-2450-4b5d-badb-dc00943e7a22",
+        "session_date": "2026-04-02",
+        "agreement_rate": 0.69,
+        "dominant_failure": "over_engineering",
+        "session_score": 0.67,
+        "tasks": 4,
+        "correct": 2.5
+      },
+      {
+        "session_id": "fba0f391-fb59-4174-96fc-191fbe1b3f65",
+        "session_date": "2026-04-02",
+        "agreement_rate": 1.0,
+        "dominant_failure": null,
+        "session_score": 0.95,
+        "tasks": 3,
+        "correct": 3
+      },
+      {
+        "session_id": "2026-04-03_338b665d-f323-4da1-83a6-33508ee5b938",
+        "session_date": "2026-04-03",
+        "agreement_rate": 62.5,
+        "dominant_failure": "tool_misuse",
+        "session_score": 0.66,
+        "tasks": 4,
+        "correct": 2.5
+      },
+      {
+        "session_id": "2026-04-03_3cbe5e5a-c1b6-4328-b4b8-5982a6aee3c0",
+        "session_date": "2026-04-03",
+        "agreement_rate": 100,
+        "dominant_failure": null,
+        "session_score": 0.95,
+        "tasks": 2,
+        "correct": 2
+      },
+      {
+        "session_id": "2026-04-03_4def4ce2-48d5-4acc-ba56-d80588d4d9fd",
+        "session_date": "2026-04-03",
+        "agreement_rate": 100,
+        "dominant_failure": null,
+        "session_score": 0.95,
+        "tasks": 3,
+        "correct": 3
+      },
+      {
+        "session_id": "2026-04-03_8ba638f2-4792-4777-8b1b-9fd8954aa274",
+        "session_date": "2026-04-03",
+        "agreement_rate": 75,
+        "dominant_failure": "wrong_approach",
+        "session_score": 0.8,
+        "tasks": 2,
+        "correct": 1.5
+      },
+      {
+        "session_id": "2026-04-05_180f55da-950b-40a1-9581-0f30dd8a48f2",
+        "session_date": "2026-04-05",
+        "agreement_rate": 83.3,
+        "dominant_failure": "wrong_approach",
+        "session_score": 0.85,
+        "tasks": 3,
+        "correct": 2.5
+      },
+      {
+        "session_id": "2026-04-05_2eac8367-91de-4429-ae52-807ef278291b",
+        "session_date": "2026-04-05",
+        "agreement_rate": 100,
+        "dominant_failure": null,
+        "session_score": 0.9,
+        "tasks": 1,
+        "correct": 1
+      },
+      {
+        "session_id": "2026-04-05_383081c8-2751-4f6c-a9d1-dfe1b23233b6",
+        "session_date": "2026-04-05",
+        "agreement_rate": 75,
+        "dominant_failure": "wrong_approach",
+        "session_score": 0.85,
+        "tasks": 2,
+        "correct": 1.5
+      },
+      {
+        "session_id": "2026-04-05_4851dc38-86b6-4f37-81f9-2578b3312250",
+        "session_date": "2026-04-05",
+        "agreement_rate": 75,
+        "dominant_failure": "tool_misuse",
+        "session_score": 0.8,
+        "tasks": 2,
+        "correct": 1.5
+      },
+      {
+        "session_id": "2026-04-05_5abcc009-a003-4360-a96d-cda01ec3bc11",
+        "session_date": "2026-04-05",
+        "agreement_rate": 100,
+        "dominant_failure": null,
+        "session_score": 0.9,
+        "tasks": 2,
+        "correct": 2
+      },
+      {
+        "session_id": "f445cdc2-6d6e-43a3-b68f-5e5499328088",
+        "session_date": "2026-04-05",
+        "agreement_rate": 58.3,
+        "dominant_failure": "wrong_approach",
+        "session_score": 0.69,
+        "tasks": 6,
+        "correct": 3.5
+      },
+      {
+        "session_id": "31e7df46-500c-47a7-ac88-76e6d2eda7d5",
+        "session_date": "2026-04-07",
+        "agreement_rate": 85.7,
+        "dominant_failure": "tool_misuse",
+        "session_score": 0.87,
+        "tasks": 7,
+        "correct": 6
+      },
+      {
+        "session_id": "46e88919-bf2a-4208-8da0-91d538f939f3",
+        "session_date": "2026-04-07",
+        "agreement_rate": 87.5,
+        "dominant_failure": "wrong_approach",
+        "session_score": 0.82,
+        "tasks": 8,
+        "correct": 7
+      },
+      {
+        "session_id": "4fdae01d-34c0-47e7-85fb-3395e74dc6da",
+        "session_date": "2026-04-07",
+        "agreement_rate": 100,
+        "dominant_failure": null,
+        "session_score": 0.85,
+        "tasks": 3,
+        "correct": 3
+      },
+      {
+        "session_id": "5460a0b5-f4c0-403c-8c9f-a4b43aec9006",
+        "session_date": "2026-04-07",
+        "agreement_rate": 100,
+        "dominant_failure": null,
+        "session_score": 0.88,
+        "tasks": 4,
+        "correct": 4
+      },
+      {
+        "session_id": "ad16f905-a29c-48bd-b1a0-6e597ba9fd11",
+        "session_date": "2026-04-07",
+        "agreement_rate": 80,
+        "dominant_failure": null,
+        "session_score": 0.8,
+        "tasks": 5,
+        "correct": 4
+      },
+      {
+        "session_id": "ef0ffdbe-55eb-4886-b55e-4371ce64aa43",
+        "session_date": "2026-04-07",
+        "agreement_rate": 100,
+        "dominant_failure": null,
+        "session_score": 0.92,
+        "tasks": 3,
+        "correct": 3
+      },
+      {
+        "session_id": "f5372293-87cf-4bff-b8bd-1331ec9f4ac5",
+        "session_date": "2026-04-07",
+        "agreement_rate": 100,
+        "dominant_failure": null,
+        "session_score": 0.9,
+        "tasks": 3,
+        "correct": 3
+      },
+      {
+        "session_id": "f6439e6a-3821-42c7-ae64-971797c80354",
+        "session_date": "2026-04-07",
+        "agreement_rate": 75,
+        "dominant_failure": "wrong_approach",
+        "session_score": 0.78,
+        "tasks": 10,
+        "correct": 7.5
+      },
+      {
+        "session_id": "2026-04-08_0f5e71e6-364d-4827-96d1-2a462f47b0de",
+        "session_date": "2026-04-08",
+        "agreement_rate": 0.25,
+        "dominant_failure": "wrong_approach",
+        "session_score": 0.32,
+        "tasks": 2,
+        "correct": 0.5
+      },
+      {
+        "session_id": "2026-04-08_27db5d4c-f39d-4ca8-b029-b22a12079f15",
+        "session_date": "2026-04-08",
+        "agreement_rate": 0.5,
+        "dominant_failure": "wrong_approach",
+        "session_score": 0.56,
+        "tasks": 3,
+        "correct": 1.5
+      },
+      {
+        "session_id": "2026-04-08_3c47921e-99b4-40ad-b3a0-55edb8a19389",
+        "session_date": "2026-04-08",
+        "agreement_rate": 0.5,
+        "dominant_failure": "wrong_approach",
+        "session_score": 0.47,
+        "tasks": 3,
+        "correct": 1.5
+      },
+      {
+        "session_id": "2026-04-08_5c8f31b2-f07c-45f9-9f2b-8fdd537db5dd",
+        "session_date": "2026-04-08",
+        "agreement_rate": 0.83,
+        "dominant_failure": "tool_misuse",
+        "session_score": 0.77,
+        "tasks": 3,
+        "correct": 2.5
+      },
+      {
+        "session_id": "2026-04-08_89e7322e-2fc7-4340-96e4-a33fdcc60e3a",
+        "session_date": "2026-04-08",
+        "agreement_rate": 0.5,
+        "dominant_failure": "tool_misuse",
+        "session_score": 0.58,
+        "tasks": 1,
+        "correct": 0.5
+      },
+      {
+        "session_id": "2026-04-08_bc7ac0bd-923b-4dc4-b7a3-b0d76a6a46fb",
+        "session_date": "2026-04-08",
+        "agreement_rate": 0.83,
+        "dominant_failure": "tool_misuse",
+        "session_score": 0.75,
+        "tasks": 3,
+        "correct": 2.5
+      },
+      {
+        "session_id": "2026-04-08_c07726c8-f994-4080-a984-a8c5c523f963",
+        "session_date": "2026-04-08",
+        "agreement_rate": 0.83,
+        "dominant_failure": "tool_misuse",
+        "session_score": 0.77,
+        "tasks": 3,
+        "correct": 2.5
+      },
+      {
+        "session_id": "2026-04-08_d07ef355-6638-4efb-84df-d949212c6573",
+        "session_date": "2026-04-08",
+        "agreement_rate": 0.5,
+        "dominant_failure": "tool_misuse",
+        "session_score": 0.63,
+        "tasks": 1,
+        "correct": 0.5
+      },
+      {
+        "session_id": "2026-04-08_d5a5e66c-b905-46d3-a2de-71368ef8b56f",
+        "session_date": "2026-04-08",
+        "agreement_rate": 0.5,
+        "dominant_failure": "over_engineering",
+        "session_score": 0.53,
+        "tasks": 4,
+        "correct": 2.0
+      }
+    ]
+  },
+  "simulations": [
+    {
+      "failure_type": "wrong_approach",
+      "current_count": 12,
+      "fix_route": "review_rules",
+      "simulated_agreement_rate": 85.9,
+      "delta_agreement": 9.7,
+      "severity_weight": 3.0,
+      "priority_score": 29.1
+    },
+    {
+      "failure_type": "over_engineering",
+      "current_count": 10,
+      "fix_route": "review_rules",
+      "simulated_agreement_rate": 84.3,
+      "delta_agreement": 8.1,
+      "severity_weight": 1.5,
+      "priority_score": 12.1
+    },
+    {
+      "failure_type": "tool_misuse",
+      "current_count": 11,
+      "fix_route": "review_rules",
+      "simulated_agreement_rate": 85.1,
+      "delta_agreement": 8.9,
+      "severity_weight": 1.0,
+      "priority_score": 8.9
+    },
+    {
+      "failure_type": "context_miss",
+      "current_count": 1,
+      "fix_route": "review_retrieval",
+      "simulated_agreement_rate": 77.0,
+      "delta_agreement": 0.8,
+      "severity_weight": 2.5,
+      "priority_score": 2.0
+    },
+    {
+      "failure_type": "skill_deficiency",
+      "current_count": 1,
+      "fix_route": "review_skills",
+      "simulated_agreement_rate": 77.0,
+      "delta_agreement": 0.8,
+      "severity_weight": 2.0,
+      "priority_score": 1.6
+    }
+  ],
+  "verdicts": [
+    {
+      "session_id": "c787d78d-1475-4359-8d95-6cc0723ea7ce",
+      "session_date": "2026-04-01",
+      "repo": "hp-ats-integration-mt",
+      "total_tasks": 3,
+      "correct_first_approach": 2,
+      "agreement_rate": 0.75,
+      "total_redirections": 1,
+      "avg_redirections_per_task": 0.33,
+      "failure_distribution": {
+        "wrong_approach": 1,
+        "skill_deficiency": 0,
+        "skill_gap": 0,
+        "context_miss": 0,
+        "over_engineering": 0,
+        "tool_misuse": 0,
+        "user_ambiguity": 0
+      },
+      "dominant_failure_type": "wrong_approach",
+      "severity_weighted_score": 0.67,
+      "insight_summary": {
+        "total_available": "unknown",
+        "total_retrieved": 0,
+        "total_hits": 0,
+        "total_misses": 0,
+        "total_wrong": 0,
+        "total_violations": 0,
+        "retrieval_precision": "N/A",
+        "retrieval_recall": "N/A",
+        "insight_ids_to_prune": [],
+        "insight_ids_to_graduate": [],
+        "feedback_ids_to_strengthen": [
+          "feedback-frontload-context"
+        ]
+      },
+      "behavioral_loop": {
+        "signals_detected": 3,
+        "signals_total": 4,
+        "signal_detection_rate": 0.75,
+        "adaptation_speed_distribution": {
+          "immediate": 3,
+          "delayed": 0,
+          "resistant": 0
+        },
+        "proactive_suggestions": {
+          "appropriate": 2,
+          "pushy": 0,
+          "missed": 0
+        }
+      },
+      "compound_learning": {
+        "retrieval_quality": "partial",
+        "insights_generated": 0,
+        "insights_quality": "N/A",
+        "duplicates_created": 0,
+        "graduation_candidates": [],
+        "prune_candidates": [],
+        "stale_candidates": [],
+        "loop_closed": false
+      },
+      "session_score": 0.74,
+      "tasks": [
+        {
+          "task_id": "T1",
+          "task_summary": "Check HP request 8489 status and identify why PENDING",
+          "task_start": 1,
+          "task_end": 32,
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Agent correctly checked both HP and IP sides in parallel, identified IP SUCCESS but HP stuck at PENDING.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T2",
+          "task_summary": "Propose fix for SUCCESS handling",
+          "task_start": 32,
+          "task_end": 51,
+          "first_approach": "incorrect",
+          "redirections": 1,
+          "primary_failure_type": "wrong_approach",
+          "contributing_types": [],
+          "evidence": "[35] User: 'this should happen on applicationstage processor'. Agent proposed fixing wrong processor.",
+          "counterfactual": "Should have asked which processor handles SUCCESS before proposing a fix.",
+          "fix_target": "CLAUDE.md behavioral gates",
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": [
+              {
+                "feedback_id": "feedback-frontload-context",
+                "rule": "present hypotheses first"
+              }
+            ]
+          }
+        },
+        {
+          "task_id": "T3",
+          "task_summary": "Verify PR #529 fixes KEY_TOO_LONG",
+          "task_start": 54,
+          "task_end": 92,
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Thorough /verify workflow with good evidence chain.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        }
+      ],
+      "improvement_simulation": {
+        "wrong_approach": {
+          "simulated_agreement": 1.0,
+          "delta": 0.25
+        }
+      },
+      "summary": "Solid debugging session. One wrong_approach on processor choice. User redirected and agent adapted immediately. /verify was thorough."
+    },
+    {
+      "session_id": "cf729783-3c2a-401f-95ad-542c97cfdbc2",
+      "session_date": "2026-04-01",
+      "repo": "global",
+      "total_tasks": 3,
+      "correct_first_approach": 1.5,
+      "agreement_rate": 0.58,
+      "total_redirections": 3,
+      "avg_redirections_per_task": 1.0,
+      "failure_distribution": {
+        "wrong_approach": 0,
+        "skill_deficiency": 0,
+        "skill_gap": 0,
+        "context_miss": 0,
+        "over_engineering": 1,
+        "tool_misuse": 1,
+        "user_ambiguity": 0
+      },
+      "dominant_failure_type": "tool_misuse",
+      "severity_weighted_score": 0.72,
+      "insight_summary": {
+        "total_available": "unknown",
+        "total_retrieved": 0,
+        "total_hits": 0,
+        "total_misses": 0,
+        "total_wrong": 0,
+        "total_violations": 0,
+        "retrieval_precision": "N/A",
+        "retrieval_recall": "N/A",
+        "insight_ids_to_prune": [],
+        "insight_ids_to_graduate": [],
+        "feedback_ids_to_strengthen": [
+          "insights-rules-observe-agent"
+        ]
+      },
+      "behavioral_loop": {
+        "signals_detected": 4,
+        "signals_total": 5,
+        "signal_detection_rate": 0.8,
+        "adaptation_speed_distribution": {
+          "immediate": 3,
+          "delayed": 1,
+          "resistant": 0
+        },
+        "proactive_suggestions": {
+          "appropriate": 1,
+          "pushy": 0,
+          "missed": 0
+        }
+      },
+      "compound_learning": {
+        "retrieval_quality": "partial",
+        "insights_generated": 1,
+        "insights_quality": "medium",
+        "duplicates_created": 0,
+        "graduation_candidates": [],
+        "prune_candidates": [],
+        "stale_candidates": [],
+        "loop_closed": true
+      },
+      "session_score": 0.66,
+      "tasks": [
+        {
+          "task_id": "T1",
+          "task_summary": "Investigate talent-agent-service GenAI errors",
+          "task_start": 1,
+          "task_end": 112,
+          "first_approach": "partially_correct",
+          "redirections": 2,
+          "primary_failure_type": "tool_misuse",
+          "contributing_types": [],
+          "evidence": "[65] User: 'trace downstream via code and treeId'. [94] User: 'use observe agent'. Agent used Slack/KQL instead of observe-agent.",
+          "counterfactual": "Use observe-agent from start.",
+          "fix_target": "investigate.md skill",
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": [
+              {
+                "feedback_id": "insights-rules-observe-agent",
+                "rule": "Use observe-agent as primary log tool"
+              }
+            ]
+          }
+        },
+        {
+          "task_id": "T2",
+          "task_summary": "Save insight (/learn) about GenAI channel",
+          "task_start": 115,
+          "task_end": 162,
+          "first_approach": "partially_correct",
+          "redirections": 1,
+          "primary_failure_type": "over_engineering",
+          "contributing_types": [],
+          "evidence": "[153] User: 'not global level, just project level'. Agent saved at wrong scope.",
+          "counterfactual": "Ask scope before writing.",
+          "fix_target": "learn.md skill",
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T3",
+          "task_summary": "Confirm file path",
+          "task_start": 163,
+          "task_end": 168,
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Correct immediate response.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        }
+      ],
+      "improvement_simulation": {
+        "tool_misuse": {
+          "simulated_agreement": 0.75,
+          "delta": 0.17
+        },
+        "over_engineering": {
+          "simulated_agreement": 0.75,
+          "delta": 0.17
+        }
+      },
+      "summary": "Correct root cause found but inefficient path. Wrong tools used instead of observe-agent. /learn saved at wrong scope. Good outcome, poor efficiency."
+    },
+    {
+      "session_id": "189807c7-a5b5-4604-b5c9-9c9991e92fd7",
+      "session_date": "2026-04-02",
+      "repo": "global",
+      "total_tasks": 2,
+      "correct_first_approach": 1,
+      "agreement_rate": 0.5,
+      "total_redirections": 1,
+      "avg_redirections_per_task": 0.5,
+      "failure_distribution": {
+        "wrong_approach": 0,
+        "skill_deficiency": 0,
+        "skill_gap": 0,
+        "context_miss": 0,
+        "over_engineering": 0,
+        "tool_misuse": 1,
+        "user_ambiguity": 0
+      },
+      "dominant_failure_type": "tool_misuse",
+      "severity_weighted_score": 0.83,
+      "insight_summary": {
+        "total_available": "unknown",
+        "total_retrieved": 0,
+        "total_hits": 0,
+        "total_misses": 0,
+        "total_wrong": 0,
+        "total_violations": 0,
+        "retrieval_precision": "N/A",
+        "retrieval_recall": "N/A",
+        "insight_ids_to_prune": [],
+        "insight_ids_to_graduate": [],
+        "feedback_ids_to_strengthen": []
+      },
+      "behavioral_loop": {
+        "signals_detected": 2,
+        "signals_total": 2,
+        "signal_detection_rate": 1.0,
+        "adaptation_speed_distribution": {
+          "immediate": 2,
+          "delayed": 0,
+          "resistant": 0
+        },
+        "proactive_suggestions": {
+          "appropriate": 1,
+          "pushy": 0,
+          "missed": 0
+        }
+      },
+      "compound_learning": {
+        "retrieval_quality": "partial",
+        "insights_generated": 0,
+        "insights_quality": "N/A",
+        "duplicates_created": 0,
+        "graduation_candidates": [],
+        "prune_candidates": [],
+        "stale_candidates": [],
+        "loop_closed": false
+      },
+      "session_score": 0.73,
+      "tasks": [
+        {
+          "task_id": "T1",
+          "task_summary": "Fetch Slack alert about Brooklin lag",
+          "task_start": 2,
+          "task_end": 24,
+          "first_approach": "partially_correct",
+          "redirections": 1,
+          "primary_failure_type": "tool_misuse",
+          "contributing_types": [],
+          "evidence": "Agent tried to fetch Slack URL via bot (lacked access) then did many redundant searches instead of asking user to paste.",
+          "counterfactual": "Ask user to paste content when bot lacks access.",
+          "fix_target": "find.md skill",
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T2",
+          "task_summary": "Find Brooklin offset skip solution",
+          "task_start": 26,
+          "task_end": 98,
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Thorough search. Correctly concluded no direct skip API. Well-ranked mitigation options.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        }
+      ],
+      "improvement_simulation": {
+        "tool_misuse": {
+          "simulated_agreement": 1.0,
+          "delta": 0.5
+        }
+      },
+      "summary": "Brooklin lag investigation. First task inefficient (bot lacked Slack access). Once context provided, analysis was thorough with well-ranked mitigations."
+    },
+    {
+      "session_id": "2d3bcd96-194a-4c3d-86cb-a5debac35c8b",
+      "session_date": "2026-04-02",
+      "repo": "hp-ats-integration-mt",
+      "total_tasks": 7,
+      "correct_first_approach": 4.5,
+      "agreement_rate": 0.71,
+      "total_redirections": 4,
+      "avg_redirections_per_task": 0.57,
+      "failure_distribution": {
+        "wrong_approach": 1,
+        "skill_deficiency": 0,
+        "skill_gap": 0,
+        "context_miss": 1,
+        "over_engineering": 1,
+        "tool_misuse": 0,
+        "user_ambiguity": 0
+      },
+      "dominant_failure_type": "wrong_approach",
+      "severity_weighted_score": 0.6,
+      "insight_summary": {
+        "total_available": "unknown",
+        "total_retrieved": 1,
+        "total_hits": 1,
+        "total_misses": 0,
+        "total_wrong": 0,
+        "total_violations": 0,
+        "retrieval_precision": 1.0,
+        "retrieval_recall": 1.0,
+        "insight_ids_to_prune": [],
+        "insight_ids_to_graduate": [
+          "know-012"
+        ],
+        "feedback_ids_to_strengthen": []
+      },
+      "behavioral_loop": {
+        "signals_detected": 6,
+        "signals_total": 8,
+        "signal_detection_rate": 0.75,
+        "adaptation_speed_distribution": {
+          "immediate": 5,
+          "delayed": 1,
+          "resistant": 0
+        },
+        "proactive_suggestions": {
+          "appropriate": 3,
+          "pushy": 0,
+          "missed": 1
+        }
+      },
+      "compound_learning": {
+        "retrieval_quality": "effective",
+        "insights_generated": 0,
+        "insights_quality": "N/A",
+        "duplicates_created": 0,
+        "graduation_candidates": [
+          "know-012"
+        ],
+        "prune_candidates": [],
+        "stale_candidates": [],
+        "loop_closed": false
+      },
+      "session_score": 0.71,
+      "tasks": [
+        {
+          "task_id": "T1",
+          "task_summary": "Find 10 bug bash jobs",
+          "task_start": 5,
+          "task_end": 37,
+          "first_approach": "partially_correct",
+          "redirections": 1,
+          "primary_failure_type": "wrong_approach",
+          "contributing_types": [],
+          "evidence": "Searched local files first. User clarified: Greenhouse jobs with 5xx.",
+          "counterfactual": "Ask where jobs are.",
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T2",
+          "task_summary": "Get links, check IP sync",
+          "task_start": 40,
+          "task_end": 85,
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Clean. All 60 stages confirmed synced.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T3",
+          "task_summary": "Create 10 Connected Projects",
+          "task_start": 88,
+          "task_end": 133,
+          "first_approach": "partially_correct",
+          "redirections": 2,
+          "primary_failure_type": "context_miss",
+          "contributing_types": [],
+          "evidence": "Used wrong seat ID. User pointed to /action-writeback skill.",
+          "counterfactual": "Check skill for working parameters.",
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T4",
+          "task_summary": "E2E test 5 candidates",
+          "task_start": 136,
+          "task_end": 255,
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Full E2E verified. All 5 PARTNER_API_SUCCESS.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T5",
+          "task_summary": "Check ts-api integration history",
+          "task_start": 258,
+          "task_end": 268,
+          "first_approach": "partially_correct",
+          "redirections": 1,
+          "primary_failure_type": "over_engineering",
+          "contributing_types": [],
+          "evidence": "Proposed options before checking KB. User: 'check knowledge base'.",
+          "counterfactual": "Check KB first.",
+          "fix_target": "Behavioral gate",
+          "insight_audit": {
+            "should_have_used": [
+              "know-012"
+            ],
+            "actually_used": [
+              "know-012"
+            ],
+            "hits": [
+              {
+                "id": "know-012",
+                "outcome": "helped"
+              }
+            ],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T6",
+          "task_summary": "Debug mcm-mt write-back path",
+          "task_start": 270,
+          "task_end": 303,
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Traced logs, confirmed path works.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T7",
+          "task_summary": "Start ActionWriteBack improvements",
+          "task_start": 306,
+          "task_end": 311,
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Started reading code. Session ended.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        }
+      ],
+      "improvement_simulation": {
+        "wrong_approach": {
+          "simulated_agreement": 0.79,
+          "delta": 0.07
+        }
+      },
+      "summary": "Long productive bug bash session. Set up 10 Connected Projects, full E2E verification. Minor frictions: wrong initial search, wrong seat ID, options before KB check."
+    },
+    {
+      "session_id": "47e925b0-0c28-4dfb-a5d8-30ac716f198b",
+      "session_date": "2026-04-02",
+      "repo": "mcm-mt",
+      "total_tasks": 5,
+      "correct_first_approach": 5,
+      "agreement_rate": 1.0,
+      "total_redirections": 0,
+      "avg_redirections_per_task": 0.0,
+      "failure_distribution": {
+        "wrong_approach": 0,
+        "skill_deficiency": 0,
+        "skill_gap": 0,
+        "context_miss": 0,
+        "over_engineering": 0,
+        "tool_misuse": 0,
+        "user_ambiguity": 0
+      },
+      "dominant_failure_type": null,
+      "severity_weighted_score": 1.0,
+      "insight_summary": {
+        "total_available": "unknown",
+        "total_retrieved": 0,
+        "total_hits": 0,
+        "total_misses": 0,
+        "total_wrong": 0,
+        "total_violations": 0,
+        "retrieval_precision": "N/A",
+        "retrieval_recall": "N/A",
+        "insight_ids_to_prune": [],
+        "insight_ids_to_graduate": [],
+        "feedback_ids_to_strengthen": []
+      },
+      "behavioral_loop": {
+        "signals_detected": 4,
+        "signals_total": 4,
+        "signal_detection_rate": 1.0,
+        "adaptation_speed_distribution": {
+          "immediate": 4,
+          "delayed": 0,
+          "resistant": 0
+        },
+        "proactive_suggestions": {
+          "appropriate": 2,
+          "pushy": 0,
+          "missed": 0
+        }
+      },
+      "compound_learning": {
+        "retrieval_quality": "partial",
+        "insights_generated": 0,
+        "insights_quality": "N/A",
+        "duplicates_created": 0,
+        "graduation_candidates": [],
+        "prune_candidates": [],
+        "stale_candidates": [],
+        "loop_closed": false
+      },
+      "session_score": 0.95,
+      "tasks": [
+        {
+          "task_id": "T1",
+          "task_summary": "Review PR #3848",
+          "task_start": 2,
+          "task_end": 17,
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Clear root cause explanation.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T2",
+          "task_summary": "Fix code, resolve comments, update PR",
+          "task_start": 18,
+          "task_end": 192,
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "100% coverage. All comments resolved. BUILD SUCCESSFUL.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T3",
+          "task_summary": "Rename PR and soften tone",
+          "task_start": 197,
+          "task_end": 201,
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Quick, accurate.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T4",
+          "task_summary": "Show worklog",
+          "task_start": 204,
+          "task_end": 220,
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Clean.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T5",
+          "task_summary": "Explore Venice",
+          "task_start": 222,
+          "task_end": 286,
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Good clarifying questions, 3 parallel research agents.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        }
+      ],
+      "improvement_simulation": {},
+      "summary": "Excellent session. All tasks correct. Zero redirections. 100% test coverage. Best session in batch."
+    },
+    {
+      "session_id": "e2281f86-85bf-46e6-abdb-0b367f56ce35",
+      "session_date": "2026-04-02",
+      "repo": "hp-ats-integration-mt",
+      "total_tasks": 4,
+      "correct_first_approach": 2.5,
+      "agreement_rate": 0.69,
+      "total_redirections": 3,
+      "avg_redirections_per_task": 0.75,
+      "failure_distribution": {
+        "wrong_approach": 0,
+        "skill_deficiency": 0,
+        "skill_gap": 0,
+        "context_miss": 0,
+        "over_engineering": 2,
+        "tool_misuse": 0,
+        "user_ambiguity": 0
+      },
+      "dominant_failure_type": "over_engineering",
+      "severity_weighted_score": 0.75,
+      "insight_summary": {
+        "total_available": "unknown",
+        "total_retrieved": 0,
+        "total_hits": 0,
+        "total_misses": 0,
+        "total_wrong": 0,
+        "total_violations": 0,
+        "retrieval_precision": "N/A",
+        "retrieval_recall": "N/A",
+        "insight_ids_to_prune": [],
+        "insight_ids_to_graduate": [],
+        "feedback_ids_to_strengthen": []
+      },
+      "behavioral_loop": {
+        "signals_detected": 3,
+        "signals_total": 5,
+        "signal_detection_rate": 0.6,
+        "adaptation_speed_distribution": {
+          "immediate": 3,
+          "delayed": 0,
+          "resistant": 0
+        },
+        "proactive_suggestions": {
+          "appropriate": 1,
+          "pushy": 1,
+          "missed": 0
+        }
+      },
+      "compound_learning": {
+        "retrieval_quality": "partial",
+        "insights_generated": 0,
+        "insights_quality": "N/A",
+        "duplicates_created": 0,
+        "graduation_candidates": [],
+        "prune_candidates": [],
+        "stale_candidates": [],
+        "loop_closed": false
+      },
+      "session_score": 0.67,
+      "tasks": [
+        {
+          "task_id": "T1",
+          "task_summary": "Plan E2E testing for history item",
+          "task_start": 1,
+          "task_end": 57,
+          "first_approach": "partially_correct",
+          "redirections": 2,
+          "primary_failure_type": "over_engineering",
+          "contributing_types": [],
+          "evidence": "Over-planned with questions when user wanted execution.",
+          "counterfactual": "Execute immediately after understanding plan.",
+          "fix_target": "Behavioral gate: match ceremony to scope",
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T2",
+          "task_summary": "Verify history mappings, discover dedup bug",
+          "task_start": 60,
+          "task_end": 132,
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Discovered real production dedup bug.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T3",
+          "task_summary": "Verify shortened URN fix deployment",
+          "task_start": 135,
+          "task_end": 157,
+          "first_approach": "partially_correct",
+          "redirections": 1,
+          "primary_failure_type": "over_engineering",
+          "contributing_types": [],
+          "evidence": "Presented blocking options instead of exploring workarounds.",
+          "counterfactual": "Explore lix override options first.",
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T4",
+          "task_summary": "Investigate lix override",
+          "task_start": 160,
+          "task_end": 161,
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Started checking grpcurli lix override.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        }
+      ],
+      "improvement_simulation": {
+        "over_engineering": {
+          "simulated_agreement": 1.0,
+          "delta": 0.31
+        }
+      },
+      "summary": "E2E testing with strong finding (production dedup bug). Main friction: over-planning instead of executing, blocking options instead of workarounds."
+    },
+    {
+      "session_id": "f6d4cfb6-2450-4b5d-badb-dc00943e7a22",
+      "session_date": "2026-04-02",
+      "repo": "mcm-offline",
+      "total_tasks": 4,
+      "correct_first_approach": 2.5,
+      "agreement_rate": 0.69,
+      "total_redirections": 3,
+      "avg_redirections_per_task": 0.75,
+      "failure_distribution": {
+        "wrong_approach": 0,
+        "skill_deficiency": 0,
+        "skill_gap": 0,
+        "context_miss": 0,
+        "over_engineering": 2,
+        "tool_misuse": 0,
+        "user_ambiguity": 0
+      },
+      "dominant_failure_type": "over_engineering",
+      "severity_weighted_score": 0.75,
+      "insight_summary": {
+        "total_available": "unknown",
+        "total_retrieved": 0,
+        "total_hits": 0,
+        "total_misses": 0,
+        "total_wrong": 0,
+        "total_violations": 0,
+        "retrieval_precision": "N/A",
+        "retrieval_recall": "N/A",
+        "insight_ids_to_prune": [],
+        "insight_ids_to_graduate": [],
+        "feedback_ids_to_strengthen": []
+      },
+      "behavioral_loop": {
+        "signals_detected": 4,
+        "signals_total": 6,
+        "signal_detection_rate": 0.67,
+        "adaptation_speed_distribution": {
+          "immediate": 3,
+          "delayed": 1,
+          "resistant": 0
+        },
+        "proactive_suggestions": {
+          "appropriate": 2,
+          "pushy": 1,
+          "missed": 0
+        }
+      },
+      "compound_learning": {
+        "retrieval_quality": "partial",
+        "insights_generated": 0,
+        "insights_quality": "N/A",
+        "duplicates_created": 0,
+        "graduation_candidates": [],
+        "prune_candidates": [],
+        "stale_candidates": [],
+        "loop_closed": false
+      },
+      "session_score": 0.67,
+      "tasks": [
+        {
+          "task_id": "T1",
+          "task_summary": "Research existing offline reconcile flow",
+          "task_start": 1,
+          "task_end": 96,
+          "first_approach": "correct",
+          "redirections": 1,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Thorough research. User redirected once to clarify architecture.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T2",
+          "task_summary": "Resolve questions and get direction",
+          "task_start": 97,
+          "task_end": 175,
+          "first_approach": "partially_correct",
+          "redirections": 2,
+          "primary_failure_type": "over_engineering",
+          "contributing_types": [],
+          "evidence": "Over-researched and asked too many questions. User gave concise 3-point direction.",
+          "counterfactual": "Lead with recommendations.",
+          "fix_target": "kickoff.md",
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T3",
+          "task_summary": "Implement consistency service",
+          "task_start": 177,
+          "task_end": 234,
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Clean implementation matching existing patterns.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T4",
+          "task_summary": "Discuss testing approach",
+          "task_start": 236,
+          "task_end": 259,
+          "first_approach": "partially_correct",
+          "redirections": 0,
+          "primary_failure_type": "over_engineering",
+          "contributing_types": [],
+          "evidence": "Presented 3 options instead of leading with recommendation.",
+          "counterfactual": "Lead with recommendation matching existing pattern.",
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        }
+      ],
+      "improvement_simulation": {
+        "over_engineering": {
+          "simulated_agreement": 1.0,
+          "delta": 0.31
+        }
+      },
+      "summary": "Offline reconcile flow session. Research thorough, implementation clean. Main friction: over_engineering with too many options instead of recommendations."
+    },
+    {
+      "session_id": "fba0f391-fb59-4174-96fc-191fbe1b3f65",
+      "session_date": "2026-04-02",
+      "repo": "global",
+      "total_tasks": 3,
+      "correct_first_approach": 3,
+      "agreement_rate": 1.0,
+      "total_redirections": 0,
+      "avg_redirections_per_task": 0.0,
+      "failure_distribution": {
+        "wrong_approach": 0,
+        "skill_deficiency": 0,
+        "skill_gap": 0,
+        "context_miss": 0,
+        "over_engineering": 0,
+        "tool_misuse": 0,
+        "user_ambiguity": 0
+      },
+      "dominant_failure_type": null,
+      "severity_weighted_score": 1.0,
+      "insight_summary": {
+        "total_available": "unknown",
+        "total_retrieved": 0,
+        "total_hits": 0,
+        "total_misses": 0,
+        "total_wrong": 0,
+        "total_violations": 0,
+        "retrieval_precision": "N/A",
+        "retrieval_recall": "N/A",
+        "insight_ids_to_prune": [],
+        "insight_ids_to_graduate": [],
+        "feedback_ids_to_strengthen": []
+      },
+      "behavioral_loop": {
+        "signals_detected": 2,
+        "signals_total": 2,
+        "signal_detection_rate": 1.0,
+        "adaptation_speed_distribution": {
+          "immediate": 2,
+          "delayed": 0,
+          "resistant": 0
+        },
+        "proactive_suggestions": {
+          "appropriate": 1,
+          "pushy": 0,
+          "missed": 0
+        }
+      },
+      "compound_learning": {
+        "retrieval_quality": "partial",
+        "insights_generated": 0,
+        "insights_quality": "N/A",
+        "duplicates_created": 0,
+        "graduation_candidates": [],
+        "prune_candidates": [],
+        "stale_candidates": [],
+        "loop_closed": false
+      },
+      "session_score": 0.95,
+      "tasks": [
+        {
+          "task_id": "T1",
+          "task_summary": "Get Jira ticket link",
+          "task_start": 3,
+          "task_end": 8,
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Correct first approach.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T2",
+          "task_summary": "Fetch ticket details",
+          "task_start": 10,
+          "task_end": 23,
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Correct tool usage.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T3",
+          "task_summary": "Analyze Slack thread",
+          "task_start": 25,
+          "task_end": 27,
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Thorough analysis.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        }
+      ],
+      "improvement_simulation": {},
+      "summary": "Clean session. All 3 tasks correct. Zero redirections."
+    },
+    {
+      "session_id": "2026-04-03_338b665d-f323-4da1-83a6-33508ee5b938",
+      "session_date": "2026-04-03",
+      "repo": "oncall",
+      "total_tasks": 4,
+      "correct_first_approach": 2.5,
+      "agreement_rate": 62.5,
+      "total_redirections": 3,
+      "avg_redirections_per_task": 0.75,
+      "failure_distribution": {
+        "tool_misuse": 1,
+        "wrong_approach": 1
+      },
+      "dominant_failure_type": "tool_misuse",
+      "severity_weighted_score": 0.667,
+      "insight_summary": {
+        "total_available": 48,
+        "total_retrieved": 2,
+        "total_hits": 1,
+        "total_misses": 1,
+        "total_wrong": 0,
+        "total_violations": 1,
+        "retrieval_precision": 0.5,
+        "retrieval_recall": 0.5,
+        "insight_ids_to_prune": [],
+        "insight_ids_to_graduate": [],
+        "feedback_ids_to_strengthen": [
+          "insights-rules-curli-first"
+        ]
+      },
+      "behavioral_loop": {
+        "signals_detected": 3,
+        "signals_total": 4,
+        "signal_detection_rate": 0.75,
+        "adaptation_speed_distribution": {
+          "immediate": 2,
+          "delayed": 1,
+          "resistant": 0
+        },
+        "proactive_suggestions": {
+          "appropriate": 1,
+          "pushy": 0,
+          "missed": 1
+        }
+      },
+      "compound_learning": {
+        "retrieval_quality": "partial",
+        "insights_generated": 1,
+        "insights_quality": "medium",
+        "duplicates_created": 0,
+        "graduation_candidates": [],
+        "prune_candidates": [],
+        "stale_candidates": [],
+        "loop_closed": false
+      },
+      "session_score": 0.66,
+      "tasks": [
+        {
+          "task_id": "T1",
+          "task_summary": "MCP connection troubleshooting",
+          "first_approach": "incorrect",
+          "redirections": 2,
+          "primary_failure_type": "wrong_approach",
+          "contributing_types": [],
+          "evidence": "Agent retried ToolSearch 10+ times while Captain MCP was still connecting instead of suggesting /mcp reconnect",
+          "counterfactual": "After 3 ToolSearch failures with MCP connecting error, should have immediately suggested /mcp reconnect",
+          "fix_target": "Add MCP retry limit rule to CLAUDE.md or behavioral gates",
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T2",
+          "task_summary": "CSE-22369 data lookup via Trino",
+          "first_approach": "incorrect",
+          "redirections": 1,
+          "primary_failure_type": "tool_misuse",
+          "contributing_types": [
+            "context_miss"
+          ],
+          "evidence": "Used Trino for data lookup instead of curli, violating the explicit curli-first rule in insights-rules.md",
+          "counterfactual": "Should have used curli for data lookup \u2014 the insights-rules.md explicitly states 'Prefer curli/REST APIs over Trino/SQL for data lookups'",
+          "fix_target": "Strengthen curli-first rule surfacing in scout hook for oncall/investigation tasks",
+          "insight_audit": {
+            "should_have_used": [
+              "insights-rules-curli-first"
+            ],
+            "actually_used": [],
+            "hits": [],
+            "misses": [
+              {
+                "id": "insights-rules-curli-first",
+                "reason": "not retrieved"
+              }
+            ],
+            "violations": [
+              {
+                "feedback_id": "insights-rules-curli-first",
+                "rule": "prefer curli over Trino"
+              }
+            ]
+          }
+        },
+        {
+          "task_id": "T3",
+          "task_summary": "JIRA comment for CSE-22369",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Good JIRA comment quality, proper safety pause before write",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T4",
+          "task_summary": "Data cleanup verification",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Clean execution of verification steps",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        }
+      ],
+      "summary": "Mixed session \u2014 MCP retry loop and Trino-before-curli pattern caused friction. JIRA and cleanup work was solid. The curli-first rule existed but was not surfaced by the scout hook."
+    },
+    {
+      "session_id": "2026-04-03_3cbe5e5a-c1b6-4328-b4b8-5982a6aee3c0",
+      "session_date": "2026-04-03",
+      "repo": "connected-project-phase2",
+      "total_tasks": 2,
+      "correct_first_approach": 2,
+      "agreement_rate": 100,
+      "total_redirections": 0,
+      "avg_redirections_per_task": 0,
+      "failure_distribution": {},
+      "dominant_failure_type": null,
+      "severity_weighted_score": 1.0,
+      "insight_summary": {
+        "total_available": 48,
+        "total_retrieved": 0,
+        "total_hits": 0,
+        "total_misses": 0,
+        "total_wrong": 0,
+        "total_violations": 0,
+        "retrieval_precision": 1.0,
+        "retrieval_recall": 1.0,
+        "insight_ids_to_prune": [],
+        "insight_ids_to_graduate": [],
+        "feedback_ids_to_strengthen": []
+      },
+      "behavioral_loop": {
+        "signals_detected": 1,
+        "signals_total": 1,
+        "signal_detection_rate": 1.0,
+        "adaptation_speed_distribution": {
+          "immediate": 0,
+          "delayed": 0,
+          "resistant": 0
+        },
+        "proactive_suggestions": {
+          "appropriate": 0,
+          "pushy": 0,
+          "missed": 0
+        }
+      },
+      "compound_learning": {
+        "retrieval_quality": "effective",
+        "insights_generated": 0,
+        "insights_quality": "medium",
+        "duplicates_created": 0,
+        "graduation_candidates": [],
+        "prune_candidates": [],
+        "stale_candidates": [],
+        "loop_closed": false
+      },
+      "session_score": 0.95,
+      "tasks": [
+        {
+          "task_id": "T1",
+          "task_summary": "PR #541 review",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Clean PR review, thorough analysis",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T2",
+          "task_summary": "PR code analysis",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Read code changes and provided thorough analysis without correction",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        }
+      ],
+      "summary": "Clean PR review session. Agent handled both tasks without any user correction needed."
+    },
+    {
+      "session_id": "2026-04-03_4def4ce2-48d5-4acc-ba56-d80588d4d9fd",
+      "session_date": "2026-04-03",
+      "repo": "connected-project-phase2",
+      "total_tasks": 3,
+      "correct_first_approach": 3,
+      "agreement_rate": 100,
+      "total_redirections": 0,
+      "avg_redirections_per_task": 0,
+      "failure_distribution": {},
+      "dominant_failure_type": null,
+      "severity_weighted_score": 1.0,
+      "insight_summary": {
+        "total_available": 48,
+        "total_retrieved": 0,
+        "total_hits": 0,
+        "total_misses": 0,
+        "total_wrong": 0,
+        "total_violations": 0,
+        "retrieval_precision": 1.0,
+        "retrieval_recall": 1.0,
+        "insight_ids_to_prune": [],
+        "insight_ids_to_graduate": [],
+        "feedback_ids_to_strengthen": []
+      },
+      "behavioral_loop": {
+        "signals_detected": 2,
+        "signals_total": 2,
+        "signal_detection_rate": 1.0,
+        "adaptation_speed_distribution": {
+          "immediate": 0,
+          "delayed": 0,
+          "resistant": 0
+        },
+        "proactive_suggestions": {
+          "appropriate": 1,
+          "pushy": 0,
+          "missed": 0
+        }
+      },
+      "compound_learning": {
+        "retrieval_quality": "effective",
+        "insights_generated": 0,
+        "insights_quality": "medium",
+        "duplicates_created": 0,
+        "graduation_candidates": [],
+        "prune_candidates": [],
+        "stale_candidates": [],
+        "loop_closed": false
+      },
+      "session_score": 0.95,
+      "tasks": [
+        {
+          "task_id": "T1",
+          "task_summary": "Standup generation",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Used git log efficiently",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T2",
+          "task_summary": "Incident review via observe-agent",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Correct tool choice, thorough analysis",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T3",
+          "task_summary": "Abandoned task (incomplete URL)",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "User abandoned, not agent fault",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        }
+      ],
+      "summary": "Efficient standup + incident review session. Good tool selection throughout."
+    },
+    {
+      "session_id": "2026-04-03_8ba638f2-4792-4777-8b1b-9fd8954aa274",
+      "session_date": "2026-04-03",
+      "repo": "global",
+      "total_tasks": 2,
+      "correct_first_approach": 1.5,
+      "agreement_rate": 75,
+      "total_redirections": 1,
+      "avg_redirections_per_task": 0.5,
+      "failure_distribution": {
+        "wrong_approach": 1
+      },
+      "dominant_failure_type": "wrong_approach",
+      "severity_weighted_score": 0.833,
+      "insight_summary": {
+        "total_available": 48,
+        "total_retrieved": 1,
+        "total_hits": 1,
+        "total_misses": 0,
+        "total_wrong": 0,
+        "total_violations": 0,
+        "retrieval_precision": 1.0,
+        "retrieval_recall": 1.0,
+        "insight_ids_to_prune": [],
+        "insight_ids_to_graduate": [],
+        "feedback_ids_to_strengthen": []
+      },
+      "behavioral_loop": {
+        "signals_detected": 1,
+        "signals_total": 2,
+        "signal_detection_rate": 0.5,
+        "adaptation_speed_distribution": {
+          "immediate": 1,
+          "delayed": 0,
+          "resistant": 0
+        },
+        "proactive_suggestions": {
+          "appropriate": 0,
+          "pushy": 0,
+          "missed": 1
+        }
+      },
+      "compound_learning": {
+        "retrieval_quality": "partial",
+        "insights_generated": 0,
+        "insights_quality": "medium",
+        "duplicates_created": 0,
+        "graduation_candidates": [],
+        "prune_candidates": [],
+        "stale_candidates": [],
+        "loop_closed": false
+      },
+      "session_score": 0.8,
+      "tasks": [
+        {
+          "task_id": "T1",
+          "task_summary": "Seat role permission investigation",
+          "first_approach": "partially_correct",
+          "redirections": 1,
+          "primary_failure_type": "wrong_approach",
+          "contributing_types": [],
+          "evidence": "Could have asked clarifying questions earlier about preferred approach",
+          "counterfactual": "Should have asked which approach the user preferred before deep-diving into seatsV2 vs epSeats",
+          "fix_target": "Strengthen hypothesis-first behavioral gate",
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T2",
+          "task_summary": "Code investigation follow-up",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Good code reading based on user-provided URLs",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        }
+      ],
+      "summary": "Investigation session with one minor approach miss \u2014 should have asked for preference before deep-diving. Code reading was thorough."
+    },
+    {
+      "session_id": "2026-04-05_180f55da-950b-40a1-9581-0f30dd8a48f2",
+      "session_date": "2026-04-05",
+      "repo": "connected-project-phase2",
+      "total_tasks": 3,
+      "correct_first_approach": 2.5,
+      "agreement_rate": 83.3,
+      "total_redirections": 1,
+      "avg_redirections_per_task": 0.33,
+      "failure_distribution": {
+        "wrong_approach": 1
+      },
+      "dominant_failure_type": "wrong_approach",
+      "severity_weighted_score": 0.889,
+      "insight_summary": {
+        "total_available": 48,
+        "total_retrieved": 0,
+        "total_hits": 0,
+        "total_misses": 0,
+        "total_wrong": 0,
+        "total_violations": 0,
+        "retrieval_precision": 1.0,
+        "retrieval_recall": 1.0,
+        "insight_ids_to_prune": [],
+        "insight_ids_to_graduate": [],
+        "feedback_ids_to_strengthen": []
+      },
+      "behavioral_loop": {
+        "signals_detected": 2,
+        "signals_total": 2,
+        "signal_detection_rate": 1.0,
+        "adaptation_speed_distribution": {
+          "immediate": 1,
+          "delayed": 0,
+          "resistant": 0
+        },
+        "proactive_suggestions": {
+          "appropriate": 1,
+          "pushy": 0,
+          "missed": 0
+        }
+      },
+      "compound_learning": {
+        "retrieval_quality": "effective",
+        "insights_generated": 0,
+        "insights_quality": "medium",
+        "duplicates_created": 0,
+        "graduation_candidates": [],
+        "prune_candidates": [],
+        "stale_candidates": [],
+        "loop_closed": false
+      },
+      "session_score": 0.85,
+      "tasks": [
+        {
+          "task_id": "T1",
+          "task_summary": "Greenhouse API token setup",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Correctly guided token setup",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T2",
+          "task_summary": "Credential storage in recipe",
+          "first_approach": "partially_correct",
+          "redirections": 1,
+          "primary_failure_type": "wrong_approach",
+          "contributing_types": [],
+          "evidence": "Good security awareness flagging credential in recipe, but could have recognized intent faster",
+          "counterfactual": "Should have recognized user was trying to store creds and immediately offered secure alternative",
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T3",
+          "task_summary": "API integration testing",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Clean execution",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        }
+      ],
+      "summary": "Good Greenhouse setup session. Minor delay recognizing credential storage intent. Security awareness was appropriate."
+    },
+    {
+      "session_id": "2026-04-05_2eac8367-91de-4429-ae52-807ef278291b",
+      "session_date": "2026-04-05",
+      "repo": "global",
+      "total_tasks": 1,
+      "correct_first_approach": 1,
+      "agreement_rate": 100,
+      "total_redirections": 0,
+      "avg_redirections_per_task": 0,
+      "failure_distribution": {},
+      "dominant_failure_type": null,
+      "severity_weighted_score": 1.0,
+      "insight_summary": {
+        "total_available": 48,
+        "total_retrieved": 1,
+        "total_hits": 1,
+        "total_misses": 0,
+        "total_wrong": 0,
+        "total_violations": 0,
+        "retrieval_precision": 1.0,
+        "retrieval_recall": 1.0,
+        "insight_ids_to_prune": [],
+        "insight_ids_to_graduate": [
+          "espresso-table-traffic"
+        ],
+        "feedback_ids_to_strengthen": []
+      },
+      "behavioral_loop": {
+        "signals_detected": 1,
+        "signals_total": 1,
+        "signal_detection_rate": 1.0,
+        "adaptation_speed_distribution": {
+          "immediate": 0,
+          "delayed": 0,
+          "resistant": 0
+        },
+        "proactive_suggestions": {
+          "appropriate": 0,
+          "pushy": 0,
+          "missed": 0
+        }
+      },
+      "compound_learning": {
+        "retrieval_quality": "effective",
+        "insights_generated": 0,
+        "insights_quality": "medium",
+        "duplicates_created": 0,
+        "graduation_candidates": [
+          "espresso-table-traffic"
+        ],
+        "prune_candidates": [],
+        "stale_candidates": [],
+        "loop_closed": false
+      },
+      "session_score": 0.9,
+      "tasks": [
+        {
+          "task_id": "T1",
+          "task_summary": "Espresso table traffic lookup",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Correctly used Espresso traffic workflow. Graduated memory espresso-table-traffic.md was relevant.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [
+              "espresso-table-traffic"
+            ],
+            "actually_used": [
+              "espresso-table-traffic"
+            ],
+            "hits": [
+              {
+                "id": "espresso-table-traffic",
+                "outcome": "helped"
+              }
+            ],
+            "misses": [],
+            "violations": []
+          }
+        }
+      ],
+      "summary": "Clean single-task session. Graduated memory on Espresso table traffic was correctly applied."
+    },
+    {
+      "session_id": "2026-04-05_383081c8-2751-4f6c-a9d1-dfe1b23233b6",
+      "session_date": "2026-04-05",
+      "repo": "connected-project-phase2",
+      "total_tasks": 2,
+      "correct_first_approach": 1.5,
+      "agreement_rate": 75,
+      "total_redirections": 1,
+      "avg_redirections_per_task": 0.5,
+      "failure_distribution": {
+        "wrong_approach": 1
+      },
+      "dominant_failure_type": "wrong_approach",
+      "severity_weighted_score": 0.833,
+      "insight_summary": {
+        "total_available": 48,
+        "total_retrieved": 0,
+        "total_hits": 0,
+        "total_misses": 0,
+        "total_wrong": 0,
+        "total_violations": 0,
+        "retrieval_precision": 1.0,
+        "retrieval_recall": 1.0,
+        "insight_ids_to_prune": [],
+        "insight_ids_to_graduate": [],
+        "feedback_ids_to_strengthen": []
+      },
+      "behavioral_loop": {
+        "signals_detected": 2,
+        "signals_total": 3,
+        "signal_detection_rate": 0.67,
+        "adaptation_speed_distribution": {
+          "immediate": 1,
+          "delayed": 0,
+          "resistant": 0
+        },
+        "proactive_suggestions": {
+          "appropriate": 1,
+          "pushy": 0,
+          "missed": 0
+        }
+      },
+      "compound_learning": {
+        "retrieval_quality": "partial",
+        "insights_generated": 0,
+        "insights_quality": "medium",
+        "duplicates_created": 0,
+        "graduation_candidates": [],
+        "prune_candidates": [],
+        "stale_candidates": [],
+        "loop_closed": false
+      },
+      "session_score": 0.85,
+      "tasks": [
+        {
+          "task_id": "T1",
+          "task_summary": "HireEntityRequest bug investigation",
+          "first_approach": "partially_correct",
+          "redirections": 1,
+          "primary_failure_type": "wrong_approach",
+          "contributing_types": [],
+          "evidence": "Deep investigation but needed redirection on sharding model",
+          "counterfactual": "Should have checked sharding config before querying",
+          "fix_target": "Strengthen hypothesis-first gate for investigation tasks",
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T2",
+          "task_summary": "Query pattern analysis",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Thorough code reading of right files",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        }
+      ],
+      "summary": "Deep technical investigation with one redirection needed on sharding model. Good code reading after correction."
+    },
+    {
+      "session_id": "2026-04-05_4851dc38-86b6-4f37-81f9-2578b3312250",
+      "session_date": "2026-04-05",
+      "repo": "global",
+      "total_tasks": 2,
+      "correct_first_approach": 1.5,
+      "agreement_rate": 75,
+      "total_redirections": 1,
+      "avg_redirections_per_task": 0.5,
+      "failure_distribution": {
+        "tool_misuse": 1
+      },
+      "dominant_failure_type": "tool_misuse",
+      "severity_weighted_score": 0.917,
+      "insight_summary": {
+        "total_available": 48,
+        "total_retrieved": 0,
+        "total_hits": 0,
+        "total_misses": 0,
+        "total_wrong": 0,
+        "total_violations": 0,
+        "retrieval_precision": 1.0,
+        "retrieval_recall": 1.0,
+        "insight_ids_to_prune": [],
+        "insight_ids_to_graduate": [],
+        "feedback_ids_to_strengthen": []
+      },
+      "behavioral_loop": {
+        "signals_detected": 2,
+        "signals_total": 2,
+        "signal_detection_rate": 1.0,
+        "adaptation_speed_distribution": {
+          "immediate": 1,
+          "delayed": 0,
+          "resistant": 0
+        },
+        "proactive_suggestions": {
+          "appropriate": 1,
+          "pushy": 0,
+          "missed": 0
+        }
+      },
+      "compound_learning": {
+        "retrieval_quality": "effective",
+        "insights_generated": 1,
+        "insights_quality": "high",
+        "duplicates_created": 0,
+        "graduation_candidates": [],
+        "prune_candidates": [],
+        "stale_candidates": [],
+        "loop_closed": true
+      },
+      "session_score": 0.8,
+      "tasks": [
+        {
+          "task_id": "T1",
+          "task_summary": "PDF reading (SDE Insider's Guide)",
+          "first_approach": "partially_correct",
+          "redirections": 1,
+          "primary_failure_type": "tool_misuse",
+          "contributing_types": [],
+          "evidence": "pdftoppm not installed, needed to install poppler via brew. Self-corrected.",
+          "counterfactual": "Should have used the Read tool's built-in PDF support instead of external tools",
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T2",
+          "task_summary": "Extract engineering principles from PDF",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Good analysis, principles incorporated into MEMORY.md",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        }
+      ],
+      "summary": "PDF eval session with self-correction on tooling. Extracted valuable engineering principles. Compound loop was closed."
+    },
+    {
+      "session_id": "2026-04-05_5abcc009-a003-4360-a96d-cda01ec3bc11",
+      "session_date": "2026-04-05",
+      "repo": "global",
+      "total_tasks": 2,
+      "correct_first_approach": 2,
+      "agreement_rate": 100,
+      "total_redirections": 0,
+      "avg_redirections_per_task": 0,
+      "failure_distribution": {},
+      "dominant_failure_type": null,
+      "severity_weighted_score": 1.0,
+      "insight_summary": {
+        "total_available": 48,
+        "total_retrieved": 0,
+        "total_hits": 0,
+        "total_misses": 0,
+        "total_wrong": 0,
+        "total_violations": 0,
+        "retrieval_precision": 1.0,
+        "retrieval_recall": 1.0,
+        "insight_ids_to_prune": [],
+        "insight_ids_to_graduate": [],
+        "feedback_ids_to_strengthen": []
+      },
+      "behavioral_loop": {
+        "signals_detected": 1,
+        "signals_total": 1,
+        "signal_detection_rate": 1.0,
+        "adaptation_speed_distribution": {
+          "immediate": 0,
+          "delayed": 0,
+          "resistant": 0
+        },
+        "proactive_suggestions": {
+          "appropriate": 0,
+          "pushy": 0,
+          "missed": 0
+        }
+      },
+      "compound_learning": {
+        "retrieval_quality": "effective",
+        "insights_generated": 0,
+        "insights_quality": "medium",
+        "duplicates_created": 0,
+        "graduation_candidates": [],
+        "prune_candidates": [],
+        "stale_candidates": [],
+        "loop_closed": false
+      },
+      "session_score": 0.9,
+      "tasks": [
+        {
+          "task_id": "T1",
+          "task_summary": "Playwright browser automation setup",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Correctly followed playwright-cli skill",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T2",
+          "task_summary": "Browser navigation and search",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Clean execution of headed browser workflow",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        }
+      ],
+      "summary": "Clean Playwright automation session. Skill instructions followed correctly."
+    },
+    {
+      "session_id": "f445cdc2-6d6e-43a3-b68f-5e5499328088",
+      "session_date": "2026-04-05",
+      "repo": "global",
+      "total_tasks": 6,
+      "correct_first_approach": 3.5,
+      "agreement_rate": 58.3,
+      "total_redirections": 4,
+      "avg_redirections_per_task": 0.67,
+      "failure_distribution": {
+        "wrong_approach": 1,
+        "over_engineering": 1
+      },
+      "dominant_failure_type": "wrong_approach",
+      "severity_weighted_score": 0.75,
+      "insight_summary": {
+        "total_available": 48,
+        "total_retrieved": 0,
+        "total_hits": 0,
+        "total_misses": 0,
+        "total_wrong": 0,
+        "total_violations": 0,
+        "retrieval_precision": 1.0,
+        "retrieval_recall": 1.0,
+        "insight_ids_to_prune": [],
+        "insight_ids_to_graduate": [],
+        "feedback_ids_to_strengthen": []
+      },
+      "behavioral_loop": {
+        "signals_detected": 5,
+        "signals_total": 6,
+        "signal_detection_rate": 0.83,
+        "adaptation_speed_distribution": {
+          "immediate": 4,
+          "delayed": 1,
+          "resistant": 0
+        },
+        "proactive_suggestions": {
+          "appropriate": 3,
+          "pushy": 0,
+          "missed": 0
+        }
+      },
+      "compound_learning": {
+        "retrieval_quality": "partial",
+        "insights_generated": 0,
+        "insights_quality": "medium",
+        "duplicates_created": 0,
+        "graduation_candidates": [],
+        "prune_candidates": [],
+        "stale_candidates": [],
+        "loop_closed": false
+      },
+      "session_score": 0.69,
+      "tasks": [
+        {
+          "task_id": "T1",
+          "task_summary": "Find info about dedicated workstation",
+          "first_approach": "partially_correct",
+          "redirections": 1,
+          "primary_failure_type": "wrong_approach",
+          "contributing_types": [],
+          "evidence": "Searched local files; user said 'No need to search local since changed to a new computer'. Then found rdev but user wanted NEW workstation.",
+          "counterfactual": "Should have asked clarifying question about intent.",
+          "fix_target": "find.md -- intent clarification",
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T2",
+          "task_summary": "Explore how to get a dedicated workstation",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Searched Confluence/Slack successfully.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T3",
+          "task_summary": "Set up SSH alias and sync Claude config",
+          "first_approach": "partially_correct",
+          "redirections": 2,
+          "primary_failure_type": "over_engineering",
+          "contributing_types": [],
+          "evidence": "Wrote files without plan. User rejected. User: 'I feel like conversation logs also worth... all except plugins'.",
+          "counterfactual": "Present sync plan before writing.",
+          "fix_target": "Review rules -- plan before creation",
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T4",
+          "task_summary": "Fix SSH auth issues",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Correctly diagnosed and resolved.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T5",
+          "task_summary": "Handle VM reprovisioning",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Set up polling cron correctly.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T6",
+          "task_summary": "Cancel cron job",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Clean execution.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        }
+      ],
+      "summary": "VM provisioning session with mixed results. Agent effective at SSH debugging and cron management but stumbled on initial search (wrong approach) and wrote files before presenting plan (over-engineering). Good signal detection on gentle redirects."
+    },
+    {
+      "session_id": "31e7df46-500c-47a7-ac88-76e6d2eda7d5",
+      "session_date": "2026-04-07",
+      "repo": "global",
+      "total_tasks": 7,
+      "correct_first_approach": 6,
+      "agreement_rate": 85.7,
+      "total_redirections": 1,
+      "avg_redirections_per_task": 0.14,
+      "failure_distribution": {
+        "tool_misuse": 1
+      },
+      "dominant_failure_type": "tool_misuse",
+      "severity_weighted_score": 0.95,
+      "insight_summary": {
+        "total_available": 48,
+        "total_retrieved": 0,
+        "total_hits": 0,
+        "total_misses": 0,
+        "total_wrong": 0,
+        "total_violations": 0,
+        "retrieval_precision": 1.0,
+        "retrieval_recall": 1.0,
+        "insight_ids_to_prune": [],
+        "insight_ids_to_graduate": [],
+        "feedback_ids_to_strengthen": []
+      },
+      "behavioral_loop": {
+        "signals_detected": 6,
+        "signals_total": 7,
+        "signal_detection_rate": 0.86,
+        "adaptation_speed_distribution": {
+          "immediate": 6,
+          "delayed": 0,
+          "resistant": 0
+        },
+        "proactive_suggestions": {
+          "appropriate": 4,
+          "pushy": 0,
+          "missed": 0
+        }
+      },
+      "compound_learning": {
+        "retrieval_quality": "effective",
+        "insights_generated": 3,
+        "insights_quality": "high",
+        "duplicates_created": 0,
+        "graduation_candidates": [],
+        "prune_candidates": [],
+        "stale_candidates": [],
+        "loop_closed": true
+      },
+      "session_score": 0.87,
+      "tasks": [
+        {
+          "task_id": "T1",
+          "task_summary": "Scout LIPA/ai-native-development page",
+          "first_approach": "partially_correct",
+          "redirections": 1,
+          "primary_failure_type": "tool_misuse",
+          "contributing_types": [],
+          "evidence": "Used WebFetch; user rejected and said 'can we leverage playwright'.",
+          "counterfactual": "Should have used Playwright for GitHub Pages site.",
+          "fix_target": "scout.md -- tool selection guidance",
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T2",
+          "task_summary": "Build eval-skill recipe",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "User approved. Agent built complete eval system.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T3",
+          "task_summary": "Run eval-skill on learn",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "4/4 evals passed, 15/15 expectations.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T4",
+          "task_summary": "Run eval-skill on investigate",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "4/4 passed, 14/14 expectations.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T5",
+          "task_summary": "Design cross-session benchmark",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Correctly identified gap vs SWE-bench, designed custom dimensions.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T6",
+          "task_summary": "Assess SWE-bench on Mac feasibility",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Correctly identified ARM64 mismatch, recommended cloud eval.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T7",
+          "task_summary": "Save SWE-bench to backlog",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Appended to active-work.md with full context.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        }
+      ],
+      "summary": "Excellent session building eval-skill framework and cross-session benchmarks. One minor tool_misuse (WebFetch vs Playwright). Strong compound learning with 3 insights generated."
+    },
+    {
+      "session_id": "46e88919-bf2a-4208-8da0-91d538f939f3",
+      "session_date": "2026-04-07",
+      "repo": "hp-ats-integration-mt",
+      "total_tasks": 8,
+      "correct_first_approach": 7,
+      "agreement_rate": 87.5,
+      "total_redirections": 1,
+      "avg_redirections_per_task": 0.125,
+      "failure_distribution": {
+        "wrong_approach": 1
+      },
+      "dominant_failure_type": "wrong_approach",
+      "severity_weighted_score": 0.875,
+      "insight_summary": {
+        "total_available": 48,
+        "total_retrieved": 0,
+        "total_hits": 0,
+        "total_misses": 0,
+        "total_wrong": 0,
+        "total_violations": 0,
+        "retrieval_precision": 1.0,
+        "retrieval_recall": 1.0,
+        "insight_ids_to_prune": [],
+        "insight_ids_to_graduate": [],
+        "feedback_ids_to_strengthen": []
+      },
+      "behavioral_loop": {
+        "signals_detected": 7,
+        "signals_total": 8,
+        "signal_detection_rate": 0.875,
+        "adaptation_speed_distribution": {
+          "immediate": 7,
+          "delayed": 0,
+          "resistant": 0
+        },
+        "proactive_suggestions": {
+          "appropriate": 3,
+          "pushy": 0,
+          "missed": 0
+        }
+      },
+      "compound_learning": {
+        "retrieval_quality": "effective",
+        "insights_generated": 0,
+        "insights_quality": "medium",
+        "duplicates_created": 0,
+        "graduation_candidates": [],
+        "prune_candidates": [],
+        "stale_candidates": [],
+        "loop_closed": false
+      },
+      "session_score": 0.82,
+      "tasks": [
+        {
+          "task_id": "T1",
+          "task_summary": "PR check and investigation setup",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Agent correctly set up investigation context.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T2",
+          "task_summary": "Check HP entities for test project",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "User said 'yes please' and 'sounds good. Check it'.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T3",
+          "task_summary": "Investigate stuck PENDING HireEntityRequest",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Used observe-agent effectively. Found no IntegrationEntityReadyEvent.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T4",
+          "task_summary": "Check event history over 5 days",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "User asked to check broader time window. Agent executed.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T5",
+          "task_summary": "Verify LiX ramp status",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Checked LiX treatment for phase2.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T6",
+          "task_summary": "Trace candidate stage flow E2E",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Thorough log analysis across multiple services.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T7",
+          "task_summary": "Check code for processPhase2 logic",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Read ApplicationStageProcessor code correctly.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T8",
+          "task_summary": "Summary and next steps",
+          "first_approach": "partially_correct",
+          "redirections": 1,
+          "primary_failure_type": "wrong_approach",
+          "contributing_types": [],
+          "evidence": "Minor course correction on investigation scope.",
+          "counterfactual": "Should have checked broader context earlier.",
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        }
+      ],
+      "summary": "Strong debugging session investigating stuck PENDING HireEntityRequests. observe-agent used effectively, correctly traced missing IntegrationEntityReadyEvent. One minor course correction."
+    },
+    {
+      "session_id": "4fdae01d-34c0-47e7-85fb-3395e74dc6da",
+      "session_date": "2026-04-07",
+      "repo": "connected_project_phase2",
+      "total_tasks": 3,
+      "correct_first_approach": 3,
+      "agreement_rate": 100,
+      "total_redirections": 0,
+      "avg_redirections_per_task": 0.0,
+      "failure_distribution": {},
+      "dominant_failure_type": null,
+      "severity_weighted_score": 1.0,
+      "insight_summary": {
+        "total_available": 48,
+        "total_retrieved": 0,
+        "total_hits": 0,
+        "total_misses": 0,
+        "total_wrong": 0,
+        "total_violations": 0,
+        "retrieval_precision": 1.0,
+        "retrieval_recall": 1.0,
+        "insight_ids_to_prune": [],
+        "insight_ids_to_graduate": [],
+        "feedback_ids_to_strengthen": []
+      },
+      "behavioral_loop": {
+        "signals_detected": 3,
+        "signals_total": 3,
+        "signal_detection_rate": 1.0,
+        "adaptation_speed_distribution": {
+          "immediate": 3,
+          "delayed": 0,
+          "resistant": 0
+        },
+        "proactive_suggestions": {
+          "appropriate": 1,
+          "pushy": 0,
+          "missed": 0
+        }
+      },
+      "compound_learning": {
+        "retrieval_quality": "effective",
+        "insights_generated": 0,
+        "insights_quality": "medium",
+        "duplicates_created": 0,
+        "graduation_candidates": [],
+        "prune_candidates": [],
+        "stale_candidates": [],
+        "loop_closed": false
+      },
+      "session_score": 0.85,
+      "tasks": [
+        {
+          "task_id": "T1",
+          "task_summary": "Find Figma API key setup",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Found both PAT and OAuth MCP approaches.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T2",
+          "task_summary": "Check Greenhouse sandbox applicants",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Used Greenhouse API to query sandbox data.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T3",
+          "task_summary": "Additional sandbox queries",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Continued sandbox data exploration.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        }
+      ],
+      "summary": "Clean session with perfect agreement. Figma API info found, Greenhouse sandbox queries handled correctly."
+    },
+    {
+      "session_id": "5460a0b5-f4c0-403c-8c9f-a4b43aec9006",
+      "session_date": "2026-04-07",
+      "repo": "global",
+      "total_tasks": 4,
+      "correct_first_approach": 4,
+      "agreement_rate": 100,
+      "total_redirections": 0,
+      "avg_redirections_per_task": 0.0,
+      "failure_distribution": {},
+      "dominant_failure_type": null,
+      "severity_weighted_score": 1.0,
+      "insight_summary": {
+        "total_available": 48,
+        "total_retrieved": 0,
+        "total_hits": 0,
+        "total_misses": 0,
+        "total_wrong": 0,
+        "total_violations": 0,
+        "retrieval_precision": 1.0,
+        "retrieval_recall": 1.0,
+        "insight_ids_to_prune": [],
+        "insight_ids_to_graduate": [],
+        "feedback_ids_to_strengthen": []
+      },
+      "behavioral_loop": {
+        "signals_detected": 4,
+        "signals_total": 4,
+        "signal_detection_rate": 1.0,
+        "adaptation_speed_distribution": {
+          "immediate": 4,
+          "delayed": 0,
+          "resistant": 0
+        },
+        "proactive_suggestions": {
+          "appropriate": 1,
+          "pushy": 0,
+          "missed": 0
+        }
+      },
+      "compound_learning": {
+        "retrieval_quality": "effective",
+        "insights_generated": 0,
+        "insights_quality": "medium",
+        "duplicates_created": 0,
+        "graduation_candidates": [],
+        "prune_candidates": [],
+        "stale_candidates": [],
+        "loop_closed": false
+      },
+      "session_score": 0.88,
+      "tasks": [
+        {
+          "task_id": "T1",
+          "task_summary": "Run AI usage report",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Asked for crew_id and month appropriately.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T2",
+          "task_summary": "Generate report",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Executed recipe with provided inputs.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T3",
+          "task_summary": "Fix SSH host key error",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Correctly diagnosed stale known_hosts.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T4",
+          "task_summary": "SSH into VM after fix",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Clean execution.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        }
+      ],
+      "summary": "Clean session \u2014 AI usage report and SSH troubleshooting. Perfect agreement, no redirections."
+    },
+    {
+      "session_id": "ad16f905-a29c-48bd-b1a0-6e597ba9fd11",
+      "session_date": "2026-04-07",
+      "repo": "global",
+      "total_tasks": 5,
+      "correct_first_approach": 4,
+      "agreement_rate": 80,
+      "total_redirections": 1,
+      "avg_redirections_per_task": 0.2,
+      "failure_distribution": {
+        "user_ambiguity": 1
+      },
+      "dominant_failure_type": null,
+      "severity_weighted_score": 1.0,
+      "insight_summary": {
+        "total_available": 48,
+        "total_retrieved": 0,
+        "total_hits": 0,
+        "total_misses": 0,
+        "total_wrong": 0,
+        "total_violations": 0,
+        "retrieval_precision": 1.0,
+        "retrieval_recall": 1.0,
+        "insight_ids_to_prune": [],
+        "insight_ids_to_graduate": [],
+        "feedback_ids_to_strengthen": []
+      },
+      "behavioral_loop": {
+        "signals_detected": 4,
+        "signals_total": 5,
+        "signal_detection_rate": 0.8,
+        "adaptation_speed_distribution": {
+          "immediate": 4,
+          "delayed": 0,
+          "resistant": 0
+        },
+        "proactive_suggestions": {
+          "appropriate": 2,
+          "pushy": 0,
+          "missed": 0
+        }
+      },
+      "compound_learning": {
+        "retrieval_quality": "effective",
+        "insights_generated": 0,
+        "insights_quality": "medium",
+        "duplicates_created": 0,
+        "graduation_candidates": [],
+        "prune_candidates": [],
+        "stale_candidates": [],
+        "loop_closed": false
+      },
+      "session_score": 0.8,
+      "tasks": [
+        {
+          "task_id": "T1",
+          "task_summary": "Run VM login recipe",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Found and executed vm-login recipe.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T2",
+          "task_summary": "Save vm-login as recipe",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "User: 'save this to receipe'. Agent understood and saved.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T3",
+          "task_summary": "Kickoff new work",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Invoked kickoff skill.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T4",
+          "task_summary": "Implement agent quality eval",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Built judge prompt and failure taxonomy files.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T5",
+          "task_summary": "Continue after interruption",
+          "first_approach": "partially_correct",
+          "redirections": 1,
+          "primary_failure_type": "user_ambiguity",
+          "contributing_types": [],
+          "evidence": "User: 'can you continue'. Agent needed to determine what was interrupted.",
+          "counterfactual": "Ambiguous request \u2014 agent asked for clarification appropriately.",
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        }
+      ],
+      "summary": "Solid session with recipe usage, VM login, and kickoff. One user_ambiguity ('can you continue'). Built quality eval artifacts."
+    },
+    {
+      "session_id": "ef0ffdbe-55eb-4886-b55e-4371ce64aa43",
+      "session_date": "2026-04-07",
+      "repo": "global",
+      "total_tasks": 3,
+      "correct_first_approach": 3,
+      "agreement_rate": 100,
+      "total_redirections": 0,
+      "avg_redirections_per_task": 0.0,
+      "failure_distribution": {},
+      "dominant_failure_type": null,
+      "severity_weighted_score": 1.0,
+      "insight_summary": {
+        "total_available": 48,
+        "total_retrieved": 0,
+        "total_hits": 0,
+        "total_misses": 0,
+        "total_wrong": 0,
+        "total_violations": 0,
+        "retrieval_precision": 1.0,
+        "retrieval_recall": 1.0,
+        "insight_ids_to_prune": [],
+        "insight_ids_to_graduate": [],
+        "feedback_ids_to_strengthen": []
+      },
+      "behavioral_loop": {
+        "signals_detected": 3,
+        "signals_total": 3,
+        "signal_detection_rate": 1.0,
+        "adaptation_speed_distribution": {
+          "immediate": 3,
+          "delayed": 0,
+          "resistant": 0
+        },
+        "proactive_suggestions": {
+          "appropriate": 2,
+          "pushy": 0,
+          "missed": 0
+        }
+      },
+      "compound_learning": {
+        "retrieval_quality": "effective",
+        "insights_generated": 2,
+        "insights_quality": "high",
+        "duplicates_created": 0,
+        "graduation_candidates": [],
+        "prune_candidates": [],
+        "stale_candidates": [],
+        "loop_closed": true
+      },
+      "session_score": 0.92,
+      "tasks": [
+        {
+          "task_id": "T1",
+          "task_summary": "Scout tee-dev-agent repo",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Evaluated repo, extracted 7 key findings, ranked adoption recs.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T2",
+          "task_summary": "Implement Convention Audit and Ralph Loop",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "User: 'let's do 1 and 2'. Implemented both with background agents.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T3",
+          "task_summary": "Save scout learning as insight",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Created structured insight with YAML frontmatter.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        }
+      ],
+      "summary": "Best session in batch. Perfect agreement scouting tee-dev-agent, implementing patterns, saving structured insights. Compound loop properly closed."
+    },
+    {
+      "session_id": "f5372293-87cf-4bff-b8bd-1331ec9f4ac5",
+      "session_date": "2026-04-07",
+      "repo": "global",
+      "total_tasks": 3,
+      "correct_first_approach": 3,
+      "agreement_rate": 100,
+      "total_redirections": 0,
+      "avg_redirections_per_task": 0.0,
+      "failure_distribution": {},
+      "dominant_failure_type": null,
+      "severity_weighted_score": 1.0,
+      "insight_summary": {
+        "total_available": 48,
+        "total_retrieved": 0,
+        "total_hits": 0,
+        "total_misses": 0,
+        "total_wrong": 0,
+        "total_violations": 0,
+        "retrieval_precision": 1.0,
+        "retrieval_recall": 1.0,
+        "insight_ids_to_prune": [],
+        "insight_ids_to_graduate": [],
+        "feedback_ids_to_strengthen": []
+      },
+      "behavioral_loop": {
+        "signals_detected": 3,
+        "signals_total": 3,
+        "signal_detection_rate": 1.0,
+        "adaptation_speed_distribution": {
+          "immediate": 3,
+          "delayed": 0,
+          "resistant": 0
+        },
+        "proactive_suggestions": {
+          "appropriate": 2,
+          "pushy": 0,
+          "missed": 0
+        }
+      },
+      "compound_learning": {
+        "retrieval_quality": "effective",
+        "insights_generated": 0,
+        "insights_quality": "medium",
+        "duplicates_created": 0,
+        "graduation_candidates": [],
+        "prune_candidates": [],
+        "stale_candidates": [],
+        "loop_closed": false
+      },
+      "session_score": 0.9,
+      "tasks": [
+        {
+          "task_id": "T1",
+          "task_summary": "Present insights report",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Presented report URL correctly.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T2",
+          "task_summary": "Dig into all report sections",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "User: 'dig into all'. Delivered comprehensive 8-section analysis.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T3",
+          "task_summary": "Implement suggested improvements",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "User: 'do those thank you'. Implemented all 4 prioritized suggestions.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        }
+      ],
+      "summary": "Strong insights analysis. Correctly interpreted terse user commands. Perfect agreement."
+    },
+    {
+      "session_id": "f6439e6a-3821-42c7-ae64-971797c80354",
+      "session_date": "2026-04-07",
+      "repo": "connected_project_phase2",
+      "total_tasks": 10,
+      "correct_first_approach": 7.5,
+      "agreement_rate": 75,
+      "total_redirections": 3,
+      "avg_redirections_per_task": 0.3,
+      "failure_distribution": {
+        "wrong_approach": 1,
+        "over_engineering": 1,
+        "tool_misuse": 1
+      },
+      "dominant_failure_type": "wrong_approach",
+      "severity_weighted_score": 0.82,
+      "insight_summary": {
+        "total_available": 48,
+        "total_retrieved": 0,
+        "total_hits": 0,
+        "total_misses": 0,
+        "total_wrong": 0,
+        "total_violations": 0,
+        "retrieval_precision": 1.0,
+        "retrieval_recall": 1.0,
+        "insight_ids_to_prune": [],
+        "insight_ids_to_graduate": [],
+        "feedback_ids_to_strengthen": []
+      },
+      "behavioral_loop": {
+        "signals_detected": 8,
+        "signals_total": 10,
+        "signal_detection_rate": 0.8,
+        "adaptation_speed_distribution": {
+          "immediate": 7,
+          "delayed": 1,
+          "resistant": 0
+        },
+        "proactive_suggestions": {
+          "appropriate": 3,
+          "pushy": 0,
+          "missed": 1
+        }
+      },
+      "compound_learning": {
+        "retrieval_quality": "partial",
+        "insights_generated": 0,
+        "insights_quality": "medium",
+        "duplicates_created": 0,
+        "graduation_candidates": [],
+        "prune_candidates": [],
+        "stale_candidates": [],
+        "loop_closed": false
+      },
+      "session_score": 0.78,
+      "tasks": [
+        {
+          "task_id": "T1",
+          "task_summary": "Run watch-deps-check (cron)",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Automated task executed cleanly.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T2",
+          "task_summary": "Check deployed versions",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Ran go-status for watched services.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T3",
+          "task_summary": "Diff watched paths",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Used jarvis_codesearch for diffs.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T4",
+          "task_summary": "Update alerts.md",
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Wrote summary table.",
+          "counterfactual": null,
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T5",
+          "task_summary": "Follow-up investigation",
+          "first_approach": "partially_correct",
+          "redirections": 1,
+          "primary_failure_type": "wrong_approach",
+          "contributing_types": [],
+          "evidence": "Investigated wrong service path before redirect.",
+          "counterfactual": "Should have asked which service to investigate first.",
+          "fix_target": "Behavioral gate -- ask which component",
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        },
+        {
+          "task_id": "T6-T10",
+          "task_summary": "Extended investigation",
+          "first_approach": "partially_correct",
+          "redirections": 2,
+          "primary_failure_type": "over_engineering",
+          "contributing_types": [
+            "tool_misuse"
+          ],
+          "evidence": "Scope drift, over-investigation of tangential issues.",
+          "counterfactual": "Should have stayed focused on specific scope.",
+          "fix_target": "Review rules -- match scope to request",
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          }
+        }
+      ],
+      "summary": "Long session mixing automated watch-deps with user investigation. Automated parts clean, user-directed parts had scope drift."
+    },
+    {
+      "session_id": "2026-04-08_0f5e71e6-364d-4827-96d1-2a462f47b0de",
+      "session_date": "2026-04-08",
+      "repo": "global",
+      "total_tasks": 2,
+      "correct_first_approach": 0.5,
+      "agreement_rate": 0.25,
+      "total_redirections": 3,
+      "avg_redirections_per_task": 1.5,
+      "failure_distribution": {
+        "wrong_approach": 1,
+        "skill_deficiency": 1,
+        "skill_gap": 0,
+        "context_miss": 0,
+        "over_engineering": 0,
+        "tool_misuse": 0,
+        "user_ambiguity": 0
+      },
+      "dominant_failure_type": "wrong_approach",
+      "severity_weighted_score": 0.17,
+      "insight_summary": {
+        "total_available": "unknown",
+        "total_retrieved": 0,
+        "total_hits": 0,
+        "total_misses": 0,
+        "total_wrong": 0,
+        "total_violations": 0,
+        "retrieval_precision": "N/A",
+        "retrieval_recall": "N/A",
+        "insight_ids_to_prune": [],
+        "insight_ids_to_graduate": [],
+        "feedback_ids_to_strengthen": []
+      },
+      "behavioral_loop": {
+        "signals_detected": 1,
+        "signals_total": 3,
+        "signal_detection_rate": 0.33,
+        "adaptation_speed_distribution": {
+          "immediate": 1,
+          "delayed": 1,
+          "resistant": 1
+        },
+        "proactive_suggestions": {
+          "appropriate": 0,
+          "pushy": 0,
+          "missed": 1
+        }
+      },
+      "compound_learning": {
+        "retrieval_quality": "poor",
+        "insights_generated": 0,
+        "insights_quality": "low",
+        "duplicates_created": 0,
+        "graduation_candidates": [],
+        "prune_candidates": [],
+        "stale_candidates": [],
+        "loop_closed": false
+      },
+      "session_score": 0.32,
+      "tasks": [
+        {
+          "task_id": "T1",
+          "task_summary": "Bootstrap VM bizhou-ld2.linkedin.biz with Claude Code, code-server, tmux, knowledge repo, and mutagen sync",
+          "task_start": 2,
+          "task_end": 58,
+          "first_approach": "partially_correct",
+          "redirections": 1,
+          "primary_failure_type": "skill_deficiency",
+          "contributing_types": [],
+          "evidence": "Agent correctly invoked the vm-setup recipe and created a bootstrap script, but iterated through multiple broken versions. Script failed on DNS (user had to connect VPN), then failed with repeated SSH password prompts (no SSH multiplexing or key setup), then git clone failed on VM (no GitHub key). Agent proposed rsync from local as workaround at [idx 53-57], which the user immediately corrected at [idx 59]: if rsync from local, that would violates our architeture right -- the VM is the compute environment, syncing knowledge from local inverts that. Agent then pivoted to SSH agent forwarding, which was correct.",
+          "counterfactual": "The vm-setup recipe should have included SSH key setup and SSH agent forwarding as prerequisites, and should have anticipated that git clone on the VM requires GitHub access.",
+          "fix_target": "~/.claude/commands/recipes/vm-setup.md -- add SSH key and agent forwarding as explicit steps; add GitHub access verification before git clone step",
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": [
+              {
+                "feedback_id": "vm-routing-rule",
+                "rule": "VM is compute environment; do not sync knowledge from local to VM via rsync"
+              }
+            ]
+          },
+          "behavioral_loop": {
+            "signals_detected": 1,
+            "signals_total": 1,
+            "signal_detection_rate": 1.0,
+            "adaptation_speed": "immediate",
+            "proactive_suggestions": {
+              "appropriate": 0,
+              "pushy": 0,
+              "missed": 0
+            }
+          }
+        },
+        {
+          "task_id": "T2",
+          "task_summary": "Fix SSH authentication and git clone issues on VM bootstrap (continued troubleshooting)",
+          "task_start": 59,
+          "task_end": 67,
+          "first_approach": "incorrect",
+          "redirections": 2,
+          "primary_failure_type": "wrong_approach",
+          "contributing_types": [
+            "skill_deficiency"
+          ],
+          "evidence": "After user corrected rsync approach [idx 59], agent updated to SSH agent forwarding. However, the script continued to have issues -- agent tried to use ssh vm directly which was blocked by Claude Code permissions [idx 12-14], and the script needed multiple iterations. Trial-and-error approach wasted time.",
+          "counterfactual": "Agent should have generated a complete script accounting for LinkedIn corporate SSH requirements (banner, Kerberos auth, SSH config). Should have asked about SSH setup before writing the script.",
+          "fix_target": "~/.claude/commands/recipes/vm-setup.md -- add prerequisite checklist",
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          },
+          "behavioral_loop": {
+            "signals_detected": 0,
+            "signals_total": 2,
+            "signal_detection_rate": 0.0,
+            "adaptation_speed": "delayed",
+            "proactive_suggestions": {
+              "appropriate": 0,
+              "pushy": 0,
+              "missed": 1
+            }
+          }
+        }
+      ],
+      "improvement_simulation": [
+        {
+          "failure_type": "wrong_approach",
+          "current_count": 1,
+          "simulated_agreement": 0.75,
+          "delta": 0.5
+        },
+        {
+          "failure_type": "skill_deficiency",
+          "current_count": 1,
+          "simulated_agreement": 0.75,
+          "delta": 0.5
+        }
+      ],
+      "summary": "VM bootstrap session with significant friction. The agent correctly identified the vm-setup recipe but produced a script requiring 4+ iterations of error-fix cycles. Most critically, it proposed local-to-VM rsync for knowledge sync, violating the documented VM routing architecture -- user caught this immediately. The trial-and-error approach to SSH setup wasted time; the recipe should encode LinkedIn corporate SSH prerequisites."
+    },
+    {
+      "session_id": "2026-04-08_27db5d4c-f39d-4ca8-b029-b22a12079f15",
+      "session_date": "2026-04-08",
+      "repo": "global",
+      "total_tasks": 3,
+      "correct_first_approach": 1.5,
+      "agreement_rate": 0.5,
+      "total_redirections": 2,
+      "avg_redirections_per_task": 0.67,
+      "failure_distribution": {
+        "wrong_approach": 1,
+        "skill_deficiency": 0,
+        "skill_gap": 0,
+        "context_miss": 0,
+        "over_engineering": 0,
+        "tool_misuse": 0,
+        "user_ambiguity": 0
+      },
+      "dominant_failure_type": "wrong_approach",
+      "severity_weighted_score": 0.67,
+      "insight_summary": {
+        "total_available": "unknown",
+        "total_retrieved": 0,
+        "total_hits": 0,
+        "total_misses": 0,
+        "total_wrong": 0,
+        "total_violations": 0,
+        "retrieval_precision": "N/A",
+        "retrieval_recall": "N/A",
+        "insight_ids_to_prune": [],
+        "insight_ids_to_graduate": [],
+        "feedback_ids_to_strengthen": []
+      },
+      "behavioral_loop": {
+        "signals_detected": 3,
+        "signals_total": 4,
+        "signal_detection_rate": 0.75,
+        "adaptation_speed_distribution": {
+          "immediate": 3,
+          "delayed": 0,
+          "resistant": 0
+        },
+        "proactive_suggestions": {
+          "appropriate": 1,
+          "pushy": 0,
+          "missed": 0
+        }
+      },
+      "compound_learning": {
+        "retrieval_quality": "partial",
+        "insights_generated": 0,
+        "insights_quality": "low",
+        "duplicates_created": 0,
+        "graduation_candidates": [],
+        "prune_candidates": [],
+        "stale_candidates": [],
+        "loop_closed": false
+      },
+      "session_score": 0.56,
+      "tasks": [
+        {
+          "task_id": "T1",
+          "task_summary": "Evaluate Oracle eval system (slides + PRs) and compare with Claude ecosystem",
+          "task_start": 2,
+          "task_end": 30,
+          "first_approach": "incorrect",
+          "redirections": 1,
+          "primary_failure_type": "wrong_approach",
+          "contributing_types": [],
+          "evidence": "User asked to eval and compare with our current system and said I feel the oracle eval maybe worth learning. Agent analyzed the Oracle system thoroughly but presented it as analysis of the Oracle team eval system in isolation. At [idx 31], user corrected: I mean for our claude eco system. The I feel phrasing was a soft instruction to apply the Oracle patterns, not just describe them.",
+          "counterfactual": "Agent should have immediately recognized compare with our system + worth learning as a directive to map Oracle patterns onto the Claude ecosystem. Should have led with the comparison table.",
+          "fix_target": "CLAUDE.md behavioral gates -- when user says compare with our system or worth learning, lead with the mapping/application, not a standalone description.",
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          },
+          "behavioral_loop": {
+            "signals_detected": 0,
+            "signals_total": 2,
+            "signal_detection_rate": 0.0,
+            "adaptation_speed": "immediate",
+            "proactive_suggestions": {
+              "appropriate": 0,
+              "pushy": 0,
+              "missed": 0
+            }
+          }
+        },
+        {
+          "task_id": "T2",
+          "task_summary": "Map Oracle eval patterns onto Claude ecosystem and present actionable plan",
+          "task_start": 31,
+          "task_end": 38,
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "After redirect, agent immediately produced Oracle-to-Claude mapping table, identified the gap (no cross-session systematic evaluation), and proposed concrete next steps. User approved with sounds good. do it.",
+          "counterfactual": "N/A -- correct approach.",
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          },
+          "behavioral_loop": {
+            "signals_detected": 1,
+            "signals_total": 1,
+            "signal_detection_rate": 1.0,
+            "adaptation_speed": "immediate",
+            "proactive_suggestions": {
+              "appropriate": 1,
+              "pushy": 0,
+              "missed": 0
+            }
+          }
+        },
+        {
+          "task_id": "T3",
+          "task_summary": "Build the agent eval system: failure taxonomy, judge prompt, eval pipeline, improve-agent skill",
+          "task_start": 38,
+          "task_end": 336,
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Agent created a TaskCreate-based work plan, explored the existing ecosystem, wrote failure_taxonomy.md and judge_prompt.md. Well-structured and drew from the Oracle system analysis. Correctly discovered existing evals directory and built on existing SCHEMA.md.",
+          "counterfactual": "N/A -- largely correct execution.",
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          },
+          "behavioral_loop": {
+            "signals_detected": 1,
+            "signals_total": 1,
+            "signal_detection_rate": 1.0,
+            "adaptation_speed": "immediate",
+            "proactive_suggestions": {
+              "appropriate": 0,
+              "pushy": 0,
+              "missed": 0
+            }
+          }
+        }
+      ],
+      "improvement_simulation": [
+        {
+          "failure_type": "wrong_approach",
+          "current_count": 1,
+          "simulated_agreement": 0.83,
+          "delta": 0.33
+        }
+      ],
+      "summary": "Productive session that built the agent eval system. The main failure was misinterpreting the user initial request -- treating compare with our system as describe their system instead of map it onto ours. After the gentle redirect (I mean for our claude ecosystem), the agent pivoted immediately and the rest of the session was clean execution. The mapping was well done and the taxonomy + judge prompt artifacts were high quality."
+    },
+    {
+      "session_id": "2026-04-08_3c47921e-99b4-40ad-b3a0-55edb8a19389",
+      "session_date": "2026-04-08",
+      "repo": "hp-ats-integration-mt",
+      "total_tasks": 3,
+      "correct_first_approach": 1.5,
+      "agreement_rate": 0.5,
+      "total_redirections": 3,
+      "avg_redirections_per_task": 1.0,
+      "failure_distribution": {
+        "wrong_approach": 1,
+        "skill_deficiency": 0,
+        "skill_gap": 0,
+        "context_miss": 0,
+        "over_engineering": 1,
+        "tool_misuse": 0,
+        "user_ambiguity": 0
+      },
+      "dominant_failure_type": "wrong_approach",
+      "severity_weighted_score": 0.5,
+      "insight_summary": {
+        "total_available": "unknown",
+        "total_retrieved": 0,
+        "total_hits": 0,
+        "total_misses": 0,
+        "total_wrong": 0,
+        "total_violations": 0,
+        "retrieval_precision": "N/A",
+        "retrieval_recall": "N/A",
+        "insight_ids_to_prune": [],
+        "insight_ids_to_graduate": [],
+        "feedback_ids_to_strengthen": []
+      },
+      "behavioral_loop": {
+        "signals_detected": 3,
+        "signals_total": 5,
+        "signal_detection_rate": 0.6,
+        "adaptation_speed_distribution": {
+          "immediate": 3,
+          "delayed": 1,
+          "resistant": 0
+        },
+        "proactive_suggestions": {
+          "appropriate": 1,
+          "pushy": 0,
+          "missed": 1
+        }
+      },
+      "compound_learning": {
+        "retrieval_quality": "partial",
+        "insights_generated": 0,
+        "insights_quality": "low",
+        "duplicates_created": 0,
+        "graduation_candidates": [],
+        "prune_candidates": [],
+        "stale_candidates": [],
+        "loop_closed": false
+      },
+      "session_score": 0.47,
+      "tasks": [
+        {
+          "task_id": "T1",
+          "task_summary": "Check candidate movement status for Anu and Tara as prod testing for PR #550 (V1/V2 identity mismatch fix)",
+          "task_start": 2,
+          "task_end": 112,
+          "first_approach": "incorrect",
+          "redirections": 1,
+          "primary_failure_type": "wrong_approach",
+          "contributing_types": [],
+          "evidence": "User said I already moved, check the candidates movement status. Agent at [idx 8-9] initially tried to invoke action-writeback skill and compose movement commands, misunderstanding the user wanted to CHECK status, not MOVE. User interrupted at [idx 14] and clarified at [idx 16]: I mean I already moved, check the candidates movement status as prod testing. After redirect, agent pivoted correctly to querying HireEntityRequest status and searching logs. The subsequent investigation was thorough -- correctly identified Anu SUCCESS vs Tara PENDING, found the PR #550 fallback log evidence.",
+          "counterfactual": "Agent should have parsed the initial request more carefully -- the user said just move Anu and tara... /action-writeback monitor and check the movement status which admittedly was ambiguous. But the screenshots and context (already moved) should have been the signal. Should have asked which candidates already moved vs which to move.",
+          "fix_target": "Behavioral gate -- when user provides screenshots showing candidates in a pipeline and mentions a PR to test, default to monitoring/checking status rather than initiating actions.",
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          },
+          "behavioral_loop": {
+            "signals_detected": 1,
+            "signals_total": 2,
+            "signal_detection_rate": 0.5,
+            "adaptation_speed": "immediate",
+            "proactive_suggestions": {
+              "appropriate": 1,
+              "pushy": 0,
+              "missed": 0
+            }
+          }
+        },
+        {
+          "task_id": "T2",
+          "task_summary": "Agent proposed filing Jira for Tara PENDING issue, user redirected to just move candidates instead",
+          "task_start": 112,
+          "task_end": 120,
+          "first_approach": "partially_correct",
+          "redirections": 1,
+          "primary_failure_type": "over_engineering",
+          "contributing_types": [],
+          "evidence": "Agent proposed both filing a Jira AND moving Tara at [idx 117]. User interrupted at [idx 118] and said at [idx 120]: No need to file Jira, just move, maybe subagent to move 2 more candidates and check either. Agent was doing more than asked.",
+          "counterfactual": "Agent should have just asked what to do next rather than proposing additional work items (Jira filing) the user did not request.",
+          "fix_target": "Behavioral gate -- do not propose filing Jira tickets unless explicitly asked. Focus on the immediate testing task.",
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          },
+          "behavioral_loop": {
+            "signals_detected": 1,
+            "signals_total": 1,
+            "signal_detection_rate": 1.0,
+            "adaptation_speed": "immediate",
+            "proactive_suggestions": {
+              "appropriate": 0,
+              "pushy": 0,
+              "missed": 0
+            }
+          }
+        },
+        {
+          "task_id": "T3",
+          "task_summary": "Move 3 candidates in parallel using subagents and monitor writeback results",
+          "task_start": 120,
+          "task_end": 1511,
+          "first_approach": "correct",
+          "redirections": 1,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Agent correctly used subagents (Agent tool) to move 3 candidates in parallel. All 3 moves succeeded but subagents lost VPN before monitoring could complete. Agent then re-checked results when connectivity restored. Good use of parallelism. The minor redirect was the user specifying to use subagents which the agent was already planning.",
+          "counterfactual": "N/A -- correct approach with good parallelism. VPN loss was environmental.",
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          },
+          "behavioral_loop": {
+            "signals_detected": 1,
+            "signals_total": 2,
+            "signal_detection_rate": 0.5,
+            "adaptation_speed": "immediate",
+            "proactive_suggestions": {
+              "appropriate": 0,
+              "pushy": 0,
+              "missed": 1
+            }
+          }
+        }
+      ],
+      "improvement_simulation": [
+        {
+          "failure_type": "wrong_approach",
+          "current_count": 1,
+          "simulated_agreement": 0.83,
+          "delta": 0.33
+        },
+        {
+          "failure_type": "over_engineering",
+          "current_count": 1,
+          "simulated_agreement": 0.83,
+          "delta": 0.33
+        }
+      ],
+      "summary": "E2E testing session for PR #550 V1/V2 identity mismatch fix. Initial misunderstanding (tried to move candidates instead of checking existing movement status) cost one redirect. The core investigation was thorough -- correctly traced Anu SUCCESS through the fallback path and identified Tara as still PENDING. Over-engineered by proposing Jira filing when user just wanted to move more candidates. Good use of parallel subagents for the batch move."
+    },
+    {
+      "session_id": "2026-04-08_5c8f31b2-f07c-45f9-9f2b-8fdd537db5dd",
+      "session_date": "2026-04-08",
+      "repo": "hp-ats-integration-mt",
+      "total_tasks": 3,
+      "correct_first_approach": 2.5,
+      "agreement_rate": 0.83,
+      "total_redirections": 1,
+      "avg_redirections_per_task": 0.33,
+      "failure_distribution": {
+        "wrong_approach": 0,
+        "skill_deficiency": 0,
+        "skill_gap": 0,
+        "context_miss": 0,
+        "over_engineering": 0,
+        "tool_misuse": 1,
+        "user_ambiguity": 0
+      },
+      "dominant_failure_type": "tool_misuse",
+      "severity_weighted_score": 0.89,
+      "insight_summary": {
+        "total_available": "unknown",
+        "total_retrieved": 0,
+        "total_hits": 0,
+        "total_misses": 0,
+        "total_wrong": 0,
+        "total_violations": 0,
+        "retrieval_precision": "N/A",
+        "retrieval_recall": "N/A",
+        "insight_ids_to_prune": [],
+        "insight_ids_to_graduate": [],
+        "feedback_ids_to_strengthen": []
+      },
+      "behavioral_loop": {
+        "signals_detected": 3,
+        "signals_total": 4,
+        "signal_detection_rate": 0.75,
+        "adaptation_speed_distribution": {
+          "immediate": 3,
+          "delayed": 0,
+          "resistant": 0
+        },
+        "proactive_suggestions": {
+          "appropriate": 1,
+          "pushy": 0,
+          "missed": 0
+        }
+      },
+      "compound_learning": {
+        "retrieval_quality": "partial",
+        "insights_generated": 0,
+        "insights_quality": "low",
+        "duplicates_created": 0,
+        "graduation_candidates": [],
+        "prune_candidates": [],
+        "stale_candidates": [],
+        "loop_closed": false
+      },
+      "session_score": 0.77,
+      "tasks": [
+        {
+          "task_id": "T1",
+          "task_summary": "Review PR #553 (Entity Registry for V1-to-V2 resolution) and compare with mcm-mt pattern",
+          "task_start": 2,
+          "task_end": 33,
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "User asked to review PR #553 and refer to mcm-mt hireIdentityEntityRegistry. Agent correctly fetched PR details, diff, and mcm-mt pattern in parallel using subagents. Produced a thorough code review with specific line references and a comparison to mcm-mt pattern. Good technical depth.",
+          "counterfactual": "N/A -- correct approach.",
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          },
+          "behavioral_loop": {
+            "signals_detected": 1,
+            "signals_total": 1,
+            "signal_detection_rate": 1.0,
+            "adaptation_speed": "immediate",
+            "proactive_suggestions": {
+              "appropriate": 0,
+              "pushy": 0,
+              "missed": 0
+            }
+          }
+        },
+        {
+          "task_id": "T2",
+          "task_summary": "Identify all callers needing the same fix and implement changes across ConnectedProjectCandidateService and other callers",
+          "task_start": 34,
+          "task_end": 61,
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "User asked what needs to change and whether HiringProjectCandidateService needs changes for the fallback path. Agent correctly identified that HiringProjectCandidateService does NOT need changes (works with V2 already present), but found two OTHER callers that DO have the same bug: IntegrationApplicationStageProcessor and ApplicationStageHistoryService. Precise analysis with file/line references.",
+          "counterfactual": "N/A -- correct analysis.",
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          },
+          "behavioral_loop": {
+            "signals_detected": 1,
+            "signals_total": 2,
+            "signal_detection_rate": 0.5,
+            "adaptation_speed": "immediate",
+            "proactive_suggestions": {
+              "appropriate": 1,
+              "pushy": 0,
+              "missed": 0
+            }
+          }
+        },
+        {
+          "task_id": "T3",
+          "task_summary": "Implement the code changes: refactor resolveHireIdentityForMapping to generic entity URN pattern, fix all callers and tests",
+          "task_start": 61,
+          "task_end": 507,
+          "first_approach": "partially_correct",
+          "redirections": 1,
+          "primary_failure_type": "tool_misuse",
+          "contributing_types": [],
+          "evidence": "Agent attempted to compile via ssh vm but got permission denied [idx 75-78]. Tried direct ssh vm multiple times. Eventually ran gradlew locally which worked. Multiple compile-fix iterations needed (renamed method but left old name in callers, type mismatch between HiringPlatformEntityUrn and HiringProjectCandidateUrn). Required 4-5 compile cycles to get main source compiling, then test compilation errors. The VM routing rule says to use bash -c cd /path && vm-run mint build but agent tried direct ssh vm which was blocked.",
+          "counterfactual": "Should have used bash -c \"cd /path/to/repo && vm-run ./gradlew compileJava\" per the VM routing rule, or run locally from the start. Should have done a more careful review of all method signatures before starting edits to avoid the compile-fix loop.",
+          "fix_target": "VM routing rule awareness -- agent should check if ssh vm is allowed or use vm-run wrapper. Also, the insight rules say to verify Java compilation after every code change.",
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": [
+              {
+                "feedback_id": "vm-routing-rule",
+                "rule": "Use bash -c vm-run for builds, not direct ssh vm"
+              },
+              {
+                "feedback_id": "verify-compilation",
+                "rule": "Verify Java compilation after every code change"
+              }
+            ]
+          },
+          "behavioral_loop": {
+            "signals_detected": 1,
+            "signals_total": 1,
+            "signal_detection_rate": 1.0,
+            "adaptation_speed": "immediate",
+            "proactive_suggestions": {
+              "appropriate": 0,
+              "pushy": 0,
+              "missed": 0
+            }
+          }
+        }
+      ],
+      "improvement_simulation": [
+        {
+          "failure_type": "tool_misuse",
+          "current_count": 1,
+          "simulated_agreement": 1.0,
+          "delta": 0.17
+        }
+      ],
+      "summary": "Strong code review and implementation session. The PR #553 review correctly identified the mcm-mt pattern comparison and found additional callers with the same bug. Implementation had friction from compile-fix loops (4-5 iterations) and incorrect VM access attempts (direct ssh vm instead of vm-run wrapper). Technical analysis was excellent; mechanical execution could be tighter."
+    },
+    {
+      "session_id": "2026-04-08_89e7322e-2fc7-4340-96e4-a33fdcc60e3a",
+      "session_date": "2026-04-08",
+      "repo": "hp-ats-integration-mt",
+      "total_tasks": 1,
+      "correct_first_approach": 0.5,
+      "agreement_rate": 0.5,
+      "total_redirections": 0,
+      "avg_redirections_per_task": 0.0,
+      "failure_distribution": {
+        "wrong_approach": 0,
+        "skill_deficiency": 0,
+        "skill_gap": 0,
+        "context_miss": 0,
+        "over_engineering": 0,
+        "tool_misuse": 1,
+        "user_ambiguity": 0
+      },
+      "dominant_failure_type": "tool_misuse",
+      "severity_weighted_score": 0.67,
+      "insight_summary": {
+        "total_available": "unknown",
+        "total_retrieved": 0,
+        "total_hits": 0,
+        "total_misses": 0,
+        "total_wrong": 0,
+        "total_violations": 0,
+        "retrieval_precision": "N/A",
+        "retrieval_recall": "N/A",
+        "insight_ids_to_prune": [],
+        "insight_ids_to_graduate": [],
+        "feedback_ids_to_strengthen": []
+      },
+      "behavioral_loop": {
+        "signals_detected": 1,
+        "signals_total": 1,
+        "signal_detection_rate": 1.0,
+        "adaptation_speed_distribution": {
+          "immediate": 1,
+          "delayed": 0,
+          "resistant": 0
+        },
+        "proactive_suggestions": {
+          "appropriate": 1,
+          "pushy": 0,
+          "missed": 0
+        }
+      },
+      "compound_learning": {
+        "retrieval_quality": "partial",
+        "insights_generated": 0,
+        "insights_quality": "low",
+        "duplicates_created": 0,
+        "graduation_candidates": [],
+        "prune_candidates": [],
+        "stale_candidates": [],
+        "loop_closed": false
+      },
+      "session_score": 0.58,
+      "tasks": [
+        {
+          "task_id": "T1",
+          "task_summary": "Investigate CSE bug HPLT-114422 -- ATS applicants removed from pipeline after stage change (flaky Phase 1 bug)",
+          "task_start": 2,
+          "task_end": 191,
+          "first_approach": "partially_correct",
+          "redirections": 0,
+          "primary_failure_type": "tool_misuse",
+          "contributing_types": [],
+          "evidence": "Agent correctly started by fetching Jira ticket and launching log search + HP entity queries in parallel. Good investigation strategy. However, all grpcurli commands via ssh vm failed due to DV auth expiry [idx 46-48, 91]. Agent used sleep + cat pattern to poll background tasks instead of just running them in foreground or using run_in_background. The SSH commands had quoting issues causing the grpcurli arguments to be split across lines [idx 69]. Despite these tool issues, the code analysis was strong -- agent correctly identified the V2-as-V1 fallback bug in resolveHireIdentityForHpEntity (lines 96-98) and the disconnect pattern in ApplicationStageProcessor. The observe-agent log search worked but Kusto direct queries failed on authorization. User at [idx 48] mentioned az login needed, which was a good catch for adding to auth preflight.",
+          "counterfactual": "Agent should have (1) used bash -c wrapping consistently for ssh vm commands per VM routing rule, (2) used vm-run for the grpcurli commands instead of raw ssh, (3) not used sleep+cat polling pattern. The DV auth issue should have been caught by the auth-preflight recipe at session start.",
+          "fix_target": "recipes/auth-preflight.md -- add az login check for Kusto access. VM routing rule -- strengthen SSH command quoting guidance.",
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": [
+              {
+                "feedback_id": "vm-routing-rule",
+                "rule": "Use bash -c wrapper for ssh vm commands"
+              },
+              {
+                "feedback_id": "auth-preflight",
+                "rule": "Run auth preflight before heavy sessions"
+              }
+            ]
+          },
+          "behavioral_loop": {
+            "signals_detected": 1,
+            "signals_total": 1,
+            "signal_detection_rate": 1.0,
+            "adaptation_speed": "immediate",
+            "proactive_suggestions": {
+              "appropriate": 1,
+              "pushy": 0,
+              "missed": 0
+            }
+          }
+        }
+      ],
+      "improvement_simulation": [
+        {
+          "failure_type": "tool_misuse",
+          "current_count": 1,
+          "simulated_agreement": 1.0,
+          "delta": 0.5
+        }
+      ],
+      "summary": "Bug investigation session with strong analytical capability but poor tool execution. Agent correctly identified the root cause code path (V2-as-V1 fallback in resolveHireIdentityForHpEntity) and found the disconnect pattern in ApplicationStageProcessor. However, all remote grpcurli commands failed due to expired DV auth and SSH quoting issues. The auth-preflight recipe should include az login verification. Code analysis made up for tool friction."
+    },
+    {
+      "session_id": "2026-04-08_bc7ac0bd-923b-4dc4-b7a3-b0d76a6a46fb",
+      "session_date": "2026-04-08",
+      "repo": "talent-solutions-api",
+      "total_tasks": 3,
+      "correct_first_approach": 2.5,
+      "agreement_rate": 0.83,
+      "total_redirections": 2,
+      "avg_redirections_per_task": 0.67,
+      "failure_distribution": {
+        "wrong_approach": 0,
+        "skill_deficiency": 0,
+        "skill_gap": 0,
+        "context_miss": 0,
+        "over_engineering": 0,
+        "tool_misuse": 1,
+        "user_ambiguity": 0
+      },
+      "dominant_failure_type": "tool_misuse",
+      "severity_weighted_score": 0.89,
+      "insight_summary": {
+        "total_available": "unknown",
+        "total_retrieved": 0,
+        "total_hits": 0,
+        "total_misses": 0,
+        "total_wrong": 0,
+        "total_violations": 0,
+        "retrieval_precision": "N/A",
+        "retrieval_recall": "N/A",
+        "insight_ids_to_prune": [],
+        "insight_ids_to_graduate": [],
+        "feedback_ids_to_strengthen": []
+      },
+      "behavioral_loop": {
+        "signals_detected": 4,
+        "signals_total": 5,
+        "signal_detection_rate": 0.8,
+        "adaptation_speed_distribution": {
+          "immediate": 3,
+          "delayed": 1,
+          "resistant": 0
+        },
+        "proactive_suggestions": {
+          "appropriate": 1,
+          "pushy": 0,
+          "missed": 0
+        }
+      },
+      "compound_learning": {
+        "retrieval_quality": "partial",
+        "insights_generated": 0,
+        "insights_quality": "low",
+        "duplicates_created": 0,
+        "graduation_candidates": [],
+        "prune_candidates": [],
+        "stale_candidates": [],
+        "loop_closed": false
+      },
+      "session_score": 0.75,
+      "tasks": [
+        {
+          "task_id": "T1",
+          "task_summary": "Check when talent-solutions-api PR #8393 got deployed to production",
+          "task_start": 2,
+          "task_end": 23,
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Agent fetched PR details, found merge commit tag (v95.0.777), checked prod deployment version (v95.0.966/977), and confirmed the fix is fully deployed. Clean execution with parallel tool calls.",
+          "counterfactual": "N/A -- correct approach.",
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          },
+          "behavioral_loop": {
+            "signals_detected": 1,
+            "signals_total": 1,
+            "signal_detection_rate": 1.0,
+            "adaptation_speed": "immediate",
+            "proactive_suggestions": {
+              "appropriate": 0,
+              "pushy": 0,
+              "missed": 0
+            }
+          }
+        },
+        {
+          "task_id": "T2",
+          "task_summary": "Investigate incident-10781 to confirm if notification decoration dups from ts-web contributed to contract chooser oops pages",
+          "task_start": 25,
+          "task_end": 111,
+          "first_approach": "correct",
+          "redirections": 1,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Agent correctly traced the notification decoration call chain (talentNotificationCards -> decorateNotifications -> N x seatsV2 calls). Used semantic code search to find the decorator patterns and ts-web integration. Found the incident via Rootly after JIRA search failed. The one redirect was user asking for concrete metrics at [idx 112] after getting a narrative analysis -- not a wrong approach, just requesting more depth.",
+          "counterfactual": "Could have started with observe-agent earlier to get concrete error counts rather than code-first analysis.",
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          },
+          "behavioral_loop": {
+            "signals_detected": 2,
+            "signals_total": 2,
+            "signal_detection_rate": 1.0,
+            "adaptation_speed": "immediate",
+            "proactive_suggestions": {
+              "appropriate": 1,
+              "pushy": 0,
+              "missed": 0
+            }
+          }
+        },
+        {
+          "task_id": "T3",
+          "task_summary": "Get concrete metrics and treeIds from the incident time window to verify notification decoration contribution",
+          "task_start": 112,
+          "task_end": 543,
+          "first_approach": "partially_correct",
+          "redirections": 1,
+          "primary_failure_type": "tool_misuse",
+          "contributing_types": [],
+          "evidence": "User asked for concrete metrics/data [idx 112]. Agent used observe-agent effectively for the initial query but then user had to interrupt multiple times [idx 125, 130] and redirect at [idx 128]: check in this way, during the incident time, what is the top caller, I mean group each caller. Then again at [idx 133]: continue, more focus on the huge amount of calls from talentNotificationService. The observe-agent session got interrupted repeatedly. Agent was querying the right tool but not focusing the queries precisely enough, requiring user to steer the investigation direction.",
+          "counterfactual": "Agent should have immediately structured the observe-agent query as: group seatsV2 calls by originating endpoint during the incident window, sorted by count. The user had to specify this grouping approach.",
+          "fix_target": "investigate skill -- when user asks for concrete data, default to group-by/aggregate queries rather than searching for specific patterns.",
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          },
+          "behavioral_loop": {
+            "signals_detected": 1,
+            "signals_total": 2,
+            "signal_detection_rate": 0.5,
+            "adaptation_speed": "delayed",
+            "proactive_suggestions": {
+              "appropriate": 0,
+              "pushy": 0,
+              "missed": 0
+            }
+          }
+        }
+      ],
+      "improvement_simulation": [
+        {
+          "failure_type": "tool_misuse",
+          "current_count": 1,
+          "simulated_agreement": 1.0,
+          "delta": 0.17
+        }
+      ],
+      "summary": "Good oncall investigation session across deployment check and incident analysis. The deployment check was clean. The incident investigation correctly identified notification decoration as the top contributor (35% of seatsV2 errors). However, the agent needed multiple user redirections to focus observe-agent queries on the right aggregation -- user had to specify group by caller with concrete counts rather than pattern matching. The JIRA search tool had persistent issues with unbounded query errors."
+    },
+    {
+      "session_id": "2026-04-08_c07726c8-f994-4080-a984-a8c5c523f963",
+      "session_date": "2026-04-08",
+      "repo": "hp-ats-integration-mt",
+      "total_tasks": 3,
+      "correct_first_approach": 2.5,
+      "agreement_rate": 0.83,
+      "total_redirections": 1,
+      "avg_redirections_per_task": 0.33,
+      "failure_distribution": {
+        "wrong_approach": 0,
+        "skill_deficiency": 0,
+        "skill_gap": 0,
+        "context_miss": 0,
+        "over_engineering": 0,
+        "tool_misuse": 1,
+        "user_ambiguity": 0
+      },
+      "dominant_failure_type": "tool_misuse",
+      "severity_weighted_score": 0.89,
+      "insight_summary": {
+        "total_available": "unknown",
+        "total_retrieved": 0,
+        "total_hits": 0,
+        "total_misses": 0,
+        "total_wrong": 0,
+        "total_violations": 0,
+        "retrieval_precision": "N/A",
+        "retrieval_recall": "N/A",
+        "insight_ids_to_prune": [],
+        "insight_ids_to_graduate": [],
+        "feedback_ids_to_strengthen": []
+      },
+      "behavioral_loop": {
+        "signals_detected": 3,
+        "signals_total": 4,
+        "signal_detection_rate": 0.75,
+        "adaptation_speed_distribution": {
+          "immediate": 3,
+          "delayed": 0,
+          "resistant": 0
+        },
+        "proactive_suggestions": {
+          "appropriate": 0,
+          "pushy": 0,
+          "missed": 0
+        }
+      },
+      "compound_learning": {
+        "retrieval_quality": "partial",
+        "insights_generated": 0,
+        "insights_quality": "low",
+        "duplicates_created": 0,
+        "graduation_candidates": [],
+        "prune_candidates": [],
+        "stale_candidates": [],
+        "loop_closed": false
+      },
+      "session_score": 0.77,
+      "tasks": [
+        {
+          "task_id": "T1",
+          "task_summary": "Check treeId AAZO+HPkxiTThPGviMglzA== in mcm-mt logs, find the code and recent changes for cross-account contract validation",
+          "task_start": 2,
+          "task_end": 22,
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Agent correctly used observe-agent to find the treeId logs, identified the UNAUTHENTICATED error about cross-account contracts, and started looking at the code. User interrupted at [idx 19-21] when agent launched subagents to explore mcm-mt code -- user wanted to redirect to hp-ats-integration-mt instead.",
+          "counterfactual": "N/A -- initial approach was correct. The interruption was user redirecting to a different codebase.",
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          },
+          "behavioral_loop": {
+            "signals_detected": 1,
+            "signals_total": 1,
+            "signal_detection_rate": 1.0,
+            "adaptation_speed": "immediate",
+            "proactive_suggestions": {
+              "appropriate": 0,
+              "pushy": 0,
+              "missed": 0
+            }
+          }
+        },
+        {
+          "task_id": "T2",
+          "task_summary": "Find datapipeline usage URN in hp-ats-integration-mt and trace actor URN through HiringProjectCandidate partialUpdate",
+          "task_start": 23,
+          "task_end": 58,
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Agent found UrnUtil.HP_INTEGRATION_DEFAULT_USAGE_URN, traced the actor chain through TransformerContext -> HiringProjectCandidateService -> partialUpdate, and correctly identified that the gRPC proto field is just a string (setActor(actorUrn.toString())). Good codebase navigation.",
+          "counterfactual": "N/A -- correct approach with thorough tracing.",
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          },
+          "behavioral_loop": {
+            "signals_detected": 1,
+            "signals_total": 1,
+            "signal_detection_rate": 1.0,
+            "adaptation_speed": "immediate",
+            "proactive_suggestions": {
+              "appropriate": 0,
+              "pushy": 0,
+              "missed": 0
+            }
+          }
+        },
+        {
+          "task_id": "T3",
+          "task_summary": "Find the mcm-mt cross-account contract validation code to understand what URN types can unblock the error",
+          "task_start": 59,
+          "task_end": 129,
+          "first_approach": "partially_correct",
+          "redirections": 1,
+          "primary_failure_type": "tool_misuse",
+          "contributing_types": [],
+          "evidence": "Agent needed to find CrossContractHirePermissionUtils.java in mcm-mt. Tried jarvis_codesearch which found it, but then struggled with tool parameter names for fetching the file: tried get_github_file (not available), then jarvis_get_file with wrong param name (repo vs filepath), then get_source_code with wrong param name (repo vs reponame) [idx 71-76]. Eventually got the file at [idx 77]. Also the HiringProjectCandidatesServiceImpl.java was too large (102K chars) and required Python extraction [idx 91-98]. Despite tool friction, correctly traced the validation chain: partialUpdate -> batchGet(viewer=actor) -> checkHiringProjectCandidateViewPermissions -> CrossContractHirePermissionUtils.validateKeys.",
+          "counterfactual": "Agent should have called mcp__captain__get_tool_info first to learn correct parameter names before calling jarvis_get_file or get_source_code, rather than trial-and-error.",
+          "fix_target": "Investigate skill or MCP tool usage -- always check tool parameter schema via get_tool_info before calling unfamiliar tools.",
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          },
+          "behavioral_loop": {
+            "signals_detected": 1,
+            "signals_total": 2,
+            "signal_detection_rate": 0.5,
+            "adaptation_speed": "immediate",
+            "proactive_suggestions": {
+              "appropriate": 0,
+              "pushy": 0,
+              "missed": 0
+            }
+          }
+        }
+      ],
+      "improvement_simulation": [
+        {
+          "failure_type": "tool_misuse",
+          "current_count": 1,
+          "simulated_agreement": 1.0,
+          "delta": 0.17
+        }
+      ],
+      "summary": "Effective cross-codebase investigation tracing the UNAUTHENTICATED error from mcm-mt logs through hp-ats-integration-mt actor URN setup to mcm-mt CrossContractHirePermissionUtils. Technical analysis was excellent -- correctly identified the batchGet(viewer=actor) chain where the usage URN causes cross-account validation failure. Tool friction from incorrect parameter names on jarvis_get_file/get_source_code cost time but did not derail the investigation."
+    },
+    {
+      "session_id": "2026-04-08_d07ef355-6638-4efb-84df-d949212c6573",
+      "session_date": "2026-04-08",
+      "repo": "hp-ats-integration-mt",
+      "total_tasks": 1,
+      "correct_first_approach": 0.5,
+      "agreement_rate": 0.5,
+      "total_redirections": 1,
+      "avg_redirections_per_task": 1.0,
+      "failure_distribution": {
+        "wrong_approach": 0,
+        "skill_deficiency": 0,
+        "skill_gap": 0,
+        "context_miss": 0,
+        "over_engineering": 0,
+        "tool_misuse": 1,
+        "user_ambiguity": 0
+      },
+      "dominant_failure_type": "tool_misuse",
+      "severity_weighted_score": 0.67,
+      "insight_summary": {
+        "total_available": "unknown",
+        "total_retrieved": 0,
+        "total_hits": 0,
+        "total_misses": 0,
+        "total_wrong": 0,
+        "total_violations": 0,
+        "retrieval_precision": "N/A",
+        "retrieval_recall": "N/A",
+        "insight_ids_to_prune": [],
+        "insight_ids_to_graduate": [],
+        "feedback_ids_to_strengthen": []
+      },
+      "behavioral_loop": {
+        "signals_detected": 2,
+        "signals_total": 2,
+        "signal_detection_rate": 1.0,
+        "adaptation_speed_distribution": {
+          "immediate": 2,
+          "delayed": 0,
+          "resistant": 0
+        },
+        "proactive_suggestions": {
+          "appropriate": 0,
+          "pushy": 0,
+          "missed": 1
+        }
+      },
+      "compound_learning": {
+        "retrieval_quality": "partial",
+        "insights_generated": 0,
+        "insights_quality": "low",
+        "duplicates_created": 0,
+        "graduation_candidates": [],
+        "prune_candidates": [],
+        "stale_candidates": [],
+        "loop_closed": false
+      },
+      "session_score": 0.63,
+      "tasks": [
+        {
+          "task_id": "T1",
+          "task_summary": "Investigate why HiringProject 1996803746 in sandbox 1 contract has no hiring project candidates",
+          "task_start": 2,
+          "task_end": 511,
+          "first_approach": "partially_correct",
+          "redirections": 1,
+          "primary_failure_type": "tool_misuse",
+          "contributing_types": [],
+          "evidence": "Agent correctly launched hiring-platform skill and queried HP data in parallel. However, ALL initial queries went through ssh vm and ALL failed due to DV auth expiry [idx 23-25]. Agent tried interactive CLI for DV auth [idx 39-50] but user interrupted and said at [idx 57]: no need to use the vm, just run local. Agent then ran curli/grpcurli locally which worked immediately. The rest of the investigation was strong: found the 10 SourcingChannelCandidates, discovered they were all in hidden potential candidate state (CHS 12936776234), correctly identified that ApplicationStage sync had not run (candidates parked in default state instead of ATS stages). Good root cause analysis once tools worked.",
+          "counterfactual": "Agent should have tried running curli/grpcurli locally first, especially since the user had already authenticated locally (the session started with local DV auth). The VM routing rule says to route builds to VM, but curli can run locally. When DV auth fails on VM, immediately try local rather than attempting interactive re-auth on the VM.",
+          "fix_target": "VM routing rule -- clarify that curli/grpcurli can be run locally when local DV auth is valid. Add heuristic: if first VM command fails on DV auth, try local before attempting interactive VM re-auth.",
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": [
+              {
+                "feedback_id": "vm-routing-rule",
+                "rule": "curli/grpcurli can run locally; VM is for heavy compute, not all remote calls"
+              }
+            ]
+          },
+          "behavioral_loop": {
+            "signals_detected": 2,
+            "signals_total": 2,
+            "signal_detection_rate": 1.0,
+            "adaptation_speed": "immediate",
+            "proactive_suggestions": {
+              "appropriate": 0,
+              "pushy": 0,
+              "missed": 1
+            }
+          }
+        }
+      ],
+      "improvement_simulation": [
+        {
+          "failure_type": "tool_misuse",
+          "current_count": 1,
+          "simulated_agreement": 1.0,
+          "delta": 0.5
+        }
+      ],
+      "summary": "Investigation of empty hiring project candidates. Strong root cause analysis -- correctly identified that 10 candidates were parked in hidden potential candidate state instead of being placed into ATS stages (ApplicationStage sync had not run). However, significant time wasted routing all curli/grpcurli through the VM when DV auth was expired there. User had to redirect to run locally. The VM routing rule is being over-applied to REST API calls that work fine locally."
+    },
+    {
+      "session_id": "2026-04-08_d5a5e66c-b905-46d3-a2de-71368ef8b56f",
+      "session_date": "2026-04-08",
+      "repo": "connected_project_phase2",
+      "total_tasks": 4,
+      "correct_first_approach": 2.0,
+      "agreement_rate": 0.5,
+      "total_redirections": 4,
+      "avg_redirections_per_task": 1.0,
+      "failure_distribution": {
+        "wrong_approach": 0,
+        "skill_deficiency": 0,
+        "skill_gap": 0,
+        "context_miss": 0,
+        "over_engineering": 1,
+        "tool_misuse": 0,
+        "user_ambiguity": 2
+      },
+      "dominant_failure_type": "over_engineering",
+      "severity_weighted_score": 0.88,
+      "insight_summary": {
+        "total_available": "unknown",
+        "total_retrieved": 0,
+        "total_hits": 0,
+        "total_misses": 0,
+        "total_wrong": 0,
+        "total_violations": 0,
+        "retrieval_precision": "N/A",
+        "retrieval_recall": "N/A",
+        "insight_ids_to_prune": [],
+        "insight_ids_to_graduate": [],
+        "feedback_ids_to_strengthen": []
+      },
+      "behavioral_loop": {
+        "signals_detected": 4,
+        "signals_total": 7,
+        "signal_detection_rate": 0.57,
+        "adaptation_speed_distribution": {
+          "immediate": 3,
+          "delayed": 1,
+          "resistant": 0
+        },
+        "proactive_suggestions": {
+          "appropriate": 1,
+          "pushy": 0,
+          "missed": 1
+        }
+      },
+      "compound_learning": {
+        "retrieval_quality": "partial",
+        "insights_generated": 1,
+        "insights_quality": "medium",
+        "duplicates_created": 0,
+        "graduation_candidates": [],
+        "prune_candidates": [],
+        "stale_candidates": [],
+        "loop_closed": false
+      },
+      "session_score": 0.53,
+      "tasks": [
+        {
+          "task_id": "T1",
+          "task_summary": "Create bug bash spreadsheet with Business Goal, Test Use Case, Test Steps, PoC, Tester columns",
+          "task_start": 2,
+          "task_end": 44,
+          "first_approach": "correct",
+          "redirections": 0,
+          "primary_failure_type": null,
+          "contributing_types": [],
+          "evidence": "Agent read existing e2e test cases and project context, proposed the spreadsheet structure, and created bug-bash-spreadsheet.csv with 23 test cases across 6 business goals. User approved the structure. Good use of existing project knowledge.",
+          "counterfactual": "N/A -- correct approach.",
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          },
+          "behavioral_loop": {
+            "signals_detected": 1,
+            "signals_total": 1,
+            "signal_detection_rate": 1.0,
+            "adaptation_speed": "immediate",
+            "proactive_suggestions": {
+              "appropriate": 0,
+              "pushy": 0,
+              "missed": 0
+            }
+          }
+        },
+        {
+          "task_id": "T2",
+          "task_summary": "Add original PRD statement in parentheses for each business goal and a Figma column",
+          "task_start": 23,
+          "task_end": 44,
+          "first_approach": "partially_correct",
+          "redirections": 1,
+          "primary_failure_type": "user_ambiguity",
+          "contributing_types": [],
+          "evidence": "User asked at [idx 23]: can we have business goal original statement inside (). Agent asked for clarification at [idx 24]: What do you mean by original statement? This was reasonable given the ambiguity -- could be PRD, CLAUDE.md, or Jira. User clarified at [idx 26]: yah, from the statement, maybe can figma link in seperate column. Agent then used existing CLAUDE.md objective descriptions.",
+          "counterfactual": "The clarifying question was appropriate given genuine ambiguity about which source document.",
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          },
+          "behavioral_loop": {
+            "signals_detected": 1,
+            "signals_total": 1,
+            "signal_detection_rate": 1.0,
+            "adaptation_speed": "immediate",
+            "proactive_suggestions": {
+              "appropriate": 0,
+              "pushy": 0,
+              "missed": 0
+            }
+          }
+        },
+        {
+          "task_id": "T3",
+          "task_summary": "Update spreadsheet with PM alignment on candidate movement states (3 HP states, remove mismatch)",
+          "task_start": 46,
+          "task_end": 68,
+          "first_approach": "partially_correct",
+          "redirections": 2,
+          "primary_failure_type": "over_engineering",
+          "contributing_types": [
+            "user_ambiguity"
+          ],
+          "evidence": "User provided PM alignment context (3 HP states: SUCCESS, TIMEOUT_FAILURE, GENERAL_FAILURE; remove mismatch). Agent updated the spreadsheet correctly. But at [idx 64], user said sure, re-generate those and agent just reported the CSV was already updated rather than regenerating. At [idx 69], user asked thats all the business goals? indicating coverage was incomplete. Agent acknowledged and started listing more but at [idx 72] user said No just double check and cross check with figma, to group all. Agent had generated test cases from CLAUDE.md objectives without cross-referencing the actual Figma designs -- premature closure.",
+          "counterfactual": "Agent should have cross-referenced Figma designs with the business goals from the start. When user asked to re-generate, should have actually regenerated rather than declaring existing file sufficient.",
+          "fix_target": "Behavioral gate -- when creating test plans for UI features, always cross-reference Figma designs before declaring completeness.",
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          },
+          "behavioral_loop": {
+            "signals_detected": 1,
+            "signals_total": 3,
+            "signal_detection_rate": 0.33,
+            "adaptation_speed": "delayed",
+            "proactive_suggestions": {
+              "appropriate": 0,
+              "pushy": 0,
+              "missed": 1
+            }
+          }
+        },
+        {
+          "task_id": "T4",
+          "task_summary": "Cross-reference Figma designs to ensure complete business goal coverage in bug bash spreadsheet",
+          "task_start": 72,
+          "task_end": 1377,
+          "first_approach": "correct",
+          "redirections": 1,
+          "primary_failure_type": "user_ambiguity",
+          "contributing_types": [],
+          "evidence": "User provided two Figma URLs. Agent used Figma MCP tools (get_screenshot, get_metadata) to explore the design file. Used subagents to enumerate all pages and screen frames (7 pages total). Got screenshots of key screens (stage move start, pending, confirmed, pipeline mapping). The investigation was thorough but the Figma file was complex (50+ nodes on one page). The one redirect was user providing the Figma URLs which agent did not have.",
+          "counterfactual": "Agent should have proactively asked for Figma URLs earlier when building the initial spreadsheet, knowing this was a UI feature.",
+          "fix_target": null,
+          "insight_audit": {
+            "should_have_used": [],
+            "actually_used": [],
+            "hits": [],
+            "misses": [],
+            "violations": []
+          },
+          "behavioral_loop": {
+            "signals_detected": 1,
+            "signals_total": 2,
+            "signal_detection_rate": 0.5,
+            "adaptation_speed": "immediate",
+            "proactive_suggestions": {
+              "appropriate": 1,
+              "pushy": 0,
+              "missed": 0
+            }
+          }
+        }
+      ],
+      "improvement_simulation": [
+        {
+          "failure_type": "over_engineering",
+          "current_count": 1,
+          "simulated_agreement": 0.75,
+          "delta": 0.25
+        },
+        {
+          "failure_type": "user_ambiguity",
+          "current_count": 2,
+          "simulated_agreement": 1.0,
+          "delta": 0.5
+        }
+      ],
+      "summary": "Bug bash spreadsheet creation session with iterative refinement. Initial spreadsheet was well-structured but coverage was incomplete -- agent generated test cases from CLAUDE.md objectives without cross-referencing Figma designs. User had to redirect twice (ask about business goal completeness, then explicitly request Figma cross-referencing). PM alignment update was handled correctly. The Figma exploration was thorough once triggered. Key lesson: for UI features, always cross-reference designs before declaring test plan complete."
+    }
+  ]
+}

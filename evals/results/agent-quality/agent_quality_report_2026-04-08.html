@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Agent Quality Report — 2026-04-08</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 40px; background: #f8f9fa; }
+    h1 { color: #1a1a2e; }
+    h2 { color: #16213e; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; margin-top: 32px; }
+    .metrics { display: flex; gap: 16px; flex-wrap: wrap; margin: 20px 0; }
+    .card { background: white; border-radius: 8px; padding: 20px; min-width: 160px;
+             box-shadow: 0 1px 3px rgba(0,0,0,0.1); text-align: center; }
+    .card .value { font-size: 2em; font-weight: bold; }
+    .card .label { color: #666; font-size: 0.9em; margin-top: 4px; }
+    .card.green .value { color: #16a34a; }
+    .card.orange .value { color: #ea580c; }
+    .card.red .value { color: #dc2626; }
+    table { border-collapse: collapse; width: 100%; background: white; border-radius: 8px;
+             box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin: 16px 0; }
+    th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+    th { background: #f1f5f9; font-weight: 600; }
+    code { background: #f1f5f9; padding: 2px 6px; border-radius: 3px; font-size: 0.9em; }
+    .priority { background: #fef3c7; font-weight: bold; }
+    .section-note { color: #666; font-style: italic; margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+  <h1>Agent Quality Report</h1>
+  <p>Generated: 2026-04-08T17:39:48.708742 | Sessions: 35 | Tasks: 124</p>
+
+  <h2>Overall Metrics</h2>
+  <div class="metrics">
+    <div class="card green">
+      <div class="value">76.2%</div>
+      <div class="label">Agreement Rate</div>
+    </div>
+    <div class="card">
+      <div class="value">94.5/124</div>
+      <div class="label">Correct First Approach</div>
+    </div>
+    <div class="card">
+      <div class="value">0.4</div>
+      <div class="label">Avg Redirections/Task</div>
+    </div>
+    <div class="card green">
+      <div class="value">0.821</div>
+      <div class="label">Severity Score (1.0 = perfect)</div>
+    </div>
+    <div class="card">
+      <div class="value"><code>wrong_approach</code></div>
+      <div class="label">Dominant Failure</div>
+    </div>
+  </div>
+
+  <h2>Partnership Score</h2><div class="metrics"><div class="card green"><div class="value">0.761</div><div class="label">Avg Session Score (0-1)</div></div></div>
+
+  <h2>Human Behavioral Loop</h2>
+  <div class="metrics">
+    <div class="card orange">
+      <div class="value">0.797</div>
+      <div class="label">Signal Detection Rate</div>
+    </div>
+    <div class="card">
+      <div class="value">110/138</div>
+      <div class="label">Signals Detected</div>
+    </div>
+    <div class="card green">
+      <div class="value">45</div>
+      <div class="label">Good Suggestions</div>
+    </div>
+    <div class="card orange">
+      <div class="value">2</div>
+      <div class="label">Pushy Suggestions</div>
+    </div>
+    <div class="card red">
+      <div class="value">8</div>
+      <div class="label">Missed Opportunities</div>
+    </div>
+  </div>
+
+  <h2>Compound Learning System</h2>
+  <div class="metrics">
+    <div class="card">
+      <div class="value">9</div>
+      <div class="label">Insights Generated</div>
+    </div>
+    <div class="card red">
+      <div class="value">0</div>
+      <div class="label">Duplicates Created</div>
+    </div>
+    <div class="card orange">
+      <div class="value">4/35</div>
+      <div class="label">Loops Closed</div>
+    </div>
+    <div class="card green">
+      <div class="value">2</div>
+      <div class="label">Graduation Candidates</div>
+    </div>
+    <div class="card orange">
+      <div class="value">0</div>
+      <div class="label">Prune Candidates</div>
+    </div>
+  </div>
+
+  <h2>Principle Adherence</h2>
+  <p class="section-note">Are we living by our engineering principles? Principle 0 (foundation) + 14 engineering principles from the SDE Insider's Guide.</p>
+  <div class="metrics">
+    <div class="card red">
+      <div class="value">0.0</div>
+      <div class="label">Adherence Rate</div>
+    </div>
+    <div class="card">
+      <div class="value">0/0</div>
+      <div class="label">Principles Followed</div>
+    </div>
+    <div class="card red">
+      <div class="value">0</div>
+      <div class="label">Violations</div>
+    </div>
+    <div class="card orange">
+      <div class="value">None</div>
+      <div class="label">Foundation Score (P0)</div>
+    </div>
+    <div class="card orange">
+      <div class="value"><code>None</code></div>
+      <div class="label">Most Violated Principle</div>
+    </div>
+  </div>
+
+  <h2>Insight System Health</h2>
+  <div class="metrics">
+    <div class="card green">
+      <div class="value">4</div>
+      <div class="label">Insight Hits</div>
+    </div>
+    <div class="card red">
+      <div class="value">1</div>
+      <div class="label">Insight Misses</div>
+    </div>
+    <div class="card orange">
+      <div class="value">0</div>
+      <div class="label">Misleading Insights</div>
+    </div>
+    <div class="card red">
+      <div class="value">1</div>
+      <div class="label">Rule Violations</div>
+    </div>
+  </div>
+
+  <h2>Failure Distribution</h2>
+  <p class="section-note">Classified using the 7-type failure taxonomy. Priority chain: wrong_approach > context_miss > skill_deficiency > over_engineering > tool_misuse > skill_gap > user_ambiguity</p>
+  <table>
+    <tr><th>Failure Type</th><th>Count</th><th>% of Tasks</th><th>Severity Weight</th><th>Fix Route</th></tr>
+    
+        <tr>
+          <td><code>wrong_approach</code></td>
+          <td>12</td>
+          <td>9.7%</td>
+          <td>3.0</td>
+          <td><code>review_rules</code></td>
+        </tr>
+        <tr>
+          <td><code>skill_deficiency</code></td>
+          <td>1</td>
+          <td>0.8%</td>
+          <td>2.0</td>
+          <td><code>review_skills</code></td>
+        </tr>
+        <tr>
+          <td><code>skill_gap</code></td>
+          <td>0</td>
+          <td>0.0%</td>
+          <td>1.0</td>
+          <td><code>create_skill</code></td>
+        </tr>
+        <tr>
+          <td><code>context_miss</code></td>
+          <td>1</td>
+          <td>0.8%</td>
+          <td>2.5</td>
+          <td><code>review_retrieval</code></td>
+        </tr>
+        <tr>
+          <td><code>over_engineering</code></td>
+          <td>10</td>
+          <td>8.1%</td>
+          <td>1.5</td>
+          <td><code>review_rules</code></td>
+        </tr>
+        <tr>
+          <td><code>tool_misuse</code></td>
+          <td>11</td>
+          <td>8.9%</td>
+          <td>1.0</td>
+          <td><code>review_rules</code></td>
+        </tr>
+        <tr>
+          <td><code>user_ambiguity</code></td>
+          <td>3</td>
+          <td>2.4%</td>
+          <td>0.0</td>
+          <td><code>no_fix</code></td>
+        </tr>
+  </table>
+
+  <h2>Improvement Simulation</h2>
+  <p class="section-note">What would agreement rate be if ALL failures of each type were fixed? Sorted by priority score (delta x severity).</p>
+  <table>
+    <tr><th>Failure Type</th><th>Count</th><th>Simulated Rate</th><th>Delta</th><th>Priority Score</th><th>Fix Route</th></tr>
+    
+        <tr>
+          <td><code>wrong_approach</code></td>
+          <td>12</td>
+          <td>85.9%</td>
+          <td style="color: green;">+9.7%</td>
+          <td>29.1</td>
+          <td><code>review_rules</code></td>
+        </tr>
+        <tr>
+          <td><code>over_engineering</code></td>
+          <td>10</td>
+          <td>84.3%</td>
+          <td style="color: green;">+8.1%</td>
+          <td>12.1</td>
+          <td><code>review_rules</code></td>
+        </tr>
+        <tr>
+          <td><code>tool_misuse</code></td>
+          <td>11</td>
+          <td>85.1%</td>
+          <td style="color: green;">+8.9%</td>
+          <td>8.9</td>
+          <td><code>review_rules</code></td>
+        </tr>
+        <tr>
+          <td><code>context_miss</code></td>
+          <td>1</td>
+          <td>77.0%</td>
+          <td style="color: green;">+0.8%</td>
+          <td>2.0</td>
+          <td><code>review_retrieval</code></td>
+        </tr>
+        <tr>
+          <td><code>skill_deficiency</code></td>
+          <td>1</td>
+          <td>77.0%</td>
+          <td style="color: green;">+0.8%</td>
+          <td>1.6</td>
+          <td><code>review_skills</code></td>
+        </tr>
+  </table>
+
+  <h2>Per-Session Breakdown</h2>
+  <table>
+    <tr><th>Session</th><th>Date</th><th>Tasks</th><th>Correct</th><th>Agreement</th><th>Dominant Failure</th></tr>
+    
+        <tr>
+          <td>c787d78d-1475-4359-8d95-6cc0723ea7ce</td>
+          <td>2026-04-01</td>
+          <td>3</td>
+          <td>2</td>
+          <td style="color: red;">0.75%</td>
+          <td><code>wrong_approach</code></td>
+        </tr>
+        <tr>
+          <td>cf729783-3c2a-401f-95ad-542c97cfdbc2</td>
+          <td>2026-04-01</td>
+          <td>3</td>
+          <td>1.5</td>
+          <td style="color: red;">0.58%</td>
+          <td><code>tool_misuse</code></td>
+        </tr>
+        <tr>
+          <td>189807c7-a5b5-4604-b5c9-9c9991e92fd7</td>
+          <td>2026-04-02</td>
+          <td>2</td>
+          <td>1</td>
+          <td style="color: red;">0.5%</td>
+          <td><code>tool_misuse</code></td>
+        </tr>
+        <tr>
+          <td>2d3bcd96-194a-4c3d-86cb-a5debac35c8b</td>
+          <td>2026-04-02</td>
+          <td>7</td>
+          <td>4.5</td>
+          <td style="color: red;">0.71%</td>
+          <td><code>wrong_approach</code></td>
+        </tr>
+        <tr>
+          <td>47e925b0-0c28-4dfb-a5d8-30ac716f198b</td>
+          <td>2026-04-02</td>
+          <td>5</td>
+          <td>5</td>
+          <td style="color: red;">1.0%</td>
+          <td><code>None</code></td>
+        </tr>
+        <tr>
+          <td>e2281f86-85bf-46e6-abdb-0b367f56ce35</td>
+          <td>2026-04-02</td>
+          <td>4</td>
+          <td>2.5</td>
+          <td style="color: red;">0.69%</td>
+          <td><code>over_engineering</code></td>
+        </tr>
+        <tr>
+          <td>f6d4cfb6-2450-4b5d-badb-dc00943e7a22</td>
+          <td>2026-04-02</td>
+          <td>4</td>
+          <td>2.5</td>
+          <td style="color: red;">0.69%</td>
+          <td><code>over_engineering</code></td>
+        </tr>
+        <tr>
+          <td>fba0f391-fb59-4174-96fc-191fbe1b3f65</td>
+          <td>2026-04-02</td>
+          <td>3</td>
+          <td>3</td>
+          <td style="color: red;">1.0%</td>
+          <td><code>None</code></td>
+        </tr>
+        <tr>
+          <td>2026-04-03_338b665d-f323-4da1-83a6-33508ee5b938</td>
+          <td>2026-04-03</td>
+          <td>4</td>
+          <td>2.5</td>
+          <td style="color: orange;">62.5%</td>
+          <td><code>tool_misuse</code></td>
+        </tr>
+        <tr>
+          <td>2026-04-03_3cbe5e5a-c1b6-4328-b4b8-5982a6aee3c0</td>
+          <td>2026-04-03</td>
+          <td>2</td>
+          <td>2</td>
+          <td style="color: green;">100%</td>
+          <td><code>None</code></td>
+        </tr>
+        <tr>
+          <td>2026-04-03_4def4ce2-48d5-4acc-ba56-d80588d4d9fd</td>
+          <td>2026-04-03</td>
+          <td>3</td>
+          <td>3</td>
+          <td style="color: green;">100%</td>
+          <td><code>None</code></td>
+        </tr>
+        <tr>
+          <td>2026-04-03_8ba638f2-4792-4777-8b1b-9fd8954aa274</td>
+          <td>2026-04-03</td>
+          <td>2</td>
+          <td>1.5</td>
+          <td style="color: green;">75%</td>
+          <td><code>wrong_approach</code></td>
+        </tr>
+        <tr>
+          <td>2026-04-05_180f55da-950b-40a1-9581-0f30dd8a48f2</td>
+          <td>2026-04-05</td>
+          <td>3</td>
+          <td>2.5</td>
+          <td style="color: green;">83.3%</td>
+          <td><code>wrong_approach</code></td>
+        </tr>
+        <tr>
+          <td>2026-04-05_2eac8367-91de-4429-ae52-807ef278291b</td>
+          <td>2026-04-05</td>
+          <td>1</td>
+          <td>1</td>
+          <td style="color: green;">100%</td>
+          <td><code>None</code></td>
+        </tr>
+        <tr>
+          <td>2026-04-05_383081c8-2751-4f6c-a9d1-dfe1b23233b6</td>
+          <td>2026-04-05</td>
+          <td>2</td>
+          <td>1.5</td>
+          <td style="color: green;">75%</td>
+          <td><code>wrong_approach</code></td>
+        </tr>
+        <tr>
+          <td>2026-04-05_4851dc38-86b6-4f37-81f9-2578b3312250</td>
+          <td>2026-04-05</td>
+          <td>2</td>
+          <td>1.5</td>
+          <td style="color: green;">75%</td>
+          <td><code>tool_misuse</code></td>
+        </tr>
+        <tr>
+          <td>2026-04-05_5abcc009-a003-4360-a96d-cda01ec3bc11</td>
+          <td>2026-04-05</td>
+          <td>2</td>
+          <td>2</td>
+          <td style="color: green;">100%</td>
+          <td><code>None</code></td>
+        </tr>
+        <tr>
+          <td>f445cdc2-6d6e-43a3-b68f-5e5499328088</td>
+          <td>2026-04-05</td>
+          <td>6</td>
+          <td>3.5</td>
+          <td style="color: orange;">58.3%</td>
+          <td><code>wrong_approach</code></td>
+        </tr>
+        <tr>
+          <td>31e7df46-500c-47a7-ac88-76e6d2eda7d5</td>
+          <td>2026-04-07</td>
+          <td>7</td>
+          <td>6</td>
+          <td style="color: green;">85.7%</td>
+          <td><code>tool_misuse</code></td>
+        </tr>
+        <tr>
+          <td>46e88919-bf2a-4208-8da0-91d538f939f3</td>
+          <td>2026-04-07</td>
+          <td>8</td>
+          <td>7</td>
+          <td style="color: green;">87.5%</td>
+          <td><code>wrong_approach</code></td>
+        </tr>
+        <tr>
+          <td>4fdae01d-34c0-47e7-85fb-3395e74dc6da</td>
+          <td>2026-04-07</td>
+          <td>3</td>
+          <td>3</td>
+          <td style="color: green;">100%</td>
+          <td><code>None</code></td>
+        </tr>
+        <tr>
+          <td>5460a0b5-f4c0-403c-8c9f-a4b43aec9006</td>
+          <td>2026-04-07</td>
+          <td>4</td>
+          <td>4</td>
+          <td style="color: green;">100%</td>
+          <td><code>None</code></td>
+        </tr>
+        <tr>
+          <td>ad16f905-a29c-48bd-b1a0-6e597ba9fd11</td>
+          <td>2026-04-07</td>
+          <td>5</td>
+          <td>4</td>
+          <td style="color: green;">80%</td>
+          <td><code>None</code></td>
+        </tr>
+        <tr>
+          <td>ef0ffdbe-55eb-4886-b55e-4371ce64aa43</td>
+          <td>2026-04-07</td>
+          <td>3</td>
+          <td>3</td>
+          <td style="color: green;">100%</td>
+          <td><code>None</code></td>
+        </tr>
+        <tr>
+          <td>f5372293-87cf-4bff-b8bd-1331ec9f4ac5</td>
+          <td>2026-04-07</td>
+          <td>3</td>
+          <td>3</td>
+          <td style="color: green;">100%</td>
+          <td><code>None</code></td>
+        </tr>
+        <tr>
+          <td>f6439e6a-3821-42c7-ae64-971797c80354</td>
+          <td>2026-04-07</td>
+          <td>10</td>
+          <td>7.5</td>
+          <td style="color: green;">75%</td>
+          <td><code>wrong_approach</code></td>
+        </tr>
+        <tr>
+          <td>2026-04-08_0f5e71e6-364d-4827-96d1-2a462f47b0de</td>
+          <td>2026-04-08</td>
+          <td>2</td>
+          <td>0.5</td>
+          <td style="color: red;">0.25%</td>
+          <td><code>wrong_approach</code></td>
+        </tr>
+        <tr>
+          <td>2026-04-08_27db5d4c-f39d-4ca8-b029-b22a12079f15</td>
+          <td>2026-04-08</td>
+          <td>3</td>
+          <td>1.5</td>
+          <td style="color: red;">0.5%</td>
+          <td><code>wrong_approach</code></td>
+        </tr>
+        <tr>
+          <td>2026-04-08_3c47921e-99b4-40ad-b3a0-55edb8a19389</td>
+          <td>2026-04-08</td>
+          <td>3</td>
+          <td>1.5</td>
+          <td style="color: red;">0.5%</td>
+          <td><code>wrong_approach</code></td>
+        </tr>
+        <tr>
+          <td>2026-04-08_5c8f31b2-f07c-45f9-9f2b-8fdd537db5dd</td>
+          <td>2026-04-08</td>
+          <td>3</td>
+          <td>2.5</td>
+          <td style="color: red;">0.83%</td>
+          <td><code>tool_misuse</code></td>
+        </tr>
+        <tr>
+          <td>2026-04-08_89e7322e-2fc7-4340-96e4-a33fdcc60e3a</td>
+          <td>2026-04-08</td>
+          <td>1</td>
+          <td>0.5</td>
+          <td style="color: red;">0.5%</td>
+          <td><code>tool_misuse</code></td>
+        </tr>
+        <tr>
+          <td>2026-04-08_bc7ac0bd-923b-4dc4-b7a3-b0d76a6a46fb</td>
+          <td>2026-04-08</td>
+          <td>3</td>
+          <td>2.5</td>
+          <td style="color: red;">0.83%</td>
+          <td><code>tool_misuse</code></td>
+        </tr>
+        <tr>
+          <td>2026-04-08_c07726c8-f994-4080-a984-a8c5c523f963</td>
+          <td>2026-04-08</td>
+          <td>3</td>
+          <td>2.5</td>
+          <td style="color: red;">0.83%</td>
+          <td><code>tool_misuse</code></td>
+        </tr>
+        <tr>
+          <td>2026-04-08_d07ef355-6638-4efb-84df-d949212c6573</td>
+          <td>2026-04-08</td>
+          <td>1</td>
+          <td>0.5</td>
+          <td style="color: red;">0.5%</td>
+          <td><code>tool_misuse</code></td>
+        </tr>
+        <tr>
+          <td>2026-04-08_d5a5e66c-b905-46d3-a2de-71368ef8b56f</td>
+          <td>2026-04-08</td>
+          <td>4</td>
+          <td>2.0</td>
+          <td style="color: red;">0.5%</td>
+          <td><code>over_engineering</code></td>
+        </tr>
+  </table>
+</body>
+</html>

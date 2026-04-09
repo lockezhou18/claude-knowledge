@@ -6,11 +6,17 @@ When running on the local machine (macOS), route heavy commands to the VM via SS
 
 ### Route to VM — use `vm-run` (syncs code + runs remotely):
 - **Build**: `mint build`, `mint test`, `./gradlew`, compilation commands
-- **gRPC/REST calls**: `grpcurli`, `curli` against internal services
 - **Docker**: any `docker` or `docker-compose` commands
 - **Long-running tests**: E2E tests, integration test suites
 - **Service operations**: `go-status`, `go-deploy`, KSAP commands
 - **Heavy processing**: large file operations, data transforms
+
+### Try LOCAL FIRST, fall back to VM:
+- **gRPC/REST calls**: `grpcurli`, `curli` against internal services
+  - Run locally first — local DV auth is usually active
+  - Only route to VM if local call fails with auth error
+  - NEVER blindly route all curli/grpcurli to VM — DV auth on VM is often expired
+  - If VM call fails with DV auth error, tell the user to run `! ssh vm 'dv-auth'`
 
 ### Keep local (run directly):
 - **File reads/edits**: Read, Edit, Write, Glob, Grep tools

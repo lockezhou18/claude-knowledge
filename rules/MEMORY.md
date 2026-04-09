@@ -67,16 +67,12 @@ See ~/.claude/learnings/authority-sources.md for the research strategy and sourc
 
 **GATE:** Can you explain the existing system, why it was built that way, what the business logic is, what prior work and decisions exist, and what external best practices apply? If not, keep researching.
 
-**BEHAVIORAL GATE (addresses #1 friction — 25 wrong-approach instances in 29 sessions):**
-- **Check the Service Routing Table FIRST.** If the project has one (e.g., CLAUDE.md), consult it before touching any code or running any commands. Do NOT guess the entry point.
-- **Ask which component FIRST.** Before searching code, say: "I think this involves [ComponentA]. Should I start there, or is it in [ComponentB]?" Do NOT assume the entry point.
-- **Present 2-3 candidate hypotheses.** Wait for user confirmation on which to explore. Do NOT start investigating before the user picks one.
-- **Prefer minimal fixes.** Check the codebase for existing patterns before proposing new ones. Simple fire-and-forget > retry logic. Contains-based check > pagination abstraction. The user will push back if you over-engineer.
-- **The cost of asking is 10 seconds. The cost of a wrong path is 20+ minutes.**
-- **When redirected, HARD STOP.** Do not explain why the previous approach might work. Do not continue the old path in parallel. Immediately pivot to what the user said.
-- **Use REST APIs (curli) for data lookups, NOT Trino/SQL.** Unless the user explicitly asks for database queries.
-- **Use observe-agent for log investigation.** Do not grep local files or manually construct Kusto queries.
-- **For bug fixes: use test-first workflow.** Write a failing test that reproduces the bug BEFORE implementing the fix. See `/recipe test-first-fix`.
+**BEHAVIORAL GATES** → See `behavioral-gates.md` for full eval-driven rules (approach, tool selection, compound learning, over-engineering). Key reminders:
+- Ask which component FIRST. Present hypotheses. Wait for confirmation.
+- 3-strike rule: same error 3x → switch strategy or ask.
+- "Compare with our system" = lead with mapping. "Check" = read-only.
+- curli LOCAL first. observe-agent for logs. Built-in tools > external.
+- Every 3+ task session → generate >= 1 insight.
 
 ### Phase 2: Clarify Requirements
 Before planning implementation, ensure the requirements are clear:
@@ -119,6 +115,8 @@ Before considering work complete:
 
 ### Phase 6: Compound (close the loop — make the next cycle better)
 After significant work (feature, bug fix, debugging session, refactor), run a structured retrospective before moving on. The SessionEnd hook automates part of this, but for substantial work, do it explicitly.
+
+**COMPOUND GATE** → See `behavioral-gates.md` § Compound Learning for full rules.
 
 **6a. Plan vs Reality Diff**
 - What did you plan to do? What actually happened?

@@ -55,6 +55,12 @@ Designed and built VM-primary Claude Code architecture with durable knowledge sy
 - **Start simple, let user escalate complexity** — propose Option A first, not A/B/C matrix
 - **Cross-validate data against SoT** before presenting
 - **Cite code references** (file:line for every claim)
+- **NEW (eval 2026-04-08):** "Compare with our system" = lead with mapping, not standalone description
+- **NEW (eval 2026-04-08):** "Check/monitor/verify" = read-only, do NOT initiate actions
+- **NEW (eval 2026-04-08):** 3-strike rule — same tool, same error, 3x → switch strategy or ask
+- **NEW (eval 2026-04-08):** curli/grpcurli = try LOCAL first, VM only if local auth fails
+- **NEW (eval 2026-04-08):** Use built-in tools (Read for PDF, Playwright for rich pages, observe-agent for logs)
+- **NEW (eval 2026-04-08):** COMPOUND: Every 3+ task session must generate >= 1 insight. Log outcomes in real-time. Suggest /compound proactively.
 
 ## Quick Stats
 - Skills: 22 commands + 15 skills + 8 recipes

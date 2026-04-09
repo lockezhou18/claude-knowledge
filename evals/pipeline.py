@@ -312,6 +312,14 @@ def aggregate_verdicts(verdicts: list[dict]) -> dict:
     all_prune_candidates = set()
     all_stale_candidates = set()
 
+    # Principle adherence aggregation
+    principle_applicable = 0
+    principle_followed = 0
+    principle_violated = 0
+    foundation_scores = []
+    principle_violation_counts = Counter()
+    all_principle_violations = []
+
     # Session scores
     session_scores = []
     session_summaries = []
@@ -356,6 +364,19 @@ def aggregate_verdicts(verdicts: list[dict]) -> dict:
         all_graduation_candidates.update(clearn.get("graduation_candidates", []))
         all_prune_candidates.update(clearn.get("prune_candidates", []))
         all_stale_candidates.update(clearn.get("stale_candidates", []))
+
+        # Aggregate principle adherence
+        padh = verdict.get("principle_adherence", {})
+        if padh:
+            principle_applicable += padh.get("total_applicable", 0)
+            principle_followed += padh.get("total_followed", 0)
+            principle_violated += padh.get("total_violated", 0)
+            foundation_scores.append(padh.get("foundation_score", 0))
+            mv = padh.get("most_violated")
+            if mv:
+                principle_violation_counts[mv] += 1
+            for vd in padh.get("violation_details", []):
+                all_principle_violations.append(vd)
 
         # Session score
         if "session_score" in verdict:
@@ -407,6 +428,16 @@ def aggregate_verdicts(verdicts: list[dict]) -> dict:
             "graduation_candidates": sorted(all_graduation_candidates),
             "prune_candidates": sorted(all_prune_candidates),
             "stale_candidates": sorted(all_stale_candidates),
+        },
+        "principle_adherence": {
+            "total_applicable": principle_applicable,
+            "total_followed": principle_followed,
+            "total_violated": principle_violated,
+            "adherence_rate": round(principle_followed / max(principle_applicable, 1), 3),
+            "foundation_score": round(sum(foundation_scores) / max(len(foundation_scores), 1), 3) if foundation_scores else None,
+            "most_violated": principle_violation_counts.most_common(1)[0][0] if principle_violation_counts else None,
+            "violation_count_by_principle": dict(principle_violation_counts.most_common()),
+            "total_violation_details": len(all_principle_violations),
         },
         "avg_session_score": round(sum(session_scores) / max(len(session_scores), 1), 3) if session_scores else None,
         "session_summaries": session_summaries,
@@ -501,7 +532,12 @@ def generate_html_report(report: dict, simulations: list[dict], output_path: str
     istats = report.get("insight_stats", {})
     bloop = report.get("behavioral_loop", {})
     clearn = report.get("compound_learning", {})
+    padh = report.get("principle_adherence", {})
     avg_score = report.get("avg_session_score")
+    psug = bloop.get("proactive_suggestions", {})
+    psug_appropriate = psug.get("appropriate", 0)
+    psug_pushy = psug.get("pushy", 0)
+    psug_missed = psug.get("missed", 0)
 
     html = f"""<!DOCTYPE html>
 <html>
@@ -569,15 +605,15 @@ def generate_html_report(report: dict, simulations: list[dict], output_path: str
       <div class="label">Signals Detected</div>
     </div>
     <div class="card green">
-      <div class="value">{bloop.get('proactive_suggestions', {{}}).get('appropriate', 0)}</div>
+      <div class="value">{psug_appropriate}</div>
       <div class="label">Good Suggestions</div>
     </div>
     <div class="card orange">
-      <div class="value">{bloop.get('proactive_suggestions', {{}}).get('pushy', 0)}</div>
+      <div class="value">{psug_pushy}</div>
       <div class="label">Pushy Suggestions</div>
     </div>
     <div class="card red">
-      <div class="value">{bloop.get('proactive_suggestions', {{}}).get('missed', 0)}</div>
+      <div class="value">{psug_missed}</div>
       <div class="label">Missed Opportunities</div>
     </div>
   </div>
@@ -603,6 +639,31 @@ def generate_html_report(report: dict, simulations: list[dict], output_path: str
     <div class="card orange">
       <div class="value">{len(clearn.get('prune_candidates', []))}</div>
       <div class="label">Prune Candidates</div>
+    </div>
+  </div>
+
+  <h2>Principle Adherence</h2>
+  <p class="section-note">Are we living by our engineering principles? Principle 0 (foundation) + 14 engineering principles from the SDE Insider's Guide.</p>
+  <div class="metrics">
+    <div class="card {'green' if padh.get('adherence_rate', 0) >= 0.8 else 'orange' if padh.get('adherence_rate', 0) >= 0.6 else 'red'}">
+      <div class="value">{padh.get('adherence_rate', 'N/A')}</div>
+      <div class="label">Adherence Rate</div>
+    </div>
+    <div class="card">
+      <div class="value">{padh.get('total_followed', 0)}/{padh.get('total_applicable', 0)}</div>
+      <div class="label">Principles Followed</div>
+    </div>
+    <div class="card red">
+      <div class="value">{padh.get('total_violated', 0)}</div>
+      <div class="label">Violations</div>
+    </div>
+    <div class="card {'green' if (padh.get('foundation_score') or 0) >= 0.8 else 'orange'}">
+      <div class="value">{padh.get('foundation_score', 'N/A')}</div>
+      <div class="label">Foundation Score (P0)</div>
+    </div>
+    <div class="card orange">
+      <div class="value"><code>{padh.get('most_violated', 'none')}</code></div>
+      <div class="label">Most Violated Principle</div>
     </div>
   </div>
 
