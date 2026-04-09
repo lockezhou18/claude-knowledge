@@ -1,5 +1,5 @@
 ---
-id: eureka-003
+id: eureka-003-2
 track: knowledge
 type: semantic
 repos: ["*"]
