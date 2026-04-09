@@ -111,16 +111,29 @@ Delta:  +6% agreement, +0.06 severity, +0.0 signal detection
 
 If any metric regressed, flag it. Ask user whether to keep or revert.
 
-### 7. Feed Compound Learning
+### 7. Feed Compound Learning + Auto Memory Integration
 
-After the improvement loop:
-- Write outcome-log entries for insights that the judge identified as helpful/wrong
+After the improvement loop, write findings to THREE places:
+
+**A. Compound Learning System** (our insights):
+- Write outcome-log entries for insights the judge identified as helpful/wrong
 - Update insight scores based on the judge's insight audit
-- Graduate insights that passed the threshold (use_count >= 3, outcome_score >= 2.0)
-- Prune insights that the judge flagged as misleading
-- Flag stale insights
-- Strengthen feedback memories that were violated
-- Update agent-briefing.md with the new quality metrics
+- Graduate insights that passed threshold (use_count >= 3, outcome_score >= 2.0)
+- Prune insights the judge flagged as misleading
+- Update agent-briefing.md with new quality metrics
+
+**B. Auto Memory** (Anthropic's system — so Auto Dream can consolidate):
+- Update `~/.claude/projects/-Users-bizhou/memory/eval-behavioral-gates.md` with latest gates
+- Update `~/.claude/projects/-Users-bizhou/memory/eval-principle-scores.md` with latest scores
+- Keep frontmatter format (name, description, type: feedback) so Auto Dream recognizes them
+- Update MEMORY.md index if new memory files are added
+- Auto Dream will then consolidate these with other memories between sessions
+
+**C. Behavioral Gates** (our rules file, loaded by scout hook):
+- Update `~/claude-knowledge/rules/behavioral-gates.md` with eval-driven gates
+- This is the detailed version; the memory files are the summary Auto Dream maintains
+
+**Why three places:** Auto Memory is what Auto Dream sees and consolidates. Behavioral gates are what the scout hook loads for detail. Compound learning is the cross-session intelligence. They serve different roles but must stay in sync. The eval system is the single source of truth — it writes to all three.
 
 ## Steps: judge
 

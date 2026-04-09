@@ -20,5 +20,10 @@
 ## Feedback
 - [Front-load Context](feedback-frontload-context.md) — Always specify service/file/tool upfront to avoid wrong-approach friction (28 instances)
 
+## Eval-Driven (updated by /improve-agent)
+- [Behavioral Gates](eval-behavioral-gates.md) — Approach, tool, principle, compound gates from 35-session eval
+- [Principle Scores](eval-principle-scores.md) — 85.1% adherence, top violations: verify (14x), guess values (13x)
+- [System Architecture](eval-system-architecture.md) — How eval, compound learning, and Auto Dream integrate
+
 ## Troubleshooting
 - [Build & Config Troubleshooting](build-troubleshooting.md) - mint build-cfg errors, local deploy issues
