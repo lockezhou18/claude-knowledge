@@ -1,6 +1,6 @@
 {
   "report": {
-    "run_date": "2026-04-08T17:39:48.708742",
+    "run_date": "2026-04-08T17:51:15.346285",
     "sessions_evaluated": 35,
     "total_tasks": 124,
     "total_correct": 94.5,
@@ -52,14 +52,27 @@
       "stale_candidates": []
     },
     "principle_adherence": {
-      "total_applicable": 0,
-      "total_followed": 0,
-      "total_violated": 0,
-      "adherence_rate": 0.0,
-      "foundation_score": null,
-      "most_violated": null,
-      "violation_count_by_principle": {},
-      "total_violation_details": 0
+      "total_applicable": 410,
+      "total_followed": 349,
+      "total_violated": 61,
+      "adherence_rate": 0.851,
+      "foundation_score": 0.844,
+      "most_violated": "never_guess",
+      "violation_count_by_principle": {
+        "never_guess": 5,
+        "verify_own_understanding": 3,
+        "cite_refs": 3,
+        "try_tools_before_cant": 3,
+        "try_tools_before_i_cant": 2,
+        "never_guess_values": 2,
+        "nothing_is_ever_trivial": 1,
+        "design_for_failure": 1,
+        "avoid_big_bang": 1,
+        "try_tools": 1,
+        "nothing_ever_trivial": 1,
+        "own_dependencies": 1
+      },
+      "total_violation_details": 61
     },
     "avg_session_score": 0.761,
     "session_summaries": [
@@ -562,7 +575,24 @@
           "delta": 0.25
         }
       },
-      "summary": "Solid debugging session. One wrong_approach on processor choice. User redirected and agent adapted immediately. /verify was thorough."
+      "summary": "Solid debugging session. One wrong_approach on processor choice. User redirected and agent adapted immediately. /verify was thorough.",
+      "principle_adherence": {
+        "foundation_score": 0.9,
+        "total_applicable": 10,
+        "total_followed": 9,
+        "total_violated": 1,
+        "adherence_rate": 0.9,
+        "most_violated": null,
+        "most_followed": "cite_code_references",
+        "violation_details": [
+          {
+            "principle": "verify_own_understanding",
+            "evidence": "Agent initially proposed fixing ExportStatusEventProcessor (L33-L35), but user redirected to ApplicationStageProcessor (L36). Agent's first mental model was wrong about which processor should handle SUCCESS - it assumed the export status processor was the right place, not the application stage processor.",
+            "severity": "low"
+          }
+        ],
+        "notes": "Strong session overall. Agent cited file:line extensively (ApplicationStageHistoryService.java:170-173, ApplicationStageProcessor processPhase2 chain). Root cause analysis was thorough - traced from PENDING status through IP success to HP failure. Agent read existing code before proposing changes (Patience/Gratitude). The /verify skill usage was excellent - broke PR #529 into sub-claims with evidence chain. Agent correctly identified that step 1 (updateRequests) runs before step 4 (KEY_TOO_LONG) and distinguished what #529 fixes vs what remains broken."
+      }
     },
     {
       "session_id": "cf729783-3c2a-401f-95ad-542c97cfdbc2",
@@ -702,7 +732,29 @@
           "delta": 0.17
         }
       },
-      "summary": "Correct root cause found but inefficient path. Wrong tools used instead of observe-agent. /learn saved at wrong scope. Good outcome, poor efficiency."
+      "summary": "Correct root cause found but inefficient path. Wrong tools used instead of observe-agent. /learn saved at wrong scope. Good outcome, poor efficiency.",
+      "principle_adherence": {
+        "foundation_score": 0.85,
+        "total_applicable": 11,
+        "total_followed": 9,
+        "total_violated": 2,
+        "adherence_rate": 0.818,
+        "most_violated": "try_tools_before_i_cant",
+        "most_followed": "root_causes_not_symptoms",
+        "violation_details": [
+          {
+            "principle": "try_tools_before_i_cant",
+            "evidence": "Agent spent many rounds searching Slack (L18-L59) with increasingly broad queries that all returned empty, before the user suggested observe-agent at L95. The agent had observe-agent available the whole time but didn't use it until told. This wasted ~10 tool calls on Slack searches that yielded nothing.",
+            "severity": "medium"
+          },
+          {
+            "principle": "substance_over_plumbing",
+            "evidence": "At L63, the investigation checkpoint listed 'What I Couldn't Get' (KQL down, no Slack matches) before presenting hypotheses. Led with plumbing failures rather than the substantive analysis. Hypotheses were solid but buried under tool-failure reporting.",
+            "severity": "low"
+          }
+        ],
+        "notes": "Agent showed strong root cause investigation skills - formed 3 hypotheses (H1: deployment retired, H2: Azure outage, H3: stale config) and systematically traced the call chain through code. Cite-code-references was excellent: model_utils.py constants table with deployment IDs, factual_agent.py hardcoded deployment. The /learn flow was well-executed - checked for overlap, saved insight, then adapted when user said project-level only (removed global, kept project memory). User redirected twice: once to use observe-agent (L95), once to scope the learning to project level (L154). Both adaptations were immediate."
+      }
     },
     {
       "session_id": "189807c7-a5b5-4604-b5c9-9c9991e92fd7",
@@ -811,7 +863,34 @@
           "delta": 0.5
         }
       },
-      "summary": "Brooklin lag investigation. First task inefficient (bot lacked Slack access). Once context provided, analysis was thorough with well-ranked mitigations."
+      "summary": "Brooklin lag investigation. First task inefficient (bot lacked Slack access). Once context provided, analysis was thorough with well-ranked mitigations.",
+      "principle_adherence": {
+        "foundation_score": 0.75,
+        "total_applicable": 8,
+        "total_followed": 5,
+        "total_violated": 3,
+        "adherence_rate": 0.625,
+        "most_violated": "nothing_is_ever_trivial",
+        "most_followed": "design_for_failure_and_simplicity",
+        "violation_details": [
+          {
+            "principle": "nothing_is_ever_trivial",
+            "evidence": "Agent ran 30+ jarvis_codesearch queries (L30-L95) with increasingly varied keywords but consistently getting no useful results. Should have recognized after 5-10 failed searches that the approach wasn't working and either asked the user for more context or tried a fundamentally different strategy.",
+            "severity": "medium"
+          },
+          {
+            "principle": "patience",
+            "evidence": "Despite the large number of search attempts, the agent was not patient in the right way - it kept trying the same tool (jarvis_codesearch) with different keywords rather than stopping to think about whether the approach was correct. Quantity of attempts is not patience; thoughtful investigation is.",
+            "severity": "medium"
+          },
+          {
+            "principle": "verify_own_understanding",
+            "evidence": "Agent assumed the mcm-mt queue processor is a standalone Brooklin consumer app (L89: 'is it a Samza job, Flink job, or an in-process Brooklin consumer?') rather than checking the codebase directly first. Multiple wrong assumptions about the architecture led to fruitless searches.",
+            "severity": "low"
+          }
+        ],
+        "notes": "The final answer was actually good - 3 ranked mitigation options with risk assessment, correctly identifying that there's no direct offset skip API. Agent showed design_for_failure_and_simplicity by ranking options from lowest risk (terminate lix) to highest risk (redeploy with UPCOMING). But the path to get there was extremely wasteful. The session was interrupted by the user (L25) who then provided the actual Slack thread with all context, which the agent should have asked for upfront."
+      }
     },
     {
       "session_id": "2d3bcd96-194a-4c3d-86cb-a5debac35c8b",
@@ -1033,7 +1112,34 @@
           "delta": 0.07
         }
       },
-      "summary": "Long productive bug bash session. Set up 10 Connected Projects, full E2E verification. Minor frictions: wrong initial search, wrong seat ID, options before KB check."
+      "summary": "Long productive bug bash session. Set up 10 Connected Projects, full E2E verification. Minor frictions: wrong initial search, wrong seat ID, options before KB check.",
+      "principle_adherence": {
+        "foundation_score": 0.85,
+        "total_applicable": 14,
+        "total_followed": 11,
+        "total_violated": 3,
+        "adherence_rate": 0.786,
+        "most_violated": "verify_own_understanding",
+        "most_followed": "cite_code_references",
+        "violation_details": [
+          {
+            "principle": "verify_own_understanding",
+            "evidence": "Agent spent significant time on the historyUrn reconstruction (L324-L382), going back and forth about whether the code path uses shortened vs original URN, reading the same code sections multiple times, and eventually concluding the current code already uses the original URN correctly. The agent should have verified its understanding by reading the code once carefully instead of iterating 5+ times.",
+            "severity": "medium"
+          },
+          {
+            "principle": "never_guess_specific_values",
+            "evidence": "Agent stated 'the retry timeout is 200ms+400ms backoff = ~600ms added latency' (L626) as a specific risk estimate without actually measuring or citing configuration. While the backoff values were from the code the agent wrote, the latency impact was speculative.",
+            "severity": "low"
+          },
+          {
+            "principle": "avoid_big_bang_changes",
+            "evidence": "The user had to redirect multiple times during the implementation: first to use lix control (L350), then to research Euler retry (L414/L433), then to drop retry entirely (L684). The agent should have started with the simplest approach (fire-and-forget without retry) rather than building up a complex retry mechanism that got stripped out.",
+            "severity": "medium"
+          }
+        ],
+        "notes": "Despite violations, this was a highly productive session. Agent correctly cited code references throughout (ConnectedProjectCandidateService.java line numbers, processPhase2 chain, ApplicationStageHistoryService.java:141-148). When the user said 'let's forget the retry mechanism' (L684), the agent immediately pivoted and simplified. The knowledge base retrieval worked well - agent found know-012 (frontend writeback flow) and the mcm-mt writeback prereqs insight when asked. The Set.of() Java 8 incompatibility was caught and fixed after build failure (followed verify-build principle). The user had to interrupt 6+ times, indicating the agent sometimes ran ahead without confirmation."
+      }
     },
     {
       "session_id": "47e925b0-0c28-4dfb-a5d8-30ac716f198b",
@@ -1197,7 +1303,24 @@
         }
       ],
       "improvement_simulation": {},
-      "summary": "Excellent session. All tasks correct. Zero redirections. 100% test coverage. Best session in batch."
+      "summary": "Excellent session. All tasks correct. Zero redirections. 100% test coverage. Best session in batch.",
+      "principle_adherence": {
+        "foundation_score": 0.92,
+        "total_applicable": 12,
+        "total_followed": 11,
+        "total_violated": 1,
+        "adherence_rate": 0.917,
+        "most_violated": null,
+        "most_followed": "gratitude_understand_before_change",
+        "violation_details": [
+          {
+            "principle": "cite_code_references",
+            "evidence": "When discussing the recoverWith narrowing for PR #3848, agent referenced 'line 124-125' for the Espresso get() behavior but acknowledged uncertainty: 'it's likely an NPE on .getValue() if the record is null, or Espresso throws its own exception' (L71). The agent was honest about uncertainty but could have traced the actual code path to confirm.",
+            "severity": "low"
+          }
+        ],
+        "notes": "Excellent session for principle adherence. Agent read existing code patterns (PipelineRuleProcessor.java, CommHistoryEventHandler.java) before changing the recoverWith - Gratitude principle fully followed. Root cause analysis for the HPC missing issue was clear and substance-first: 'messaging != pipeline membership' with the step-by-step recruiter flow. The Venice /explore skill showed deep research (3 parallel agents for infra specs, Confluence docs, HP usage). The skill ecosystem reflection showed genuine humility - agent honestly assessed what's working, what's not, and where duplication exists. When user said 'I feel these 2 not qualified as tier 1' (L353), agent immediately agreed and restructured. When user wanted aha/eureka restored (L490), agent reverted without resistance."
+      }
     },
     {
       "session_id": "e2281f86-85bf-46e6-abdb-0b367f56ce35",
@@ -1346,7 +1469,29 @@
           "delta": 0.31
         }
       },
-      "summary": "E2E testing with strong finding (production dedup bug). Main friction: over-planning instead of executing, blocking options instead of workarounds."
+      "summary": "E2E testing with strong finding (production dedup bug). Main friction: over-planning instead of executing, blocking options instead of workarounds.",
+      "principle_adherence": {
+        "foundation_score": 0.88,
+        "total_applicable": 11,
+        "total_followed": 9,
+        "total_violated": 2,
+        "adherence_rate": 0.818,
+        "most_violated": null,
+        "most_followed": "data_driven_not_anecdote",
+        "violation_details": [
+          {
+            "principle": "nothing_is_ever_trivial",
+            "evidence": "Agent initially asked the user whether to test in prod or EI and what trigger method to use (L35-L37), then asked again 'Which candidate should we use?' and 'are you currently deployed locally?' (L53) - good clarifying questions. But then when user said 'actually feel free to check haha' (L58), the agent struggled for multiple tool calls to find the right entity mappings, trying different candidates and query patterns before discovering the mappings use IP's URN mapping service not HP's entity mapping service (L81). The data model was not trivial.",
+            "severity": "low"
+          },
+          {
+            "principle": "verify_own_understanding",
+            "evidence": "Agent initially stated 'The shortened URN fix (410b69b) is only on branch bizhou/shorten-history-urn-mapping-key - NOT merged to master' (L133). The user challenged this with '/verify...I think I've already deployed' (L136). Agent then discovered the fix IS on master as PR #529 (L147). Agent should have verified more carefully before making a definitive claim about deployment status.",
+            "severity": "medium"
+          }
+        ],
+        "notes": "Strong data-driven session. Agent pulled production log evidence showing 5 duplicate history items for stage 3728986131 (IDs 78139920873 through 78139920945) in a single trace. The verification flow was rigorous - broke the deployment claim into sub-claims and traced each with evidence. The Lror investigation was technically sound - correctly identified that IC propagation breaks across async Kafka boundaries. When user said 'we don't need this lix fully' (L256), agent immediately simplified to always-use-shortened-URN. Good use of observe-agent for log investigation."
+      }
     },
     {
       "session_id": "f6d4cfb6-2450-4b5d-badb-dc00943e7a22",
@@ -1495,7 +1640,24 @@
           "delta": 0.31
         }
       },
-      "summary": "Offline reconcile flow session. Research thorough, implementation clean. Main friction: over_engineering with too many options instead of recommendations."
+      "summary": "Offline reconcile flow session. Research thorough, implementation clean. Main friction: over_engineering with too many options instead of recommendations.",
+      "principle_adherence": {
+        "foundation_score": 0.85,
+        "total_applicable": 6,
+        "total_followed": 5,
+        "total_violated": 1,
+        "adherence_rate": 0.833,
+        "most_violated": null,
+        "most_followed": "gratitude_understand_before_change",
+        "violation_details": [
+          {
+            "principle": "patience",
+            "evidence": "User had to interrupt and re-provide the /kickoff command with more context (L4 provides Jarvis codesearch link and Airflow wiki). Agent accepted the first vague kickoff (L1) without asking for the code references the user clearly had. The user then queued additional context (L16) while agent was still fetching external resources. Agent should have asked for these references upfront rather than starting broad research.",
+            "severity": "low"
+          }
+        ],
+        "notes": "Partial evaluation based on first 30 lines. Agent correctly identified this as a 'new feature' intent and started with Phase 1 Research. Good use of Explore sub-agent for initial scoping. Agent showed gratitude by reading existing ConnectedProjectConsistencyService.scala before proposing changes. When user interrupted with more specific context about KPJ architecture (L27), agent immediately incorporated it: 'Got it - the pattern is: mcm-offline (KPJ) -> IntegrationEntityReadyEvent -> hp-ats-integration-mt'. This shows good signal detection."
+      }
     },
     {
       "session_id": "fba0f391-fb59-4174-96fc-191fbe1b3f65",
@@ -1619,7 +1781,18 @@
         }
       ],
       "improvement_simulation": {},
-      "summary": "Clean session. All 3 tasks correct. Zero redirections."
+      "summary": "Clean session. All 3 tasks correct. Zero redirections.",
+      "principle_adherence": {
+        "foundation_score": 0.88,
+        "total_applicable": 5,
+        "total_followed": 5,
+        "total_violated": 0,
+        "adherence_rate": 1.0,
+        "most_violated": null,
+        "most_followed": "substance_over_plumbing",
+        "violation_details": [],
+        "notes": "Clean execution. For the Jira lookup, the agent initially constructed the URL from convention (https://jira.linkedin.com/browse/ACTIONITEM-17121) before the user asked 'what's the issue' - then properly used the mcp__captain__get_jira_issue tool. The Slack thread analysis was substance-first: immediately focused on what's relevant to ACTIONITEM-17121 (Hiring Platform), extracted the status (still pending response), synthesized action items, and identified key deadlines. Agent noted the deadline was moved from April 4 to 'today (April 2) EoD PT' - showing attention to specific values from the actual data rather than guessing. The offer to 'help identifying which Hiring Platform services were impacted' was purpose-driven."
+      }
     },
     {
       "session_id": "2026-04-03_338b665d-f323-4da1-83a6-33508ee5b938",
@@ -1765,7 +1938,29 @@
           }
         }
       ],
-      "summary": "Mixed session \u2014 MCP retry loop and Trino-before-curli pattern caused friction. JIRA and cleanup work was solid. The curli-first rule existed but was not surfaced by the scout hook."
+      "summary": "Mixed session \u2014 MCP retry loop and Trino-before-curli pattern caused friction. JIRA and cleanup work was solid. The curli-first rule existed but was not surfaced by the scout hook.",
+      "principle_adherence": {
+        "foundation_score": 0.75,
+        "total_applicable": 4,
+        "total_followed": 2,
+        "total_violated": 2,
+        "adherence_rate": 0.5,
+        "most_violated": "try_tools_before_i_cant",
+        "most_followed": "substance_over_plumbing",
+        "violation_details": [
+          {
+            "principle": "try_tools_before_i_cant",
+            "evidence": "Agent made 8+ ToolSearch attempts (L4-L29) with different query variations ('jira ticket', 'jira get issue', 'search jira get jira issue', 'get_jira', 'jira', 'captain jira search', 'select:get_jira_issue,search_jira_issues', 'select:get_jira_issue') all returning empty because Captain MCP was still connecting. Agent should have either waited longer for the MCP server or used an alternative approach (WebFetch to fetch the Jira URL directly) much sooner.",
+            "severity": "medium"
+          },
+          {
+            "principle": "nothing_is_ever_trivial",
+            "evidence": "A simple Jira lookup took 30+ seconds of ToolSearch retries. Agent used sleep(5) to wait for MCP (L27) but could have done this sooner or used the WebFetch tool that was available from the first search (L5) to fetch the Jira URL directly.",
+            "severity": "low"
+          }
+        ],
+        "notes": "Partial evaluation based on first 30 lines. The Captain MCP connectivity issue was a systemic problem (not agent's fault), but the agent's response was suboptimal - it kept retrying the same approach rather than pivoting to WebFetch which was available. Eventually the agent did get the tool and likely completed the task successfully."
+      }
     },
     {
       "session_id": "2026-04-03_3cbe5e5a-c1b6-4328-b4b8-5982a6aee3c0",
@@ -2169,7 +2364,129 @@
           }
         }
       ],
-      "summary": "Good Greenhouse setup session. Minor delay recognizing credential storage intent. Security awareness was appropriate."
+      "summary": "Good Greenhouse setup session. Minor delay recognizing credential storage intent. Security awareness was appropriate.",
+      "principle_adherence": {
+        "foundation_score": 0.9,
+        "foundation_details": {
+          "humility": "Strong. Asked clarifying questions about sandbox naming, offered multiple options. Admitted uncertainty about Figma MCP auth ('it likely needs OAuth' \u2014 hedged appropriately).",
+          "integrity": "Strong. Immediately flagged credential security when user shared API key via /recipe. Refused to store credentials in git-committable files.",
+          "stewardship": "Strong. Created REFERENCE.md with all test data, saved insights, built reusable Playwright script.",
+          "purpose": "Strong. Connected bug bash planning to actual user workflow testing, understood the cross-system E2E goal.",
+          "patience": "Strong. Systematically explored Figma integration (tried MCP, then REST API, then personal token) rather than giving up. Downloaded and analyzed 6 design screens.",
+          "gratitude": "Adequate. Read existing memory entries before updating. Checked for overlap before saving insights."
+        },
+        "total_applicable": 32,
+        "total_followed": 28,
+        "total_violated": 4,
+        "adherence_rate": 0.875,
+        "most_violated": "never_guess",
+        "most_followed": "try_tools",
+        "violation_details": [
+          {
+            "principle": "never_guess",
+            "evidence": "Agent stated 'IP sync is throttled to every 1hr for job req stages' without citing code/config source. This is a plausible-sounding value that could be wrong.",
+            "severity": "low",
+            "task": "E2E test data creation"
+          },
+          {
+            "principle": "never_guess",
+            "evidence": "Agent stated Figma rate limit 'usually resets after some time \u2014 not sure of the window' \u2014 hedged correctly by admitting uncertainty, but then set a 10-min poll without knowing the actual window.",
+            "severity": "low",
+            "task": "Figma MCP setup"
+          },
+          {
+            "principle": "cite_refs",
+            "evidence": "When describing the E2E testing triangle (Playwright/Greenhouse/HP Backend), made architectural claims about 'mcm-mt curli simulates what the UI does' without file:line references.",
+            "severity": "low",
+            "task": "Bug bash planning"
+          },
+          {
+            "principle": "verify_understanding",
+            "evidence": "Initially assumed 6 sync states from Figma screens (Pending/Confirmed/Mismatch/Expired/Failed/Rejected) before user corrected to only 3 states in current scope. Should have asked which states are in scope.",
+            "severity": "medium",
+            "task": "Design analysis"
+          }
+        ],
+        "per_task_details": [
+          {
+            "task": "Greenhouse API token setup",
+            "applicable": [
+              "substance_over_plumbing",
+              "try_tools",
+              "patience"
+            ],
+            "followed": [
+              "substance_over_plumbing",
+              "try_tools",
+              "patience"
+            ],
+            "violated": []
+          },
+          {
+            "task": "Credential security handling",
+            "applicable": [
+              "integrity",
+              "stewardship",
+              "design_for_failure"
+            ],
+            "followed": [
+              "integrity",
+              "stewardship",
+              "design_for_failure"
+            ],
+            "violated": []
+          },
+          {
+            "task": "Bug bash planning / design analysis",
+            "applicable": [
+              "substance_over_plumbing",
+              "verify_understanding",
+              "cite_refs",
+              "patience"
+            ],
+            "followed": [
+              "substance_over_plumbing",
+              "patience"
+            ],
+            "violated": [
+              "verify_understanding",
+              "cite_refs"
+            ]
+          },
+          {
+            "task": "Figma MCP integration",
+            "applicable": [
+              "try_tools",
+              "patience",
+              "never_guess"
+            ],
+            "followed": [
+              "try_tools",
+              "patience"
+            ],
+            "violated": [
+              "never_guess"
+            ]
+          },
+          {
+            "task": "E2E test data creation",
+            "applicable": [
+              "never_guess",
+              "data_driven",
+              "cite_refs",
+              "try_tools"
+            ],
+            "followed": [
+              "data_driven",
+              "try_tools"
+            ],
+            "violated": [
+              "never_guess",
+              "cite_refs"
+            ]
+          }
+        ]
+      }
     },
     {
       "session_id": "2026-04-05_2eac8367-91de-4429-ae52-807ef278291b",
@@ -2255,7 +2572,97 @@
           }
         }
       ],
-      "summary": "Clean single-task session. Graduated memory on Espresso table traffic was correctly applied."
+      "summary": "Clean single-task session. Graduated memory on Espresso table traffic was correctly applied.",
+      "principle_adherence": {
+        "foundation_score": 0.85,
+        "foundation_details": {
+          "humility": "Strong. When table-level metrics returned null, acknowledged the limitation rather than fabricating an explanation. Said 'I can't guess the exact RRD names via API' explicitly.",
+          "integrity": "Strong. Verified the config change was safe by checking espresso-pub version compatibility before proposing the PR.",
+          "stewardship": "Strong. Saved the 'espresso-router Traffic_Checker_Table_Stats' discovery as permanent memory for future use.",
+          "purpose": "Strong. Connected the Espresso metrics question to the boss's actual need (find per-table traffic).",
+          "patience": "Good. Systematically tried MEXP, Metrics Explorer, client-side metrics, then discovered server-side router metrics. Multiple investigation paths.",
+          "gratitude": "Adequate. Read existing Espresso memory entries before updating."
+        },
+        "total_applicable": 18,
+        "total_followed": 15,
+        "total_violated": 3,
+        "adherence_rate": 0.833,
+        "most_violated": "never_guess",
+        "most_followed": "root_causes",
+        "violation_details": [
+          {
+            "principle": "never_guess",
+            "evidence": "Initially suggested MEXP URL 'https://observe.prod.linkedin.com/mexp/' without verifying it was still live \u2014 user found it returned 404. Agent should have said 'I believe MEXP is at this URL but I haven't verified it's still active.'",
+            "severity": "medium",
+            "task": "Espresso table traffic lookup"
+          },
+          {
+            "principle": "cite_refs",
+            "evidence": "When describing datacenter abbreviations ([LOR]=prod-lor1, [LTX]=prod-ltx1, etc.), stated them as fact without citing source. These are correct but unverifiable claims.",
+            "severity": "low",
+            "task": "Espresso table traffic lookup"
+          },
+          {
+            "principle": "never_guess",
+            "evidence": "Stated 'emitTableCallStats' requires espresso-pub 55.0.12 minimum and 67.0.7 for proper TxMultiPut table names \u2014 specific version numbers that should have been cited from code/docs.",
+            "severity": "medium",
+            "task": "Config verification"
+          }
+        ],
+        "per_task_details": [
+          {
+            "task": "Find Espresso table traffic",
+            "applicable": [
+              "try_tools",
+              "data_driven",
+              "never_guess",
+              "root_causes",
+              "patience",
+              "cite_refs"
+            ],
+            "followed": [
+              "try_tools",
+              "data_driven",
+              "root_causes",
+              "patience"
+            ],
+            "violated": [
+              "never_guess",
+              "cite_refs"
+            ]
+          },
+          {
+            "task": "Verify emitTableCallStats config",
+            "applicable": [
+              "root_causes",
+              "data_driven",
+              "cite_refs",
+              "never_guess"
+            ],
+            "followed": [
+              "root_causes",
+              "data_driven"
+            ],
+            "violated": [
+              "never_guess"
+            ]
+          },
+          {
+            "task": "Create PR for config change",
+            "applicable": [
+              "stewardship",
+              "nothing_trivial",
+              "own_dependencies"
+            ],
+            "followed": [
+              "stewardship",
+              "nothing_trivial",
+              "own_dependencies"
+            ],
+            "violated": []
+          }
+        ]
+      }
     },
     {
       "session_id": "2026-04-05_383081c8-2751-4f6c-a9d1-dfe1b23233b6",
@@ -2348,7 +2755,96 @@
           }
         }
       ],
-      "summary": "Deep technical investigation with one redirection needed on sharding model. Good code reading after correction."
+      "summary": "Deep technical investigation with one redirection needed on sharding model. Good code reading after correction.",
+      "principle_adherence": {
+        "foundation_score": 0.85,
+        "foundation_details": {
+          "humility": "Good. Disproved its own fabric-mismatch hypothesis when evidence showed ts-api staging is actually a prod machine. Also disproved the GLAI index hypothesis. Accepted corrections gracefully.",
+          "integrity": "Strong. Investigated both hypotheses thoroughly before responding to jiaywang's question, didn't give a quick wrong answer.",
+          "stewardship": "Strong. Designed watch-deps architecture with retention limits (14 days), project-scoped folders, and clean separation between global recipes and project-specific config.",
+          "purpose": "Strong. Connected the watch-deps discussion to the real problem (silent upstream contract changes like IntegrationExportRequestStatusEvent rename).",
+          "patience": "Strong. Extensive investigation of HireEntityRequest \u2014 traced through entity model, write path, read path, Euler schema, GLAI indexes before forming conclusions.",
+          "gratitude": "Good. Read existing skill files (action-writeback, greenhouse-api) before using them."
+        },
+        "total_applicable": 30,
+        "total_followed": 27,
+        "total_violated": 3,
+        "adherence_rate": 0.9,
+        "most_violated": "cite_refs",
+        "most_followed": "root_causes",
+        "violation_details": [
+          {
+            "principle": "cite_refs",
+            "evidence": "When discussing the watch-deps strategy and recipe vs skill separation, made claims about how go-status works and what jarvis_codesearch returns without file:line references. Architectural discussion, not code behavior, so lower severity.",
+            "severity": "low",
+            "task": "watch-deps architecture design"
+          },
+          {
+            "principle": "verify_understanding",
+            "evidence": "In the HireEntityRequest investigation, initially assumed fabric mismatch was the cause without verifying that ts-api 'staging' is actually a prod machine. Self-corrected after investigation, but the initial hypothesis was presented with some confidence.",
+            "severity": "low",
+            "task": "HireEntityRequest investigation"
+          },
+          {
+            "principle": "substance_over_plumbing",
+            "evidence": "The Greenhouse e2e test setup section was mostly mechanical (create job, add candidates, check stages) without explaining WHY specific stage distributions were chosen for testing.",
+            "severity": "low",
+            "task": "Greenhouse e2e test setup"
+          }
+        ],
+        "per_task_details": [
+          {
+            "task": "HireEntityRequest investigation for jiaywang",
+            "applicable": [
+              "root_causes",
+              "verify_understanding",
+              "data_driven",
+              "cite_refs",
+              "patience"
+            ],
+            "followed": [
+              "root_causes",
+              "data_driven",
+              "cite_refs",
+              "patience"
+            ],
+            "violated": [
+              "verify_understanding"
+            ]
+          },
+          {
+            "task": "watch-deps architecture design",
+            "applicable": [
+              "design_for_failure",
+              "avoid_big_bang",
+              "substance_over_plumbing",
+              "cite_refs"
+            ],
+            "followed": [
+              "design_for_failure",
+              "avoid_big_bang"
+            ],
+            "violated": [
+              "cite_refs",
+              "substance_over_plumbing"
+            ]
+          },
+          {
+            "task": "Greenhouse e2e test setup",
+            "applicable": [
+              "try_tools",
+              "patience",
+              "data_driven"
+            ],
+            "followed": [
+              "try_tools",
+              "patience",
+              "data_driven"
+            ],
+            "violated": []
+          }
+        ]
+      }
     },
     {
       "session_id": "2026-04-05_4851dc38-86b6-4f37-81f9-2578b3312250",
@@ -2441,7 +2937,97 @@
           }
         }
       ],
-      "summary": "PDF eval session with self-correction on tooling. Extracted valuable engineering principles. Compound loop was closed."
+      "summary": "PDF eval session with self-correction on tooling. Extracted valuable engineering principles. Compound loop was closed.",
+      "principle_adherence": {
+        "foundation_score": 0.92,
+        "foundation_details": {
+          "humility": "Strong. Thoroughly read the 59-page PDF before making recommendations. Acknowledged overlap with existing principles before adding new ones.",
+          "integrity": "Strong. When evaluating external repos (superpowers, compound-engineering), honestly assessed both strengths and weaknesses rather than being uniformly positive.",
+          "stewardship": "Excellent. This session fundamentally improved the entire system \u2014 added 13 engineering principles, built the compound learning architecture, created backup strategy.",
+          "purpose": "Excellent. Connected the Amazon principles to concrete agent behaviors. The patent disclosure captured the system's innovation value.",
+          "patience": "Excellent. Read the full 59-page PDF, then evaluated 2 external repos in detail, then designed a complete knowledge architecture. Massive sustained effort.",
+          "gratitude": "Strong. Carefully read existing MEMORY.md and engineering-principles.md before modifying. Checked for overlap before adding new principles."
+        },
+        "total_applicable": 22,
+        "total_followed": 21,
+        "total_violated": 1,
+        "adherence_rate": 0.955,
+        "most_violated": "cite_refs",
+        "most_followed": "patience",
+        "violation_details": [
+          {
+            "principle": "cite_refs",
+            "evidence": "When distilling principles from the PDF, referenced page numbers (p22-23, etc.) which is good. But when later making claims about the compound-engineering-plugin's architecture, made statements about its 'PostToolUse hooks' and 'learning-loop' without always providing the specific file paths.",
+            "severity": "low",
+            "task": "External repo evaluation"
+          }
+        ],
+        "per_task_details": [
+          {
+            "task": "Evaluate Amazon SDE Insider's Guide",
+            "applicable": [
+              "patience",
+              "gratitude",
+              "substance_over_plumbing",
+              "verify_understanding"
+            ],
+            "followed": [
+              "patience",
+              "gratitude",
+              "substance_over_plumbing",
+              "verify_understanding"
+            ],
+            "violated": []
+          },
+          {
+            "task": "Add engineering principles to rules",
+            "applicable": [
+              "stewardship",
+              "gratitude",
+              "avoid_big_bang"
+            ],
+            "followed": [
+              "stewardship",
+              "gratitude",
+              "avoid_big_bang"
+            ],
+            "violated": []
+          },
+          {
+            "task": "Evaluate external repos (superpowers, compound-engineering)",
+            "applicable": [
+              "patience",
+              "cite_refs",
+              "verify_understanding",
+              "substance_over_plumbing"
+            ],
+            "followed": [
+              "patience",
+              "verify_understanding",
+              "substance_over_plumbing"
+            ],
+            "violated": [
+              "cite_refs"
+            ]
+          },
+          {
+            "task": "Design compound learning architecture + patent",
+            "applicable": [
+              "design_for_failure",
+              "substance_over_plumbing",
+              "nothing_trivial",
+              "patience"
+            ],
+            "followed": [
+              "design_for_failure",
+              "substance_over_plumbing",
+              "nothing_trivial",
+              "patience"
+            ],
+            "violated": []
+          }
+        ]
+      }
     },
     {
       "session_id": "2026-04-05_5abcc009-a003-4360-a96d-cda01ec3bc11",
@@ -2532,7 +3118,81 @@
           }
         }
       ],
-      "summary": "Clean Playwright automation session. Skill instructions followed correctly."
+      "summary": "Clean Playwright automation session. Skill instructions followed correctly.",
+      "principle_adherence": {
+        "foundation_score": 0.92,
+        "foundation_details": {
+          "humility": "Strong. When cost numbers looked suspicious ($27K vs $500 Anthropic Console), agent flagged the discrepancy immediately: 'The numbers look suspiciously high \u2014 let me verify the cost unit.'",
+          "integrity": "Strong. Cross-validated cost data against multiple sources (Trino, Anthropic Console, manual computation) rather than presenting unverified numbers.",
+          "stewardship": "Excellent. Created reusable /recipe ai-usage-report, saved the cost unit discovery as a permanent insight (know-041), designed the Tier 1.5 taxonomy.",
+          "purpose": "Excellent. Connected playwright adoption to the broader ecosystem (which skills invoke it, how it chains). Created intelligence capability the director didn't have.",
+          "patience": "Strong. Methodically worked through cost data discrepancy: raw data \u2192 unit discovery (cents) \u2192 enterprise pricing ratio \u2192 cross-validation.",
+          "gratitude": "Strong. Read existing skill files before creating new ones. Checked for overlap before saving insights."
+        },
+        "total_applicable": 20,
+        "total_followed": 19,
+        "total_violated": 1,
+        "adherence_rate": 0.95,
+        "most_violated": "never_guess",
+        "most_followed": "data_driven",
+        "violation_details": [
+          {
+            "principle": "never_guess",
+            "evidence": "Initially presented cost report with $27,456.48 crew total before discovering the unit was cents not dollars. The agent did self-correct by flagging 'suspiciously high,' but the initial presentation was overconfident. Should have noted uncertainty about units upfront.",
+            "severity": "medium",
+            "task": "AI usage cost analysis"
+          }
+        ],
+        "per_task_details": [
+          {
+            "task": "Playwright adoption and Tier 1.5 design",
+            "applicable": [
+              "substance_over_plumbing",
+              "stewardship",
+              "gratitude"
+            ],
+            "followed": [
+              "substance_over_plumbing",
+              "stewardship",
+              "gratitude"
+            ],
+            "violated": []
+          },
+          {
+            "task": "AI usage intelligence (dashboard discovery + cost analysis)",
+            "applicable": [
+              "data_driven",
+              "never_guess",
+              "verify_understanding",
+              "root_causes",
+              "patience",
+              "try_tools"
+            ],
+            "followed": [
+              "data_driven",
+              "verify_understanding",
+              "root_causes",
+              "patience",
+              "try_tools"
+            ],
+            "violated": [
+              "never_guess"
+            ]
+          },
+          {
+            "task": "Compound phase + recipe creation",
+            "applicable": [
+              "stewardship",
+              "substance_over_plumbing"
+            ],
+            "followed": [
+              "stewardship",
+              "substance_over_plumbing"
+            ],
+            "violated": []
+          }
+        ]
+      }
     },
     {
       "session_id": "f445cdc2-6d6e-43a3-b68f-5e5499328088",
@@ -2698,7 +3358,100 @@
           }
         }
       ],
-      "summary": "VM provisioning session with mixed results. Agent effective at SSH debugging and cron management but stumbled on initial search (wrong approach) and wrote files before presenting plan (over-engineering). Good signal detection on gentle redirects."
+      "summary": "VM provisioning session with mixed results. Agent effective at SSH debugging and cron management but stumbled on initial search (wrong approach) and wrote files before presenting plan (over-engineering). Good signal detection on gentle redirects.",
+      "principle_adherence": {
+        "foundation_score": 0.82,
+        "foundation_details": {
+          "humility": "Good. Searched multiple sources (Jira, Confluence, Slack, local SSH config) when first search failed. Admitted when approaches didn't work.",
+          "integrity": "Strong. Immediately warned user to change password when shared in plain text. 'Please change your password immediately.'",
+          "stewardship": "Good. Set up SSH aliases and sync scripts for long-term use.",
+          "purpose": "Good. Connected VM setup to user's actual need (heavy builds crashing local machine).",
+          "patience": "Mixed. Good persistence on finding the VM provisioning docs, but struggled with SSH auth debugging \u2014 tried multiple fixes that didn't work (IdentitiesOnly, IdentityFile, PreferredAuthentications) before understanding the root cause.",
+          "gratitude": "Adequate. Read existing SSH config before modifying."
+        },
+        "total_applicable": 18,
+        "total_followed": 14,
+        "total_violated": 4,
+        "adherence_rate": 0.778,
+        "most_violated": "never_guess",
+        "most_followed": "try_tools",
+        "violation_details": [
+          {
+            "principle": "never_guess",
+            "evidence": "Suggested Greenhouse-style hostname convention 'ssh bizhou-ld1.linkedin.biz' as first try. Got lucky that bizhou-ld2 existed, but guessed the naming pattern without checking docs.",
+            "severity": "low",
+            "task": "VM hostname discovery"
+          },
+          {
+            "principle": "never_guess",
+            "evidence": "Stated Azure subscription ID '79bb91ae-f62a-4a89-bb93-87a366ee0456' for the VM \u2014 where did this value come from? Appears fabricated or inferred from screen context.",
+            "severity": "medium",
+            "task": "Azure CLI approach"
+          },
+          {
+            "principle": "root_causes",
+            "evidence": "SSH auth failures were addressed with a series of config tweaks (IdentitiesOnly, IdentityFile, PreferredAuthentications) rather than diagnosing the actual root cause first \u2014 too many keys in the SSH agent causing retry exhaustion. The fix-by-trial approach led to account lockout.",
+            "severity": "high",
+            "task": "SSH auth debugging"
+          },
+          {
+            "principle": "verify_understanding",
+            "evidence": "Initially searched for 'rdev' when user said 'dedicated workstation,' finding an rdev config. User corrected: 'no need, I wish to have a dedicated workstation.' Agent conflated rdev (per-service containers) with dedicated VM (persistent dev workstation).",
+            "severity": "medium",
+            "task": "Finding workstation docs"
+          }
+        ],
+        "per_task_details": [
+          {
+            "task": "Find dedicated workstation provisioning",
+            "applicable": [
+              "try_tools",
+              "verify_understanding",
+              "patience",
+              "never_guess"
+            ],
+            "followed": [
+              "try_tools",
+              "patience"
+            ],
+            "violated": [
+              "verify_understanding",
+              "never_guess"
+            ]
+          },
+          {
+            "task": "SSH auth setup and debugging",
+            "applicable": [
+              "root_causes",
+              "nothing_trivial",
+              "never_guess",
+              "design_for_failure"
+            ],
+            "followed": [
+              "nothing_trivial"
+            ],
+            "violated": [
+              "root_causes",
+              "never_guess",
+              "design_for_failure"
+            ]
+          },
+          {
+            "task": "VM sync and Claude setup planning",
+            "applicable": [
+              "design_for_failure",
+              "stewardship",
+              "substance_over_plumbing"
+            ],
+            "followed": [
+              "design_for_failure",
+              "stewardship",
+              "substance_over_plumbing"
+            ],
+            "violated": []
+          }
+        ]
+      }
     },
     {
       "session_id": "31e7df46-500c-47a7-ac88-76e6d2eda7d5",
@@ -2881,7 +3634,81 @@
           }
         }
       ],
-      "summary": "Excellent session building eval-skill framework and cross-session benchmarks. One minor tool_misuse (WebFetch vs Playwright). Strong compound learning with 3 insights generated."
+      "summary": "Excellent session building eval-skill framework and cross-session benchmarks. One minor tool_misuse (WebFetch vs Playwright). Strong compound learning with 3 insights generated.",
+      "principle_adherence": {
+        "foundation_score": 0.9,
+        "foundation_details": {
+          "humility": "Strong. When WebFetch failed on SSO-protected page, immediately pivoted to Playwright instead of giving up.",
+          "integrity": "Strong. Built a proper eval framework rather than claiming things work without testing. Actually ran the evals and found failures, then fixed the eval schema based on results.",
+          "stewardship": "Excellent. Created a durable eval system (SCHEMA.md, eval-skill recipe, sample evals) that will serve future skill development. Wired it into the ecosystem (proactive suggestions, integrate skill).",
+          "purpose": "Strong. Connected the LIPA scout to actionable improvements \u2014 adopted eval framework, convention audit, Ralph loop.",
+          "patience": "Strong. Fetched 10+ linked pages from LIPA portal to build comprehensive understanding before selecting what to adopt.",
+          "gratitude": "Strong. Read existing implement.md and recipe README before modifying."
+        },
+        "total_applicable": 16,
+        "total_followed": 15,
+        "total_violated": 1,
+        "adherence_rate": 0.938,
+        "most_violated": "cite_refs",
+        "most_followed": "try_tools",
+        "violation_details": [
+          {
+            "principle": "cite_refs",
+            "evidence": "In the scout report, made claims about LIPA having '165 plugins, 500+ MCP tools, 7 categories' \u2014 these numbers appear to come from the scraped page content but weren't cited with specific URLs/page references.",
+            "severity": "low",
+            "task": "LIPA scout report"
+          }
+        ],
+        "per_task_details": [
+          {
+            "task": "Scout LIPA portal",
+            "applicable": [
+              "try_tools",
+              "patience",
+              "substance_over_plumbing",
+              "cite_refs"
+            ],
+            "followed": [
+              "try_tools",
+              "patience",
+              "substance_over_plumbing"
+            ],
+            "violated": [
+              "cite_refs"
+            ]
+          },
+          {
+            "task": "Build eval-skill framework",
+            "applicable": [
+              "stewardship",
+              "design_for_failure",
+              "avoid_big_bang",
+              "gratitude"
+            ],
+            "followed": [
+              "stewardship",
+              "design_for_failure",
+              "avoid_big_bang",
+              "gratitude"
+            ],
+            "violated": []
+          },
+          {
+            "task": "Run evals and iterate on schema",
+            "applicable": [
+              "data_driven",
+              "root_causes",
+              "verify_understanding"
+            ],
+            "followed": [
+              "data_driven",
+              "root_causes",
+              "verify_understanding"
+            ],
+            "violated": []
+          }
+        ]
+      }
     },
     {
       "session_id": "46e88919-bf2a-4208-8da0-91d538f939f3",
@@ -3082,7 +3909,89 @@
           }
         }
       ],
-      "summary": "Strong debugging session investigating stuck PENDING HireEntityRequests. observe-agent used effectively, correctly traced missing IntegrationEntityReadyEvent. One minor course correction."
+      "summary": "Strong debugging session investigating stuck PENDING HireEntityRequests. observe-agent used effectively, correctly traced missing IntegrationEntityReadyEvent. One minor course correction.",
+      "principle_adherence": {
+        "foundation_score": 0.95,
+        "foundation_details": {
+          "humility": "Excellent. Systematically disproved partial hypothesis ('IP hasn't sent events yet' \u2192 'PARTIALLY TRUE \u2014 IP sent export status but not IntegrationEntityReadyEvent'). Refined understanding at each step.",
+          "integrity": "Excellent. When the initial fix had a gap (V2 identity group missing member-referenced V2s), acknowledged the issue and adopted the better approach (HireIdentityV2EntityRegistry) instead of defending the original fix.",
+          "stewardship": "Excellent. Verified build success, created proper PR with detailed description, cross-referenced HIRE_IDENTITY_INVESTIGATION.md to find the gap.",
+          "purpose": "Excellent. Connected the debugging session to a real user-facing bug (Tara Iyer's pending stage change). The fix resolves actual production issues.",
+          "patience": "Excellent. Traced the full timeline: ActionWriteBack \u2192 IP events \u2192 ExportStatusEvent \u2192 IntegrationEntityReadyEvent \u2192 ApplicationStageProcessor failure \u2192 identity mismatch \u2192 V2 entity registry solution. Each step data-driven.",
+          "gratitude": "Strong. Read HIRE_IDENTITY_INVESTIGATION.md (existing investigation doc) before fixing, which revealed the V2\u2192V1 conversion gap."
+        },
+        "total_applicable": 20,
+        "total_followed": 20,
+        "total_violated": 0,
+        "adherence_rate": 1.0,
+        "most_violated": null,
+        "most_followed": "root_causes",
+        "violation_details": [],
+        "per_task_details": [
+          {
+            "task": "Find HireEntityRequest for Tara Iyer stage change",
+            "applicable": [
+              "data_driven",
+              "try_tools",
+              "patience",
+              "cite_refs"
+            ],
+            "followed": [
+              "data_driven",
+              "try_tools",
+              "patience",
+              "cite_refs"
+            ],
+            "violated": []
+          },
+          {
+            "task": "Verify IP event flow hypothesis",
+            "applicable": [
+              "root_causes",
+              "verify_understanding",
+              "data_driven"
+            ],
+            "followed": [
+              "root_causes",
+              "verify_understanding",
+              "data_driven"
+            ],
+            "violated": []
+          },
+          {
+            "task": "Investigate V1/V2 identity mismatch root cause",
+            "applicable": [
+              "root_causes",
+              "cite_refs",
+              "mine_commit_history",
+              "patience"
+            ],
+            "followed": [
+              "root_causes",
+              "cite_refs",
+              "mine_commit_history",
+              "patience"
+            ],
+            "violated": []
+          },
+          {
+            "task": "Implement fix with HireIdentityV2EntityRegistry",
+            "applicable": [
+              "design_for_failure",
+              "stewardship",
+              "gratitude",
+              "nothing_trivial"
+            ],
+            "followed": [
+              "design_for_failure",
+              "stewardship",
+              "gratitude",
+              "nothing_trivial"
+            ],
+            "violated": []
+          }
+        ]
+      }
     },
     {
       "session_id": "4fdae01d-34c0-47e7-85fb-3395e74dc6da",
@@ -3191,7 +4100,100 @@
           }
         }
       ],
-      "summary": "Clean session with perfect agreement. Figma API info found, Greenhouse sandbox queries handled correctly."
+      "summary": "Clean session with perfect agreement. Figma API info found, Greenhouse sandbox queries handled correctly.",
+      "principle_adherence": {
+        "foundation_score": 0.72,
+        "foundation_details": {
+          "humility": "Adequate. Searched multiple sources for Figma API key history.",
+          "integrity": "Adequate. Attempted thorough investigation of hireEntityRequestUrn.",
+          "stewardship": "Weak. Did not save any insights from the session. Multiple dead-end investigation paths without cleanup.",
+          "purpose": "Adequate. Connected to user's testing needs.",
+          "patience": "Excessive/misguided. The hireEntityRequestUrn investigation ran 40+ sequential tool calls (lines 88-175) without surfacing intermediate results, leading to user interruption. Patience became stubbornness \u2014 should have checked in with user after 5-10 attempts.",
+          "gratitude": "Weak. Read memory files but didn't leverage existing skills effectively."
+        },
+        "total_applicable": 14,
+        "total_followed": 9,
+        "total_violated": 5,
+        "adherence_rate": 0.643,
+        "most_violated": "design_for_failure",
+        "most_followed": "try_tools",
+        "violation_details": [
+          {
+            "principle": "design_for_failure",
+            "evidence": "Ran 40+ sequential bash/grpcurli commands to find hireEntityRequestUrn without intermediate reporting. User had to interrupt at line 177 after watching ~30 minutes of tool calls. Should have reported partial results every 5-8 calls.",
+            "severity": "high",
+            "task": "hireEntityRequestUrn investigation"
+          },
+          {
+            "principle": "nothing_trivial",
+            "evidence": "Underestimated the complexity of finding hireEntityRequestUrn \u2014 assumed it would be a simple lookup but the entity required tracing through multiple services (Euler, UC client, integration candidate, HPC).",
+            "severity": "medium",
+            "task": "hireEntityRequestUrn investigation"
+          },
+          {
+            "principle": "substance_over_plumbing",
+            "evidence": "The 40+ tool calls were pure mechanical plumbing \u2014 trying different API endpoints, parsing responses, retrying with different parameters \u2014 without stepping back to explain what the entity model looks like.",
+            "severity": "medium",
+            "task": "hireEntityRequestUrn investigation"
+          },
+          {
+            "principle": "verify_understanding",
+            "evidence": "Started searching by sandbox 1 credentials when user initially said 'use sandbox 1' \u2014 should have confirmed which sandbox and which API key first.",
+            "severity": "low",
+            "task": "Greenhouse job listing"
+          },
+          {
+            "principle": "cite_refs",
+            "evidence": "When presenting the 9 Greenhouse jobs table, provided Greenhouse links but no HP hiring project IDs. User had to explicitly ask 'I mean the hiring platform hiring project id'.",
+            "severity": "low",
+            "task": "Greenhouse job listing"
+          }
+        ],
+        "per_task_details": [
+          {
+            "task": "Figma API key history lookup",
+            "applicable": [
+              "patience",
+              "try_tools"
+            ],
+            "followed": [
+              "patience",
+              "try_tools"
+            ],
+            "violated": []
+          },
+          {
+            "task": "List Greenhouse sandbox 1 jobs",
+            "applicable": [
+              "cite_refs",
+              "verify_understanding"
+            ],
+            "followed": [],
+            "violated": [
+              "cite_refs",
+              "verify_understanding"
+            ]
+          },
+          {
+            "task": "hireEntityRequestUrn investigation",
+            "applicable": [
+              "design_for_failure",
+              "nothing_trivial",
+              "substance_over_plumbing",
+              "patience",
+              "try_tools"
+            ],
+            "followed": [
+              "try_tools"
+            ],
+            "violated": [
+              "design_for_failure",
+              "nothing_trivial",
+              "substance_over_plumbing"
+            ]
+          }
+        ]
+      }
     },
     {
       "session_id": "5460a0b5-f4c0-403c-8c9f-a4b43aec9006",
@@ -3318,7 +4320,61 @@
           }
         }
       ],
-      "summary": "Clean session \u2014 AI usage report and SSH troubleshooting. Perfect agreement, no redirections."
+      "summary": "Clean session \u2014 AI usage report and SSH troubleshooting. Perfect agreement, no redirections.",
+      "principle_adherence": {
+        "foundation_score": 0.88,
+        "foundation_details": {
+          "humility": "Good. Correctly identified SSH host key change as 'not a real attack in a corporate environment.'",
+          "integrity": "Good. Provided the specific sed command to fix known_hosts rather than suggesting the user delete the whole file.",
+          "stewardship": "Adequate. Ran the recipe cleanly but didn't save session insights.",
+          "purpose": "Good. Quick, practical help for both tasks.",
+          "patience": "Good. Followed the recipe steps systematically.",
+          "gratitude": "Adequate. Found and used the existing ai-usage-report recipe."
+        },
+        "total_applicable": 8,
+        "total_followed": 7,
+        "total_violated": 1,
+        "adherence_rate": 0.875,
+        "most_violated": "never_guess",
+        "most_followed": "try_tools",
+        "violation_details": [
+          {
+            "principle": "never_guess",
+            "evidence": "Stated 'sed -i '' 68d;69d' \u2014 line numbers 68 and 69 in known_hosts. These specific line numbers presumably came from the user's error output, but the agent should have verified the file contents before suggesting deletion of specific lines.",
+            "severity": "low",
+            "task": "SSH troubleshooting"
+          }
+        ],
+        "per_task_details": [
+          {
+            "task": "AI usage report for crew 393",
+            "applicable": [
+              "try_tools",
+              "data_driven"
+            ],
+            "followed": [
+              "try_tools",
+              "data_driven"
+            ],
+            "violated": []
+          },
+          {
+            "task": "SSH host key troubleshooting",
+            "applicable": [
+              "root_causes",
+              "never_guess",
+              "design_for_failure"
+            ],
+            "followed": [
+              "root_causes",
+              "design_for_failure"
+            ],
+            "violated": [
+              "never_guess"
+            ]
+          }
+        ]
+      }
     },
     {
       "session_id": "ad16f905-a29c-48bd-b1a0-6e597ba9fd11",
@@ -3465,7 +4521,77 @@
           }
         }
       ],
-      "summary": "Solid session with recipe usage, VM login, and kickoff. One user_ambiguity ('can you continue'). Built quality eval artifacts."
+      "summary": "Solid session with recipe usage, VM login, and kickoff. One user_ambiguity ('can you continue'). Built quality eval artifacts.",
+      "principle_adherence": {
+        "foundation_score": 0.9,
+        "foundation_details": {
+          "humility": "Strong. Asked good clarifying questions ('Which approach?' for sync strategy). Adapted when user said 'nide is also heavy' \u2014 pivoted from local-primary to VM-primary architecture.",
+          "integrity": "Strong. Raised the durability concern proactively ('The VM is the engine, not the vault'). Designed three-layer backup strategy.",
+          "stewardship": "Strong. Created reusable vm-login recipe, vm-routing rule, install script. Thought about long-term maintenance.",
+          "purpose": "Strong. Connected VM setup to user's real pain point (local machine crashing during builds).",
+          "patience": "Strong. Explored multiple architecture options (local+remote, remote-primary, thin client) before settling on the right one based on user's constraints.",
+          "gratitude": "Good. Checked existing claude state (545MB total, 582 files) before designing sync."
+        },
+        "total_applicable": 14,
+        "total_followed": 13,
+        "total_violated": 1,
+        "adherence_rate": 0.929,
+        "most_violated": "avoid_big_bang",
+        "most_followed": "design_for_failure",
+        "violation_details": [
+          {
+            "principle": "avoid_big_bang",
+            "evidence": "The /kickoff at the end spawned 7 parallel tasks (create repo, install script, vm-routing rule, sync-claude, auto-delegation hook, cron sync, vm install recipe). This is a large number of changes in one pass without incremental verification. Individual pieces were tested but the whole system wasn't verified end-to-end.",
+            "severity": "low",
+            "task": "VM infrastructure setup"
+          }
+        ],
+        "per_task_details": [
+          {
+            "task": "VM architecture design",
+            "applicable": [
+              "design_for_failure",
+              "substance_over_plumbing",
+              "patience"
+            ],
+            "followed": [
+              "design_for_failure",
+              "substance_over_plumbing",
+              "patience"
+            ],
+            "violated": []
+          },
+          {
+            "task": "Knowledge sync strategy",
+            "applicable": [
+              "design_for_failure",
+              "stewardship",
+              "verify_understanding"
+            ],
+            "followed": [
+              "design_for_failure",
+              "stewardship",
+              "verify_understanding"
+            ],
+            "violated": []
+          },
+          {
+            "task": "VM infrastructure setup (/kickoff)",
+            "applicable": [
+              "avoid_big_bang",
+              "stewardship",
+              "nothing_trivial"
+            ],
+            "followed": [
+              "stewardship",
+              "nothing_trivial"
+            ],
+            "violated": [
+              "avoid_big_bang"
+            ]
+          }
+        ]
+      }
     },
     {
       "session_id": "ef0ffdbe-55eb-4886-b55e-4371ce64aa43",
@@ -3574,7 +4700,83 @@
           }
         }
       ],
-      "summary": "Best session in batch. Perfect agreement scouting tee-dev-agent, implementing patterns, saving structured insights. Compound loop properly closed."
+      "summary": "Best session in batch. Perfect agreement scouting tee-dev-agent, implementing patterns, saving structured insights. Compound loop properly closed.",
+      "principle_adherence": {
+        "foundation_score": 0.88,
+        "foundation_details": {
+          "humility": "Good. Compared tee-dev-agent patterns against existing system honestly, identifying where they were ahead and where the current system was stronger.",
+          "integrity": "Good. Didn't blindly adopt all patterns \u2014 selected the 3 highest-value ideas.",
+          "stewardship": "Strong. Added Convention Audit as Step 0.5 in /implement, added Ralph Loop Generator. Both are durable improvements.",
+          "purpose": "Good. Connected the scout findings to practical improvements.",
+          "patience": "Strong. Fetched full repo tree, read key files (CLAUDE.md, agent-coding, human handbook) before forming opinions.",
+          "gratitude": "Strong. Read existing implement.md and recipes/README.md before modifying."
+        },
+        "total_applicable": 14,
+        "total_followed": 12,
+        "total_violated": 2,
+        "adherence_rate": 0.857,
+        "most_violated": "try_tools",
+        "most_followed": "patience",
+        "violation_details": [
+          {
+            "principle": "try_tools",
+            "evidence": "For the hiring project URL investigation, tried multiple grpcurli calls across fabrics (prod-ltx1, prod-lva1, EI) but didn't try the /hiring-platform skill which was available and specifically designed for this type of lookup.",
+            "severity": "medium",
+            "task": "Hiring project URL investigation"
+          },
+          {
+            "principle": "verify_understanding",
+            "evidence": "Parsed URL as 'contract 1470089425 with project 13038592004' but didn't verify this interpretation. The '13038592004' could be a pipeline stage ID (it matches the format of stage IDs seen in session 46e88919). Should have asked user to confirm the URL structure.",
+            "severity": "medium",
+            "task": "Hiring project URL investigation"
+          }
+        ],
+        "per_task_details": [
+          {
+            "task": "Scout tee-dev-agent repo",
+            "applicable": [
+              "patience",
+              "substance_over_plumbing",
+              "gratitude"
+            ],
+            "followed": [
+              "patience",
+              "substance_over_plumbing",
+              "gratitude"
+            ],
+            "violated": []
+          },
+          {
+            "task": "Adopt Convention Audit + Ralph Loop",
+            "applicable": [
+              "stewardship",
+              "gratitude",
+              "avoid_big_bang"
+            ],
+            "followed": [
+              "stewardship",
+              "gratitude",
+              "avoid_big_bang"
+            ],
+            "violated": []
+          },
+          {
+            "task": "Hiring project URL investigation",
+            "applicable": [
+              "try_tools",
+              "verify_understanding",
+              "cite_refs"
+            ],
+            "followed": [
+              "cite_refs"
+            ],
+            "violated": [
+              "try_tools",
+              "verify_understanding"
+            ]
+          }
+        ]
+      }
     },
     {
       "session_id": "f5372293-87cf-4bff-b8bd-1331ec9f4ac5",
@@ -3683,7 +4885,65 @@
           }
         }
       ],
-      "summary": "Strong insights analysis. Correctly interpreted terse user commands. Perfect agreement."
+      "summary": "Strong insights analysis. Correctly interpreted terse user commands. Perfect agreement.",
+      "principle_adherence": {
+        "foundation_score": 0.9,
+        "foundation_notes": "Humility: Good - checked existing files before writing (Glob for CLAUDE.md, settings.json, commands). Gratitude: Good - read existing investigate.md, workflow-rules.md, and MEMORY.md before modifying. Stewardship: Strong - left the system better with persistent rules, hooks, and feedback memories. Patience: Moderate - moved quickly but checked each existing file first. Integrity: Good - did not overwrite existing content, used Edit to insert.",
+        "total_applicable": 6,
+        "total_followed": 6,
+        "total_violated": 0,
+        "adherence_rate": 1.0,
+        "most_violated": null,
+        "most_followed": "design_for_simplicity",
+        "violation_details": [],
+        "per_task": [
+          {
+            "task_id": "T1",
+            "task_summary": "Present insights report",
+            "principles_applicable": [
+              "substance_over_plumbing"
+            ],
+            "principles_followed": [
+              "substance_over_plumbing"
+            ],
+            "principles_violated": [],
+            "violation_details": []
+          },
+          {
+            "task_id": "T2",
+            "task_summary": "Dig into all report sections",
+            "principles_applicable": [
+              "substance_over_plumbing",
+              "verify_own_understanding"
+            ],
+            "principles_followed": [
+              "substance_over_plumbing",
+              "verify_own_understanding"
+            ],
+            "principles_violated": [],
+            "violation_details": []
+          },
+          {
+            "task_id": "T3",
+            "task_summary": "Implement suggested improvements",
+            "principles_applicable": [
+              "nothing_ever_trivial",
+              "design_for_simplicity",
+              "avoid_big_bang",
+              "cite_code_references"
+            ],
+            "principles_followed": [
+              "nothing_ever_trivial",
+              "design_for_simplicity",
+              "avoid_big_bang",
+              "cite_code_references"
+            ],
+            "principles_violated": [],
+            "violation_details": [],
+            "notes": "Agent read existing files before modifying (Glob, Read for investigate.md, settings.json, MEMORY.md). Used Edit for surgical changes rather than full rewrites. Created 4 separate artifacts (phased, not big-bang). Cited file paths when reporting what was done."
+          }
+        ]
+      }
     },
     {
       "session_id": "f6439e6a-3821-42c7-ae64-971797c80354",
@@ -3852,7 +5112,88 @@
           }
         }
       ],
-      "summary": "Long session mixing automated watch-deps with user investigation. Automated parts clean, user-directed parts had scope drift."
+      "summary": "Long session mixing automated watch-deps with user investigation. Automated parts clean, user-directed parts had scope drift.",
+      "principle_adherence": {
+        "foundation_score": 0.8,
+        "foundation_notes": "Gratitude: Good - read dependencies.jsonl and alerts.md before modifying. Humility: Mixed - stated Sandbox 2 contract as 2043270072 without verification (L146), but user provided TReX URLs confirming the lixes. Patience: Good - thorough search across multiple jarvis_codesearch queries to find all frontend lix usage. Stewardship: Good - saved sandbox2 config to memory for future sessions.",
+        "total_applicable": 9,
+        "total_followed": 7,
+        "total_violated": 2,
+        "adherence_rate": 0.78,
+        "most_violated": "never_guess_values",
+        "most_followed": "cite_code_references",
+        "violation_details": [
+          {
+            "principle": "never_guess_values",
+            "evidence": "At L146-161, agent stated Sandbox 2 contract ID as 2043270072 and listed specific lix keys with specific data provider URNs (urn:li:developerApplication:225950754) without reading from any config file or verifying from code. The data provider URN differs from the one in the user's test-environments rule (223878556). The lix key names and targets appear plausible but unverified.",
+            "severity": "medium"
+          },
+          {
+            "principle": "never_guess_values",
+            "evidence": "At L166-171, agent guessed the mapping between TReX test IDs and lix keys ('likely') without any evidence. Stated the mapping as a table with (likely) parenthetical, but still presented it as a structured assertion.",
+            "severity": "low"
+          }
+        ],
+        "per_task": [
+          {
+            "task_id": "T1",
+            "task_summary": "Run watch-deps-check recipe",
+            "principles_applicable": [
+              "data_driven",
+              "cite_code_references",
+              "verify_own_understanding"
+            ],
+            "principles_followed": [
+              "data_driven",
+              "cite_code_references",
+              "verify_own_understanding"
+            ],
+            "principles_violated": [],
+            "violation_details": [],
+            "notes": "Agent checked deployed versions with go-status (data-driven), compared against last_validated_version from dependencies.jsonl, used jarvis_codesearch to diff watched paths. Updated dependency records with actual version data. Strong data-driven approach."
+          },
+          {
+            "task_id": "T2",
+            "task_summary": "Provide lix configuration for Sandbox 2 contract",
+            "principles_applicable": [
+              "never_guess_values",
+              "cite_code_references"
+            ],
+            "principles_followed": [
+              "cite_code_references"
+            ],
+            "principles_violated": [
+              "never_guess_values"
+            ],
+            "violation_details": [
+              {
+                "principle": "never_guess_values",
+                "evidence": "Stated contract ID 2043270072 and data provider urn:li:developerApplication:225950754 without reading from config. Sandbox 1 uses 223878556 per test-environments.md; agent may have fabricated the sandbox 2 provider URN.",
+                "severity": "medium"
+              }
+            ]
+          },
+          {
+            "task_id": "T3",
+            "task_summary": "Explore ts-web frontend lixes for Phase 2",
+            "principles_applicable": [
+              "cite_code_references",
+              "verify_own_understanding",
+              "disambiguate_naming",
+              "patience"
+            ],
+            "principles_followed": [
+              "cite_code_references",
+              "verify_own_understanding",
+              "disambiguate_naming",
+              "patience"
+            ],
+            "principles_violated": [],
+            "violation_details": [],
+            "notes": "Thorough exploration via multiple jarvis_codesearch and jarvis_get_file calls. Identified both connected-projects package and ember-ts-profile-core lix-keys.ts files. Spotted naming difference (hire.jobs.connected.projects.phase.2.blocker.enabled vs talent.connected.projects.phase2.enabled) and investigated both."
+          }
+        ]
+      }
     },
     {
       "session_id": "2026-04-08_0f5e71e6-364d-4827-96d1-2a462f47b0de",
@@ -3998,7 +5339,79 @@
           "delta": 0.5
         }
       ],
-      "summary": "VM bootstrap session with significant friction. The agent correctly identified the vm-setup recipe but produced a script requiring 4+ iterations of error-fix cycles. Most critically, it proposed local-to-VM rsync for knowledge sync, violating the documented VM routing architecture -- user caught this immediately. The trial-and-error approach to SSH setup wasted time; the recipe should encode LinkedIn corporate SSH prerequisites."
+      "summary": "VM bootstrap session with significant friction. The agent correctly identified the vm-setup recipe but produced a script requiring 4+ iterations of error-fix cycles. Most critically, it proposed local-to-VM rsync for knowledge sync, violating the documented VM routing architecture -- user caught this immediately. The trial-and-error approach to SSH setup wasted time; the recipe should encode LinkedIn corporate SSH prerequisites.",
+      "principle_adherence": {
+        "foundation_score": 0.7,
+        "foundation_notes": "Humility: Mixed - initially guessed the GitHub repo URL as bizhou/claude-knowledge (wrong, actual was bizhou_LinkedIn/claude-knowledge), should have checked git remote first. Patience: Good - iterated through many error cycles without frustration, adapted to each failure. Gratitude: Mixed - initially proposed rsync from local (violating architecture), but immediately pivoted when user pointed it out. Integrity: Good - when user flagged architecture violation at L60, agent acknowledged and reverted. Stewardship: Mixed - left some temporary debugging artifacts in the script.",
+        "total_applicable": 8,
+        "total_followed": 5,
+        "total_violated": 3,
+        "adherence_rate": 0.625,
+        "most_violated": "never_guess_values",
+        "most_followed": "design_for_simplicity",
+        "violation_details": [
+          {
+            "principle": "never_guess_values",
+            "evidence": "At L18/L57, agent guessed the GitHub repo URL as 'git@github.com:bizhou/claude-knowledge.git' without checking git remote -v first. This caused a 'Repository not found' error at L81. Only after the failure did it check the actual remote URL at L84.",
+            "severity": "high"
+          },
+          {
+            "principle": "verify_own_understanding",
+            "evidence": "Agent proposed rsync from local to VM (L54-L57) without verifying against the vm-routing architecture rule. User had to point out the violation at L60: 'if rsync from local, that would violates our architecture right'. Agent should have cross-checked its own approach against the documented architecture.",
+            "severity": "medium"
+          },
+          {
+            "principle": "nothing_ever_trivial",
+            "evidence": "The bootstrap script was treated as a straightforward task, but required 6+ iterations to get working due to DNS resolution, SSH auth, GitHub host keys, repo URL, and agent forwarding issues. Each could have been anticipated with more upfront research.",
+            "severity": "medium"
+          }
+        ],
+        "per_task": [
+          {
+            "task_id": "T1",
+            "task_summary": "Bootstrap VM with Claude Code, code-server, tmux, and knowledge sync",
+            "principles_applicable": [
+              "nothing_ever_trivial",
+              "never_guess_values",
+              "verify_own_understanding",
+              "design_for_simplicity",
+              "resolve_root_causes",
+              "avoid_big_bang",
+              "own_dependencies",
+              "temporary_solutions_persist"
+            ],
+            "principles_followed": [
+              "design_for_simplicity",
+              "resolve_root_causes",
+              "avoid_big_bang",
+              "own_dependencies",
+              "temporary_solutions_persist"
+            ],
+            "principles_violated": [
+              "nothing_ever_trivial",
+              "never_guess_values",
+              "verify_own_understanding"
+            ],
+            "violation_details": [
+              {
+                "principle": "never_guess_values",
+                "evidence": "Guessed GitHub repo URL instead of checking git remote -v. Also guessed SSH key type (ed25519) without checking what keys the user already had.",
+                "severity": "high"
+              },
+              {
+                "principle": "verify_own_understanding",
+                "evidence": "Proposed rsync-from-local approach that violates documented VM routing architecture. Did not cross-check against known rules.",
+                "severity": "medium"
+              },
+              {
+                "principle": "nothing_ever_trivial",
+                "evidence": "Underestimated complexity of VM bootstrap: DNS, SSH keys, GitHub auth, agent forwarding all needed handling. Should have planned for these failure modes upfront.",
+                "severity": "medium"
+              }
+            ]
+          }
+        ]
+      }
     },
     {
       "session_id": "2026-04-08_27db5d4c-f39d-4ca8-b029-b22a12079f15",
@@ -4162,7 +5575,58 @@
           "delta": 0.33
         }
       ],
-      "summary": "Productive session that built the agent eval system. The main failure was misinterpreting the user initial request -- treating compare with our system as describe their system instead of map it onto ours. After the gentle redirect (I mean for our claude ecosystem), the agent pivoted immediately and the rest of the session was clean execution. The mapping was well done and the taxonomy + judge prompt artifacts were high quality."
+      "summary": "Productive session that built the agent eval system. The main failure was misinterpreting the user initial request -- treating compare with our system as describe their system instead of map it onto ours. After the gentle redirect (I mean for our claude ecosystem), the agent pivoted immediately and the rest of the session was clean execution. The mapping was well done and the taxonomy + judge prompt artifacts were high quality.",
+      "principle_adherence": {
+        "foundation_score": 0.9,
+        "foundation_notes": "Gratitude: Excellent - before building anything, agent explored existing directory structure (evals/, learnings/, commands/, skills/) and read existing files (SCHEMA.md, eval-skill.md, compound.md, agent-briefing.md). Built on top of existing patterns rather than replacing. Patience: Strong - thorough exploration phase with multiple reads before writing. Stewardship: Excellent - built a durable system that compounds knowledge across sessions. Purpose: Connected the oracle eval concept to the user's actual goal (Claude ecosystem improvement) after initial misunderstanding.",
+        "total_applicable": 8,
+        "total_followed": 8,
+        "total_violated": 0,
+        "adherence_rate": 1.0,
+        "most_violated": null,
+        "most_followed": "avoid_big_bang",
+        "violation_details": [],
+        "per_task": [
+          {
+            "task_id": "T1",
+            "task_summary": "Evaluate oracle eval system and compare with Claude ecosystem",
+            "principles_applicable": [
+              "substance_over_plumbing",
+              "verify_own_understanding"
+            ],
+            "principles_followed": [
+              "substance_over_plumbing",
+              "verify_own_understanding"
+            ],
+            "principles_violated": [],
+            "violation_details": [],
+            "notes": "Initially analyzed the oracle system in isolation (L504-510), but when user clarified 'I mean for our claude eco system' (L517), immediately pivoted to the correct framing. Led with WHAT/WHY (closed-loop quality system) before HOW (measurement pipeline details)."
+          },
+          {
+            "task_id": "T2",
+            "task_summary": "Build the full eval ecosystem (taxonomy, judge, pipeline, skill)",
+            "principles_applicable": [
+              "nothing_ever_trivial",
+              "avoid_big_bang",
+              "mine_commit_history",
+              "cite_code_references",
+              "design_for_simplicity",
+              "verify_own_understanding"
+            ],
+            "principles_followed": [
+              "nothing_ever_trivial",
+              "avoid_big_bang",
+              "mine_commit_history",
+              "cite_code_references",
+              "design_for_simplicity",
+              "verify_own_understanding"
+            ],
+            "principles_violated": [],
+            "violation_details": [],
+            "notes": "Agent broke work into 5 tasks (TaskCreate), completed them sequentially with exploration first. Read existing evals/ directory, SCHEMA.md, eval-skill.md before designing. Used phased approach: taxonomy first, then judge prompt, then pipeline. When user said 'AI Partner' not 'AI coding assistant', immediately refactored all terminology. Cross-checked understanding by reading current state of files before making edits."
+          }
+        ]
+      }
     },
     {
       "session_id": "2026-04-08_3c47921e-99b4-40ad-b3a0-55edb8a19389",
@@ -4332,7 +5796,93 @@
           "delta": 0.33
         }
       ],
-      "summary": "E2E testing session for PR #550 V1/V2 identity mismatch fix. Initial misunderstanding (tried to move candidates instead of checking existing movement status) cost one redirect. The core investigation was thorough -- correctly traced Anu SUCCESS through the fallback path and identified Tara as still PENDING. Over-engineered by proposing Jira filing when user just wanted to move more candidates. Good use of parallel subagents for the batch move."
+      "summary": "E2E testing session for PR #550 V1/V2 identity mismatch fix. Initial misunderstanding (tried to move candidates instead of checking existing movement status) cost one redirect. The core investigation was thorough -- correctly traced Anu SUCCESS through the fallback path and identified Tara as still PENDING. Over-engineered by proposing Jira filing when user just wanted to move more candidates. Good use of parallel subagents for the batch move.",
+      "principle_adherence": {
+        "foundation_score": 0.8,
+        "foundation_notes": "Patience: Strong - thorough investigation of both candidates (Anu and Tara) through multiple data sources (curli, grpcurli, Kusto logs). Integrity: Good - verified build compiles after each code change. Gratitude: Good - read existing code before proposing changes, checked all callers before modifying shared method. Humility: Mixed - initially misunderstood user's intent (tried to invoke action-writeback skill when user had already moved candidates, user had to interrupt and clarify at L15/L17).",
+        "total_applicable": 14,
+        "total_followed": 12,
+        "total_violated": 2,
+        "adherence_rate": 0.857,
+        "most_violated": "verify_own_understanding",
+        "most_followed": "data_driven",
+        "violation_details": [
+          {
+            "principle": "verify_own_understanding",
+            "evidence": "At L9-L15, agent assumed user wanted to perform the candidate moves and started invoking the action-writeback skill. User interrupted: 'I mean I already moved, check the candidates movement status' (L17). Agent should have parsed the initial message more carefully - 'just move Anu and tara' followed by 'monitor and check the movement status' was ambiguous, but the 'focus on the fix testing - PR #550' clause pointed to verification, not execution.",
+            "severity": "low"
+          },
+          {
+            "principle": "nothing_ever_trivial",
+            "evidence": "During the code refactoring for PR #553, compilation errors took 6+ iterations to resolve (L75-L146). The refactoring scope kept expanding as new callers were discovered. Could have mapped all callers first before starting edits.",
+            "severity": "low"
+          }
+        ],
+        "per_task": [
+          {
+            "task_id": "T1",
+            "task_summary": "Check candidate movement status as prod testing for PR #550",
+            "principles_applicable": [
+              "data_driven",
+              "resolve_root_causes",
+              "cite_code_references",
+              "verify_own_understanding"
+            ],
+            "principles_followed": [
+              "data_driven",
+              "resolve_root_causes",
+              "cite_code_references"
+            ],
+            "principles_violated": [
+              "verify_own_understanding"
+            ],
+            "violation_details": [
+              {
+                "principle": "verify_own_understanding",
+                "evidence": "Misinterpreted user intent initially (tried to move candidates instead of checking status). Self-corrected after user interrupt.",
+                "severity": "low"
+              }
+            ],
+            "notes": "Strong data-driven investigation: checked HPC state via curli, searched Kusto logs for both request IDs, verified deployed version with go-status, traced the full inbound/outbound flow. Identified PR #550 fallback working for Anu (log: 'No V1 found via identity group for V2=70020816618, trying entity registry fallback') and Tara still PENDING due to IP sync cadence."
+          },
+          {
+            "task_id": "T2",
+            "task_summary": "Review and implement PR #553 changes with mcm-mt registry pattern",
+            "principles_applicable": [
+              "nothing_ever_trivial",
+              "avoid_big_bang",
+              "resolve_root_causes",
+              "own_dependencies",
+              "design_for_simplicity",
+              "cite_code_references",
+              "mine_commit_history",
+              "verify_own_understanding",
+              "disambiguate_naming"
+            ],
+            "principles_followed": [
+              "avoid_big_bang",
+              "resolve_root_causes",
+              "own_dependencies",
+              "design_for_simplicity",
+              "cite_code_references",
+              "mine_commit_history",
+              "verify_own_understanding",
+              "disambiguate_naming"
+            ],
+            "principles_violated": [
+              "nothing_ever_trivial"
+            ],
+            "violation_details": [
+              {
+                "principle": "nothing_ever_trivial",
+                "evidence": "Compilation required 6+ iterations. Agent found additional callers mid-refactor (IntegrationApplicationStageHistoryService, ExportStatusEventProcessor) that needed the same fix. Should have mapped all callers upfront with grep before starting edits.",
+                "severity": "low"
+              }
+            ],
+            "notes": "Good: Read mcm-mt HireIdentityV2EntityRegistriesServiceImpl for pattern comparison. Identified all callers of resolveHireIdentityForMapping. Used Grep to find call sites. Ran compilation and fixed checkstyle+test errors. Disambiguated HiringProjectCandidateUrn vs HiringPlatformEntityUrn in the generalized method. Cross-checked with mcm-mt registry implementation."
+          }
+        ]
+      }
     },
     {
       "session_id": "2026-04-08_5c8f31b2-f07c-45f9-9f2b-8fdd537db5dd",
@@ -4505,7 +6055,74 @@
           "delta": 0.17
         }
       ],
-      "summary": "Strong code review and implementation session. The PR #553 review correctly identified the mcm-mt pattern comparison and found additional callers with the same bug. Implementation had friction from compile-fix loops (4-5 iterations) and incorrect VM access attempts (direct ssh vm instead of vm-run wrapper). Technical analysis was excellent; mechanical execution could be tighter."
+      "summary": "Strong code review and implementation session. The PR #553 review correctly identified the mcm-mt pattern comparison and found additional callers with the same bug. Implementation had friction from compile-fix loops (4-5 iterations) and incorrect VM access attempts (direct ssh vm instead of vm-run wrapper). Technical analysis was excellent; mechanical execution could be tighter.",
+      "principle_adherence": {
+        "foundation_score": 0.85,
+        "foundation_notes": "Gratitude: Excellent - read the full PR diff, read mcm-mt HireIdentityV2EntityRegistriesServiceImpl for the reference pattern, read all callers before modifying. Patience: Good - read both HiringProjectCandidateService and ApplicationStageHistoryService to confirm HPC doesn't need changes. Integrity: Good - ran compilation after every change set, fixed all checkstyle and test errors. Stewardship: Good - ensured all callers were updated, not just the one in the PR.",
+        "total_applicable": 10,
+        "total_followed": 9,
+        "total_violated": 1,
+        "adherence_rate": 0.9,
+        "most_violated": "nothing_ever_trivial",
+        "most_followed": "cite_code_references",
+        "violation_details": [
+          {
+            "principle": "nothing_ever_trivial",
+            "evidence": "Compilation errors required multiple iteration rounds (L75-L146): first the method signature mismatch, then private method rename, then HPC-to-EntityUrn conversion, then checkstyle (unused import), then test files. Each was discovered incrementally rather than anticipated.",
+            "severity": "low"
+          }
+        ],
+        "per_task": [
+          {
+            "task_id": "T1",
+            "task_summary": "Review PR #553 and compare with mcm-mt registry pattern",
+            "principles_applicable": [
+              "substance_over_plumbing",
+              "cite_code_references",
+              "mine_commit_history",
+              "verify_own_understanding",
+              "own_dependencies"
+            ],
+            "principles_followed": [
+              "substance_over_plumbing",
+              "cite_code_references",
+              "mine_commit_history",
+              "verify_own_understanding",
+              "own_dependencies"
+            ],
+            "principles_violated": [],
+            "violation_details": [],
+            "notes": "Review led with the business problem (orphaned V2 identities from concurrent createHireIdentityV2WithHireCandidateProfile calls) before the code mechanics. Referenced specific file paths and line numbers. Compared against mcm-mt reference implementation. Identified that HiringProjectCandidateService does NOT need changes (documenting negative space). Checked all callers of resolveHireIdentityForMapping."
+          },
+          {
+            "task_id": "T2",
+            "task_summary": "Implement review suggestions: generalize to HiringPlatformEntityUrn, update all callers",
+            "principles_applicable": [
+              "nothing_ever_trivial",
+              "avoid_big_bang",
+              "design_for_simplicity",
+              "resolve_root_causes",
+              "cite_code_references"
+            ],
+            "principles_followed": [
+              "avoid_big_bang",
+              "design_for_simplicity",
+              "resolve_root_causes",
+              "cite_code_references"
+            ],
+            "principles_violated": [
+              "nothing_ever_trivial"
+            ],
+            "violation_details": [
+              {
+                "principle": "nothing_ever_trivial",
+                "evidence": "Compilation required 5+ fix iterations. Agent discovered callers incrementally during compilation rather than mapping them all upfront.",
+                "severity": "low"
+              }
+            ]
+          }
+        ]
+      }
     },
     {
       "session_id": "2026-04-08_89e7322e-2fc7-4340-96e4-a33fdcc60e3a",
@@ -4616,7 +6233,84 @@
           "delta": 0.5
         }
       ],
-      "summary": "Bug investigation session with strong analytical capability but poor tool execution. Agent correctly identified the root cause code path (V2-as-V1 fallback in resolveHireIdentityForHpEntity) and found the disconnect pattern in ApplicationStageProcessor. However, all remote grpcurli commands failed due to expired DV auth and SSH quoting issues. The auth-preflight recipe should include az login verification. Code analysis made up for tool friction."
+      "summary": "Bug investigation session with strong analytical capability but poor tool execution. Agent correctly identified the root cause code path (V2-as-V1 fallback in resolveHireIdentityForHpEntity) and found the disconnect pattern in ApplicationStageProcessor. However, all remote grpcurli commands failed due to expired DV auth and SSH quoting issues. The auth-preflight recipe should include az login verification. Code analysis made up for tool friction.",
+      "principle_adherence": {
+        "foundation_score": 0.75,
+        "foundation_notes": "Patience: Strong - thorough investigation across multiple layers (Jira, logs, code analysis, entity mappings). Agent read ApplicationStageProcessor, ApplicationStageResolutionService, and HiringProjectCandidateService code carefully. Humility: Good - acknowledged when DV auth was expired and suggested alternatives. Gratitude: Good - read existing code before forming hypotheses about the bug. Integrity: Mixed - used sleep+cat polling pattern (L43-L45) which is fragile. Stewardship: Mixed - many failed background tasks left dangling without cleanup.",
+        "total_applicable": 10,
+        "total_followed": 7,
+        "total_violated": 3,
+        "adherence_rate": 0.7,
+        "most_violated": "try_tools_before_cant",
+        "most_followed": "resolve_root_causes",
+        "violation_details": [
+          {
+            "principle": "try_tools_before_cant",
+            "evidence": "Agent attempted ToolSearch for Jira/observe tools (L9-L20) with 6 separate calls before finding the right tool. Spent excessive iterations searching for tool names instead of using known patterns (mcp__captain__exec_tool with get_jira_issue was available and working). Should have known the tool from prior sessions.",
+            "severity": "low"
+          },
+          {
+            "principle": "own_dependencies",
+            "evidence": "All grpcurli commands via ssh vm failed due to DV auth expiry (L35-L37, L72-L73). Agent did not proactively check or fix auth state. Suggested user authenticate but couldn't resolve it autonomously. This was a known dependency (auth state) that blocked the investigation.",
+            "severity": "medium"
+          },
+          {
+            "principle": "verify_own_understanding",
+            "evidence": "At L115-L930, agent presented investigation summary stating 'The treeId AAZO5oTCJnNCc2GShlb/Zg== was NOT the data sync event' and found 'Actual Bug Reproduction Found' with different data. However, the user provided the treeId as a starting point for the specific instance; the agent should have confirmed whether the user wanted investigation of that specific instance or the broader pattern before redirecting to different data.",
+            "severity": "low"
+          }
+        ],
+        "per_task": [
+          {
+            "task_id": "T1",
+            "task_summary": "Investigate CSE bug HPLT-114422 - ATS applicants disappear from pipeline",
+            "principles_applicable": [
+              "resolve_root_causes",
+              "data_driven",
+              "cite_code_references",
+              "verify_own_understanding",
+              "try_tools_before_cant",
+              "own_dependencies",
+              "patience",
+              "nothing_ever_trivial",
+              "substance_over_plumbing",
+              "document_negative_space"
+            ],
+            "principles_followed": [
+              "resolve_root_causes",
+              "data_driven",
+              "cite_code_references",
+              "patience",
+              "nothing_ever_trivial",
+              "substance_over_plumbing",
+              "document_negative_space"
+            ],
+            "principles_violated": [
+              "try_tools_before_cant",
+              "own_dependencies",
+              "verify_own_understanding"
+            ],
+            "violation_details": [
+              {
+                "principle": "try_tools_before_cant",
+                "evidence": "6 ToolSearch calls to find the right MCP tool name. Should have known mcp__captain__exec_tool from accumulated session knowledge.",
+                "severity": "low"
+              },
+              {
+                "principle": "own_dependencies",
+                "evidence": "DV auth expiry blocked all VM-based grpcurli calls. Agent didn't check auth state at session start.",
+                "severity": "medium"
+              },
+              {
+                "principle": "verify_own_understanding",
+                "evidence": "Redirected investigation from user-provided treeId to broader log search without confirming user intent.",
+                "severity": "low"
+              }
+            ],
+            "notes": "Positive: Agent correctly identified the disconnect/updateAndConnect pattern in ApplicationStageProcessor as the likely code path. Found the V2-as-V1 fallback bug. Used observe-agent for log search which succeeded. Launched parallel investigation agents for code analysis and log search. Identified 4 successful writebacks and the disconnect->connect race condition."
+          }
+        ]
+      }
     },
     {
       "session_id": "2026-04-08_bc7ac0bd-923b-4dc4-b7a3-b0d76a6a46fb",
@@ -4780,7 +6474,91 @@
           "delta": 0.17
         }
       ],
-      "summary": "Good oncall investigation session across deployment check and incident analysis. The deployment check was clean. The incident investigation correctly identified notification decoration as the top contributor (35% of seatsV2 errors). However, the agent needed multiple user redirections to focus observe-agent queries on the right aggregation -- user had to specify group by caller with concrete counts rather than pattern matching. The JIRA search tool had persistent issues with unbounded query errors."
+      "summary": "Good oncall investigation session across deployment check and incident analysis. The deployment check was clean. The incident investigation correctly identified notification decoration as the top contributor (35% of seatsV2 errors). However, the agent needed multiple user redirections to focus observe-agent queries on the right aggregation -- user had to specify group by caller with concrete counts rather than pattern matching. The JIRA search tool had persistent issues with unbounded query errors.",
+      "principle_adherence": {
+        "foundation_score": 0.8,
+        "foundation_notes": "Patience: Strong - thorough multi-step investigation: checked PR merge date, found version tag, compared to deployed version, then traced notification decoration call chain through ts-api code. Humility: Good - when Jira search failed, acknowledged the issue and tried multiple approaches. Gratitude: Good - read PR #8393 diff to understand the existing fix before investigating whether notifications contribute to the incident. Integrity: Good - acknowledged when tools failed and tried alternatives.",
+        "total_applicable": 11,
+        "total_followed": 8,
+        "total_violated": 3,
+        "adherence_rate": 0.727,
+        "most_violated": "try_tools_before_cant",
+        "most_followed": "data_driven",
+        "violation_details": [
+          {
+            "principle": "try_tools_before_cant",
+            "evidence": "At L87-L101, user asked 'can you read from some internal tools for the incident-10781'. Agent tried get_incidents, fetch_incidents, get_tool_info with various argument structures, all failing. Required 6 attempts before finding the right API signature (L101: get_incidents with start_time/end_time/incident_id). Agent should have used get_tool_info properly to discover the API schema first.",
+            "severity": "medium"
+          },
+          {
+            "principle": "never_guess_values",
+            "evidence": "At L994-L1007, agent stated the PR version as v95.0.777 based on git tag analysis, which appears correct. However, at L1080-L1086, agent made specific claims about the incident timing ('Incident-10781 started on March 26, 2026 at 21:41-21:45 UTC') from parsing get_incidents output. This appears data-backed. No clear fabrication, but the confidence about notification decoration call counts without having actual metrics data is borderline.",
+            "severity": "low"
+          },
+          {
+            "principle": "data_driven",
+            "evidence": "At L1049-1052, agent presented findings about notification decorations hitting seatsV2 path based purely on code analysis (search_semantic_code), not actual metrics. User specifically requested 'concrete metrics/data during the incident time window' (L113), which agent then attempted via observe-agent. The initial code-only analysis without data was premature.",
+            "severity": "medium"
+          }
+        ],
+        "per_task": [
+          {
+            "task_id": "T1",
+            "task_summary": "Check when PR #8393 got deployed",
+            "principles_applicable": [
+              "data_driven",
+              "cite_code_references",
+              "verify_own_understanding"
+            ],
+            "principles_followed": [
+              "data_driven",
+              "cite_code_references",
+              "verify_own_understanding"
+            ],
+            "principles_violated": [],
+            "violation_details": [],
+            "notes": "Clean execution: checked merge commit, found version tag, compared to deployed version via go-status. Presented clear summary table with PR, merge date, version, and current prod versions."
+          },
+          {
+            "task_id": "T2",
+            "task_summary": "Investigate incident-10781 action item: do notification decorations in ts-web contribute to duplicate seatsV2 calls",
+            "principles_applicable": [
+              "data_driven",
+              "resolve_root_causes",
+              "cite_code_references",
+              "try_tools_before_cant",
+              "own_dependencies",
+              "verify_own_understanding",
+              "substance_over_plumbing",
+              "never_guess_values"
+            ],
+            "principles_followed": [
+              "resolve_root_causes",
+              "cite_code_references",
+              "own_dependencies",
+              "verify_own_understanding",
+              "substance_over_plumbing"
+            ],
+            "principles_violated": [
+              "try_tools_before_cant",
+              "data_driven",
+              "never_guess_values"
+            ],
+            "violation_details": [
+              {
+                "principle": "try_tools_before_cant",
+                "evidence": "6 attempts to find the right incident API. Should have used get_tool_info to discover API schema.",
+                "severity": "medium"
+              },
+              {
+                "principle": "data_driven",
+                "evidence": "Initially presented code-analysis-only findings without metrics data. User had to specifically request 'concrete metrics/data during the incident time window'.",
+                "severity": "medium"
+              }
+            ]
+          }
+        ]
+      }
     },
     {
       "session_id": "2026-04-08_c07726c8-f994-4080-a984-a8c5c523f963",
@@ -4944,7 +6722,86 @@
           "delta": 0.17
         }
       ],
-      "summary": "Effective cross-codebase investigation tracing the UNAUTHENTICATED error from mcm-mt logs through hp-ats-integration-mt actor URN setup to mcm-mt CrossContractHirePermissionUtils. Technical analysis was excellent -- correctly identified the batchGet(viewer=actor) chain where the usage URN causes cross-account validation failure. Tool friction from incorrect parameter names on jarvis_get_file/get_source_code cost time but did not derail the investigation."
+      "summary": "Effective cross-codebase investigation tracing the UNAUTHENTICATED error from mcm-mt logs through hp-ats-integration-mt actor URN setup to mcm-mt CrossContractHirePermissionUtils. Technical analysis was excellent -- correctly identified the batchGet(viewer=actor) chain where the usage URN causes cross-account validation failure. Tool friction from incorrect parameter names on jarvis_get_file/get_source_code cost time but did not derail the investigation.",
+      "principle_adherence": {
+        "foundation_score": 0.85,
+        "foundation_notes": "Patience: Excellent - deep multi-step investigation tracing from treeId through observe-agent logs, to hp-ats code (UrnUtil, HiringProjectCandidatesGrpcClient, TransformerContext), to mcm-mt code (CrossContractHirePermissionUtils, HiringProjectCandidatesServiceImpl, HiringProjectViewerEntitlementsFacadeImpl). Gratitude: Good - read existing code carefully at each step. Humility: Good - when code wasn't available locally, searched via jarvis_codesearch/jarvis_get_file. Stewardship: Good - connected the investigation findings to an actionable fix path.",
+        "total_applicable": 9,
+        "total_followed": 8,
+        "total_violated": 1,
+        "adherence_rate": 0.889,
+        "most_violated": "try_tools_before_cant",
+        "most_followed": "resolve_root_causes",
+        "violation_details": [
+          {
+            "principle": "try_tools_before_cant",
+            "evidence": "At L75-L87, agent tried 5 different jarvis tool variations (jarvis_get_file with different arg formats, get_source_code, get_github_file) to read the CrossContractHirePermissionUtils.java file from mcm-mt. Most failed. Agent eventually got the file content via jarvis_codesearch. Should have checked tool schema/documentation once rather than trial-and-error 5 times.",
+            "severity": "low"
+          }
+        ],
+        "per_task": [
+          {
+            "task_id": "T1",
+            "task_summary": "Check treeId in mcm-mt and find recent code changes",
+            "principles_applicable": [
+              "resolve_root_causes",
+              "cite_code_references",
+              "substance_over_plumbing"
+            ],
+            "principles_followed": [
+              "resolve_root_causes",
+              "cite_code_references",
+              "substance_over_plumbing"
+            ],
+            "principles_violated": [],
+            "violation_details": [],
+            "notes": "Used observe-agent to find the treeId logs. Identified UNAUTHENTICATED error with cross-account message. Started investigating mcm-mt code before user redirected."
+          },
+          {
+            "task_id": "T2",
+            "task_summary": "Find datapipeline usage URN in hp-ats-integration-mt",
+            "principles_applicable": [
+              "cite_code_references"
+            ],
+            "principles_followed": [
+              "cite_code_references"
+            ],
+            "principles_violated": [],
+            "violation_details": [],
+            "notes": "Found UrnUtil.java:19-20 with exact code reference. Listed all processors that use it. Clean, precise response."
+          },
+          {
+            "task_id": "T3",
+            "task_summary": "Trace HiringProjectCandidate partialUpdate actor chain and find skip writeback path",
+            "principles_applicable": [
+              "resolve_root_causes",
+              "cite_code_references",
+              "try_tools_before_cant",
+              "verify_own_understanding",
+              "substance_over_plumbing",
+              "disambiguate_naming"
+            ],
+            "principles_followed": [
+              "resolve_root_causes",
+              "cite_code_references",
+              "verify_own_understanding",
+              "substance_over_plumbing",
+              "disambiguate_naming"
+            ],
+            "principles_violated": [
+              "try_tools_before_cant"
+            ],
+            "violation_details": [
+              {
+                "principle": "try_tools_before_cant",
+                "evidence": "Trial-and-error approach to jarvis file retrieval tools. 5 different tool name/arg variations before success.",
+                "severity": "low"
+              }
+            ],
+            "notes": "Thorough tracing: HiringProjectCandidatesGrpcClient -> TransformerContext._actorUrn -> UrnUtil.HP_INTEGRATION_DEFAULT_USAGE_URN -> mcm-mt HiringProjectCandidatesServiceImpl.batchPartialUpdate -> checkHiringProjectCandidateWritePermissions -> CrossContractHirePermissionUtils.validateKeys. Cited specific line numbers and file paths. Explained that actorUrn is generic Urn type, passed as string via gRPC. Clearly distinguished between actor type mismatch (not the issue) and cross-account contract validation (the actual issue)."
+          }
+        ]
+      }
     },
     {
       "session_id": "2026-04-08_d07ef355-6638-4efb-84df-d949212c6573",
@@ -5051,7 +6908,84 @@
           "delta": 0.5
         }
       ],
-      "summary": "Investigation of empty hiring project candidates. Strong root cause analysis -- correctly identified that 10 candidates were parked in hidden potential candidate state instead of being placed into ATS stages (ApplicationStage sync had not run). However, significant time wasted routing all curli/grpcurli through the VM when DV auth was expired there. User had to redirect to run locally. The VM routing rule is being over-applied to REST API calls that work fine locally."
+      "summary": "Investigation of empty hiring project candidates. Strong root cause analysis -- correctly identified that 10 candidates were parked in hidden potential candidate state instead of being placed into ATS stages (ApplicationStage sync had not run). However, significant time wasted routing all curli/grpcurli through the VM when DV auth was expired there. User had to redirect to run locally. The VM routing rule is being over-applied to REST API calls that work fine locally.",
+      "principle_adherence": {
+        "foundation_score": 0.75,
+        "foundation_notes": "Patience: Excellent - systematic multi-layer investigation (HP project details, entity mappings, HPC finder, SCC, CHS, IP applicationStages, IntJobReqStage mappings). Kept digging through each layer when initial queries failed. Humility: Good - acknowledged DV auth issue, tried alternatives. Integrity: Mixed - initially routed all commands to VM despite auth being expired, wasting multiple rounds before user said 'no need to use the vm, just run local' (L58). Should have fallen back faster. Gratitude: Good - read existing skill definitions to compose correct API calls.",
+        "total_applicable": 10,
+        "total_followed": 7,
+        "total_violated": 3,
+        "adherence_rate": 0.7,
+        "most_violated": "own_dependencies",
+        "most_followed": "resolve_root_causes",
+        "violation_details": [
+          {
+            "principle": "own_dependencies",
+            "evidence": "DV auth on VM was expired. Agent attempted VM-based curli/grpcurli 3 times (L15-L17), all failed. Then tried again (L36), still failed. Then attempted interactive CLI tmux auth (L41-L48), which user interrupted. Only when user said 'no need to use the vm, just run local' (L58) did agent switch to local execution. Agent should have detected auth failure on first attempt and immediately tried local fallback.",
+            "severity": "high"
+          },
+          {
+            "principle": "verify_own_understanding",
+            "evidence": "At L1341, agent concluded 'The candidates are in CHS 12936776234 = potential candidate (hidden: true, global state)' and explained candidates are 'parked in a hidden state instead of being placed into their correct ATS stages'. While the finding is data-backed, the agent should have verified whether this is the expected initial state for newly synced candidates vs. a bug state. The root cause analysis was still developing when the session was interrupted.",
+            "severity": "low"
+          },
+          {
+            "principle": "nothing_ever_trivial",
+            "evidence": "Initial query approach assumed the HPC finder would work (L17), but it returned 0 results. Agent had to pivot to individual GET by constructing HPC URNs from SCC data. This finder-vs-get API behavior difference should have been anticipated from prior debugging sessions.",
+            "severity": "low"
+          }
+        ],
+        "per_task": [
+          {
+            "task_id": "T1",
+            "task_summary": "Investigate why project 1996803746 has no hiring project candidates in sandbox 1",
+            "principles_applicable": [
+              "resolve_root_causes",
+              "data_driven",
+              "cite_code_references",
+              "own_dependencies",
+              "verify_own_understanding",
+              "nothing_ever_trivial",
+              "substance_over_plumbing",
+              "patience",
+              "document_negative_space",
+              "try_tools_before_cant"
+            ],
+            "principles_followed": [
+              "resolve_root_causes",
+              "data_driven",
+              "cite_code_references",
+              "substance_over_plumbing",
+              "patience",
+              "document_negative_space",
+              "try_tools_before_cant"
+            ],
+            "principles_violated": [
+              "own_dependencies",
+              "verify_own_understanding",
+              "nothing_ever_trivial"
+            ],
+            "violation_details": [
+              {
+                "principle": "own_dependencies",
+                "evidence": "4 rounds of VM commands failed due to expired DV auth before switching to local execution at user's direction.",
+                "severity": "high"
+              },
+              {
+                "principle": "verify_own_understanding",
+                "evidence": "Conclusion about 'potential candidate' hidden state needs verification against expected sync behavior.",
+                "severity": "low"
+              },
+              {
+                "principle": "nothing_ever_trivial",
+                "evidence": "HPC finder returned 0 results unexpectedly; should have anticipated API behavior differences.",
+                "severity": "low"
+              }
+            ],
+            "notes": "Strong systematic investigation: checked HiringProject details, entity mappings for the job requisition, HPC finder (returned 0), then individual HPC GET (found candidates). Discovered candidates exist but are in hidden 'potential candidate' state. Checked IP IntegrationApplicationStage data. Confirmed entity mappings are intact (IntJobReqStage -> CHS mappings exist). Root cause: ApplicationStage sync created mappings but didn't update HPC stage. Good documentation of negative space: 'HPCs DO exist -- the REST finder was failing but individual GET works'."
+          }
+        ]
+      }
     },
     {
       "session_id": "2026-04-08_d5a5e66c-b905-46d3-a2de-71368ef8b56f",
@@ -5254,7 +7188,98 @@
           "delta": 0.5
         }
       ],
-      "summary": "Bug bash spreadsheet creation session with iterative refinement. Initial spreadsheet was well-structured but coverage was incomplete -- agent generated test cases from CLAUDE.md objectives without cross-referencing Figma designs. User had to redirect twice (ask about business goal completeness, then explicitly request Figma cross-referencing). PM alignment update was handled correctly. The Figma exploration was thorough once triggered. Key lesson: for UI features, always cross-reference designs before declaring test plan complete."
+      "summary": "Bug bash spreadsheet creation session with iterative refinement. Initial spreadsheet was well-structured but coverage was incomplete -- agent generated test cases from CLAUDE.md objectives without cross-referencing Figma designs. User had to redirect twice (ask about business goal completeness, then explicitly request Figma cross-referencing). PM alignment update was handled correctly. The Figma exploration was thorough once triggered. Key lesson: for UI features, always cross-reference designs before declaring test plan complete.",
+      "principle_adherence": {
+        "foundation_score": 0.8,
+        "foundation_notes": "Humility: Good - asked clarifying question about 'original statement' (L25) instead of guessing what user meant. Gratitude: Good - read existing bug-bash directory, e2e-tests, and figma screenshots before creating the spreadsheet. Patience: Mixed - initially generated test cases without Figma cross-reference; user had to point this out at L70 ('that's all the business goals?') and L73 ('No just double check and cross check with figma'). Purpose: Good - connected test cases to business goals and PRD statements.",
+        "total_applicable": 8,
+        "total_followed": 6,
+        "total_violated": 2,
+        "adherence_rate": 0.75,
+        "most_violated": "verify_own_understanding",
+        "most_followed": "substance_over_plumbing",
+        "violation_details": [
+          {
+            "principle": "verify_own_understanding",
+            "evidence": "At L68, agent declared '25 test cases across 6 business goals' as final. User questioned 'that's all the business goals?' (L70). Agent then realized it had grouped and consolidated some objectives, potentially missing coverage. User had to explicitly direct 'No just double check and cross check with figma, to group all' (L73). Agent should have cross-checked coverage against Figma designs and PRD before declaring completeness.",
+            "severity": "medium"
+          },
+          {
+            "principle": "nothing_ever_trivial",
+            "evidence": "The bug bash spreadsheet went through 3 major iterations: (1) initial generation, (2) PM alignment update, (3) Figma cross-reference. Each required significant rework. Agent could have gathered all requirements (PRD statements, PM alignment, Figma screens) upfront before the first generation.",
+            "severity": "low"
+          }
+        ],
+        "per_task": [
+          {
+            "task_id": "T1",
+            "task_summary": "Create bug bash spreadsheet with Business Goal, Test Use Case, Test Steps, PoC, Tester columns",
+            "principles_applicable": [
+              "substance_over_plumbing",
+              "cite_code_references",
+              "verify_own_understanding"
+            ],
+            "principles_followed": [
+              "substance_over_plumbing",
+              "cite_code_references"
+            ],
+            "principles_violated": [
+              "verify_own_understanding"
+            ],
+            "violation_details": [
+              {
+                "principle": "verify_own_understanding",
+                "evidence": "Did not cross-reference test cases against Figma designs initially. Declared completeness prematurely.",
+                "severity": "medium"
+              }
+            ],
+            "notes": "Good: Read existing e2e test cases before creating spreadsheet. Asked clarifying question about 'original statement'. Read all 6 figma screenshot PNGs for context."
+          },
+          {
+            "task_id": "T2",
+            "task_summary": "Update spreadsheet with PM alignment (SUCCESS/TIMEOUT_FAILURE/GENERAL_FAILURE states only)",
+            "principles_applicable": [
+              "substance_over_plumbing",
+              "document_negative_space"
+            ],
+            "principles_followed": [
+              "substance_over_plumbing",
+              "document_negative_space"
+            ],
+            "principles_violated": [],
+            "violation_details": [],
+            "notes": "Correctly removed CONFLICT/MISMATCH test cases. Saved PM alignment to project memory. Documented what was removed and why."
+          },
+          {
+            "task_id": "T3",
+            "task_summary": "Cross-check coverage with Figma designs",
+            "principles_applicable": [
+              "verify_own_understanding",
+              "nothing_ever_trivial",
+              "patience"
+            ],
+            "principles_followed": [
+              "patience"
+            ],
+            "principles_violated": [
+              "verify_own_understanding",
+              "nothing_ever_trivial"
+            ],
+            "violation_details": [
+              {
+                "principle": "verify_own_understanding",
+                "evidence": "Should have done Figma cross-reference in the first iteration, not as a third pass.",
+                "severity": "low"
+              },
+              {
+                "principle": "nothing_ever_trivial",
+                "evidence": "Required 3 iterations to complete what should have been gathered upfront.",
+                "severity": "low"
+              }
+            ]
+          }
+        ]
+      }
     }
   ]
 }
