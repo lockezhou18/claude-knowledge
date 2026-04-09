@@ -54,8 +54,9 @@ When you need to call a Rest.li service you've never used before (no existing cu
 
 ### Step 6: Fabric & Auth
 - **`-f prod-ltx1`**: Specify fabric if local D2 proxy can't resolve the service
-- **`--force-insecure-d2`**: Use when `--dv-auth SELF` gives SSL errors locally
+- **`--force-insecure-d2`**: Use when `--dv-auth SELF` gives SSL errors locally. Works for read-only lookups on services that don't enforce DV auth.
 - **`--dv-auth SELF`**: Use when the service requires DV auth (most prod services)
+- **Don't route curli to VM** when DV auth is needed — `authn-cli` SSO times out over non-interactive SSH, password fallback hits EOFError (no TTY). Use `--force-insecure-d2` locally instead.
 - Test with `-f` pointing to different prod fabrics if you get 404 (data may be in a different colo)
 
 ## When to Apply
