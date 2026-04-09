@@ -47,6 +47,24 @@
 - **Key finding:** estimated_cost.amount in cents, enterprise pricing (Opus ~40% of public)
 - **Next:** Consider creating /recipe ai-usage-report parameterized by crew_id
 
+### Self-Improving Eval System
+- **Started:** 2026-04-08
+- **Status:** operational, first eval complete
+- **Context:** Oracle eval pattern adapted for AI Partner quality measurement
+- **Location:** ~/claude-knowledge/evals/ (pipeline, judge, taxonomy, verdicts)
+- **Baseline (2026-04-08, 35 sessions):** 76.2% agreement, 85.1% principle adherence, P0=0.84, loop closure 10%
+- **Fixes applied:** 4 iterations (wrong_approach, tool_misuse, compound gate, principle gate)
+- **Report:** ~/claude-knowledge/evals/results/agent-quality/agent_quality_report_2026-04-08.html
+- **Next:** Re-run /improve-agent in 1 week to measure if fixes moved the numbers
+
+### Claude-Native Memory Migration
+- **Started:** 2026-04-09
+- **Status:** planning complete, Phase 0 test deployed
+- **Context:** Restructure ecosystem so Auto Memory/Dream is the knowledge foundation
+- **Location:** ~/projects/compound-learning-ecosystem/memory-migration/
+- **Risk gate:** Phase 0 — test-frontmatter.md deployed to memory/, waiting for Auto Dream cycle
+- **Next:** Check Phase 0 results, then Phase 1 (slim MEMORY.md to 50 lines)
+
 ### Backlog — System Evolution (do when data supports it)
 - [ ] Merge overlapping skills (identify via usage data — which pairs are always invoked together?)
 - [ ] Split /compound (8 steps → separate /compound-quick already done as /checkpoint)
