@@ -34,8 +34,24 @@ The UserPromptSubmit hook automates Steps 1-2. During Phase 1 (Research), go dee
 - Format insights as: "When [situation], do [action] because [reason]"
 - Check manifest for overlap before writing. One source of truth per topic.
 
+## How the Agent Tracks Outcomes
+When an insight is used during work, log the outcome immediately:
+```bash
+~/.claude/learnings/log-outcome.sh <insight_id> <+1|-1> "<note>"
+```
+- `+1` = insight helped (saved time, prevented error, correct guidance)
+- `-1` = insight misled (wrong advice, outdated, caused rework)
+- Log DURING work, not at session end. Real-time tracking is more accurate.
+- The note is optional but valuable for understanding WHY it helped or didn't.
+
+Example:
+```bash
+~/.claude/learnings/log-outcome.sh bug-001 +1 "Correctly avoided findFirst on V2 stream"
+~/.claude/learnings/log-outcome.sh know-023 -1 "Stage mapping changed since this was written"
+```
+
 ## How the Agent Maintains
-- **Outcome tracking:** During work, log to outcome-log.jsonl when an insight helps (+1) or misleads (-1). This updates outcome_score.
+- **Outcome tracking:** Real-time via log-outcome.sh > outcome-log.jsonl. dream.py processes scores overnight.
 - **Graduation:** use_count >= 3 AND outcome_score >= 2.0 > promote from staging to memory/insights/ (permanent). Handled by dream.py overnight.
 - **Pruning:** outcome_score < -2 > set status="pruned", remove from active searches. Handled by dream.py.
 - **Staleness:** last_verified > 90 days with code references > flag as stale, verify before using. Handled by dream.py.
