@@ -26,17 +26,18 @@
 - **Started:** 2026-03-25
 - **Status:** watering phase (stop adding, let data prove what works)
 - **Context:** Skills, hooks, and rules for team sharing
-- **Last session (2026-04-08):**
-  - Bootstrapped VM bizhou-ld2.linkedin.biz: Claude CLI, code-server, tmux, knowledge repo
-  - Passwordless SSH via config.custom + LinkedIn key on VM authorized_keys
-  - Created ~/bin/vm-run: generic sync-and-build from any local repo path
-  - PreToolUse hook vm-route-builds.py auto-intercepts mint/gradlew → vm-run
-  - vm-run has 3-layer fallback: VM unreachable → sync fail → build fail → local
-  - Cloned + built hp-ats-integration-mt on VM (BUILD SUCCESSFUL, 18m50s)
-  - Shell aliases: vm-bootstrap, vm-ssh, vm-claude
-  - SSH permission bug: Bash(ssh:*) pattern doesn't work, bash -c wrapper needed
-- **System state:** 23+ skills, 8 recipes, Tier 1/1.5/2/3 taxonomy, portable knowledge repo, VM build infra
-- **Next:** Verify vm-route-builds hook in fresh session, test vm-run end-to-end from a Claude work session
+- **Last session (2026-04-09):**
+  - VM parity gap analysis: found 5 gaps (clipboard, gh auth, git config, hooks, settings)
+  - Fixed tmux clipboard: OSC 52 yank script using tmux client TTY (not /dev/tty)
+  - Discovered Terminal.app doesn't support OSC 52 → installed iTerm2
+  - Created git config on VM (user.name, email, LFS, credential helper)
+  - Copied 7 Claude hooks to VM (skipped vm-route-builds — not needed on VM)
+  - Updated VM settings.json with hooks, permissions, plugins (paths adapted for /home/bizhou)
+  - Started code-server on port 8080, added SSH LocalForward to config.custom
+  - Set up mutagen bidirectional sync for ~/workspace
+  - Cleaned up stale mutagen sessions
+- **System state:** 23+ skills, 8 recipes, Tier 1/1.5/2/3 taxonomy, portable knowledge repo, VM at near-full parity
+- **Next:** gh auth login on VM, verify code-server workflow, test mutagen sync under real dev workload
 
 ### AI Usage Intelligence (new — potential recipe)
 - **Started:** 2026-04-03

@@ -1,8 +1,1 @@
-Session 2026-04-08: VM Bootstrap + Remote Build Infrastructure
-
-Bootstrapped bizhou-ld2.linkedin.biz (Claude CLI, code-server, tmux, knowledge).
-Passwordless SSH via config.custom + LinkedIn key. Created vm-run helper for
-generic sync-and-build from any local repo. PreToolUse hook auto-intercepts
-build commands. 3-layer fallback (VM→sync→local). Built hp-ats-integration-mt
-on VM successfully. SSH permission bug: Bash(ssh:*) doesn't work in Claude Code,
-use bash -c wrapper. Next: verify hook in fresh session.
+Session 2026-04-09: VM infrastructure hardening. Health-checked VM, found 5 gaps vs local (clipboard, gh auth, git config, hooks, settings). Fixed 4: OSC 52 yank script for tmux clipboard (needed iTerm2 — Terminal.app doesn't support OSC 52), git config, 7 Claude hooks, full settings.json with hooks/plugins/permissions. Also started code-server (port 8080), mutagen workspace sync, SSH LocalForward. Remaining: gh auth login on VM. 2 new insights (OSC 52 debugging, VM parity checklist).

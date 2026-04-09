@@ -1,48 +1,48 @@
 # Agent Briefing
-<!-- Last updated: 2026-04-07 23:30 -->
+<!-- Last updated: 2026-04-09 01:45 -->
 
 ## Active Work
 
 ### Connected Projects Phase 2 — Bidirectional Sync
 - **Status:** in-progress
 - **Repo:** hp-ats-integration-mt
-- **Recent:** Self-healing pipeline creation PR, V1/V2 identity mismatch fix
-- **Active PRs:** #541 (resilience), #530 (history mapping), self-healing pipeline, V1/V2 identity fix
+- **Active PRs:** #541 (resilience), #530 (history mapping)
 - **Blockers:** ESPENG-57173
 
 ### Developer Productivity Tooling
 - **Status:** watering phase — stop adding, let data prove what works
-- **Latest (2026-04-07):** Built portable knowledge architecture
-  - `~/claude-knowledge/` git repo (144 files, ~1MB) pushed to bizhou_LinkedIn/claude-knowledge
-  - `install.sh` symlinks into `~/.claude/`, `sync.sh` auto push/pull
-  - SessionEnd + UserPromptSubmit hooks for auto-sync
-  - VM routing rule, vm-setup recipe, vm-bootstrap.sh
-  - All ~/.claude knowledge dirs now symlinked to git repo
-- **Next:** Bootstrap VM (run vm-bootstrap.sh on bizhou-ld2.linkedin.biz), set up mutagen, verify sync cycle
+- **Latest (2026-04-09):** VM at near-full parity with local
+  - code-server running on port 8080 (auto-tunneled via SSH config)
+  - mutagen bidirectional sync for ~/workspace
+  - tmux clipboard working via OSC 52 yank script + iTerm2
+  - Claude hooks, settings, plugins, git config all deployed
+  - Only remaining: `gh auth login` on VM
+- **System state:** 23+ skills, 8 recipes, portable knowledge repo, VM near-parity
+- **Next:** gh auth login, verify code-server workflow, test mutagen under real dev workload
 
 ### AI Usage Intelligence
 - **Status:** proof-of-concept complete
 - **Next:** Consider /recipe ai-usage-report parameterized by crew_id
 
-## Last Session (2026-04-07)
-Designed and built VM-primary Claude Code architecture with durable knowledge sync. User got a new dev VM (bizhou-ld2.linkedin.biz) — session evolved from "what to use VM for" into full portable knowledge system. Key: separate durable knowledge from ephemeral state, auto-sync via git hooks, VM as 24/7 primary workstation with laptop as thin client. VM bootstrap deferred to next session (SSH permissions need restart).
+## Last Session (2026-04-09)
+VM infrastructure hardening session. Started from "how to better leverage VM" → health check → gap analysis → fixed 4 of 5 gaps (clipboard, git config, hooks, settings). Key discovery: Terminal.app doesn't support OSC 52, so installed iTerm2. Clipboard fix required 3 iterations (yank script /dev/tty → tmux client TTY → iTerm2). Also started code-server, set up mutagen sync, added SSH LocalForward. Clean session, no code changes — all infrastructure.
 
 ## Hot Insights
 
 1. **[bug-001] GRADUATED** — Never findFirst() on V2 identity streams
 2. **[bug-002] race condition** — ApplicationProcessor stage not in IP (close to graduation)
-3. **[know-043] NEW** — Portable knowledge architecture: symlink + auto-sync + GitHub backup
-4. **[know-044] NEW** — Permission changes require session restart
-5. **[bug-006] NEW** — install.sh must not overwrite settings.json
+3. **[know-046] NEW** — OSC 52 clipboard: check terminal first, yank uses tmux client TTY, DCS passthrough for nested tmux
+4. **[know-047] NEW** — VM parity checklist: 7 items to sync, what NOT to copy
+5. **[know-045]** — vm-run: sync-and-build from any local repo, PreToolUse hook auto-intercepts
 6. **[know-031] #1 friction: wrong-approach** — Hypothesis-first not optional
 7. **[aha-003] Tier 1.5** — capability tools (browser eyes, production eyes, production hands)
 8. **[eureka-003] multi-source synthesis** — graduation candidate
 
 ## Recent Patterns
-- User drives architecture through gentle redirects ("what do you think", "meanwhile", "I feel like")
-- Scored -0.2 (GENTLE_REDIRECT) 4 times this session — user had to steer toward VM-primary, IDE offloading, knowledge portability, and simplification
-- User sees system evolution as holistic — connects VM provisioning to knowledge durability to session continuity
-- research_depth still strong (+0.9 avg) but solution_simplicity needs attention — tendency to propose complex multi-option architectures before user simplifies
+- User drives architecture through gentle redirects — 4 instances last 2 sessions
+- VM setup sessions are iterative: fix → test → discover new issue → fix. Budget 3 iterations for any SSH/terminal fix.
+- solution_simplicity improving — this session had clean single-option proposals accepted without redirects
+- research_depth strong — comprehensive gap analysis well-received
 
 ## Stale Alerts
 - None flagged (all recent)
@@ -51,21 +51,19 @@ Designed and built VM-primary Claude Code architecture with durable knowledge sy
 - **Present hypotheses before deep-diving** (14+ signals)
 - **Prefer simple solutions from codebase** (5+ signals)
 - **Don't overwrite — add alongside** (3 signals)
-- **Listen for gentle redirects** — "how do you feel", "meanwhile", "I feel like" = soft instruction, not question
-- **Start simple, let user escalate complexity** — propose Option A first, not A/B/C matrix
+- **Listen for gentle redirects** — "how do you feel", "meanwhile", "I feel like" = soft instruction
+- **Start simple, let user escalate complexity**
 - **Cross-validate data against SoT** before presenting
 - **Cite code references** (file:line for every claim)
-- **NEW (eval 2026-04-08):** "Compare with our system" = lead with mapping, not standalone description
-- **NEW (eval 2026-04-08):** "Check/monitor/verify" = read-only, do NOT initiate actions
-- **NEW (eval 2026-04-08):** 3-strike rule — same tool, same error, 3x → switch strategy or ask
-- **NEW (eval 2026-04-08):** curli/grpcurli = try LOCAL first, VM only if local auth fails
-- **NEW (eval 2026-04-08):** Use built-in tools (Read for PDF, Playwright for rich pages, observe-agent for logs)
-- **NEW (eval 2026-04-08):** COMPOUND: Every 3+ task session must generate >= 1 insight. Log outcomes in real-time. Suggest /compound proactively.
-- **NEW (eval 2026-04-08):** PRINCIPLES: Verify before asserting (14 violations). Never guess values (13). Assume complex until proven simple (9). Cite file:line (7).
+- **"Check/monitor/verify" = read-only, do NOT initiate actions**
+- **3-strike rule** — same tool, same error, 3x → switch strategy or ask
+- **curli/grpcurli = try LOCAL first**, VM only if local auth fails
+- **COMPOUND: Every 3+ task session → generate >= 1 insight**
+- **PRINCIPLES: Verify before asserting. Never guess values. Assume complex until proven simple. Cite file:line.**
 
 ## Quick Stats
 - Skills: 22 commands + 15 skills + 8 recipes
-- Insights: 58 total (3 new this session), 1 graduated, 0 pruned, 0 stale
-- Feedback signals: 63 total (13 new this session)
-- Knowledge repo: bizhou_LinkedIn/claude-knowledge (144 files, ~1MB)
-- VM bootstrap: pending (next session)
+- Insights: 63 total (2 new this session), 1 graduated, 0 pruned, 0 stale
+- Feedback signals: 72 total (9 new this session)
+- Knowledge repo: bizhou_LinkedIn/claude-knowledge
+- VM parity: 6/7 items complete (gh auth pending)

@@ -154,14 +154,14 @@ sp job deploy -p <product> -a <app> -v <version> -f <fabric> -i i001 \
 
 ## STEP 2H: DAILY STATUS CHECK
 
-Run in parallel:
-1. **SRD availability**: Check `go/srd` / `go/hs-observe` for any surface below 99.90%
-2. **Active alerts**: Use observe-agent to check alerts for all owned services
-3. **Pending CSE tickets**: `mcp__captain__search_jira_issues` for open CSE tickets assigned to HP
-4. **Deployment status**: `/deploy-check mcm-mt` and other services due for deploy
-5. **Samza jobs**: Check for failed/lagging nearline jobs
+Invoke the `oncall-daily-digest` skill (at `~/.claude/skills/oncall-daily-digest/SKILL.md`). It runs:
+1. Alerts (last 12h) across all 5 services — via observe-agent, in parallel
+2. Deployments (last 24h) — via go-status on VM
+3. Open tickets — Jira search with SLA breach detection
+4. PEM status — availability check for all surfaces
+5. Trunk health — via `/oncall-trunk-health`
 
-Summarize findings for daily update.
+The digest compiles into a structured report with "Action Required" and "Recommended Actions" sections ready for standup.
 
 ---
 
