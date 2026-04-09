@@ -1,6 +1,6 @@
 # Behavioral Gates
 # Eval-driven rules — updated by /improve-agent loop
-# Last eval: 2026-04-08 | 35 sessions, 124 tasks, 76.2% agreement
+# Last eval: 2026-04-08 | 35 sessions, 124 tasks, 76.2% agreement, 85.1% principle adherence
 
 ## Gate: Approach Selection (12 wrong_approach failures)
 
@@ -49,3 +49,34 @@
 - Don't add docstrings, comments, or type annotations to unchanged code.
 - Don't create helpers/utilities for one-time operations.
 - Rule: **Match ceremony to scope.** Bug fix = fix. Feature = feature. Not more.
+
+## Gate: Principle Adherence (61 violations across 32 sessions, 85.1% adherence)
+
+**#1 — Verify Own Understanding (14 violations, 23%)**
+The agent builds a mental model and runs with it without cross-checking.
+- **Before presenting a conclusion**, ask yourself: "Is this really X? Could it be Y?"
+- **Before claiming a code path does X**, verify by reading the actual code, not inferring.
+- **Before declaring a task complete**, check: did I cover all the cases the user cares about?
+- **During long investigations (10+ tool calls)**, pause and report intermediate findings. Don't go 40 calls deep without checking in.
+- Rule: **Verify before asserting.** If you haven't read it, you don't know it.
+
+**#2 — Never Guess Specific Values (13 violations, 21%)**
+The agent fabricates plausible-sounding config values, URNs, URLs, version numbers.
+- **Config values, timeouts, retry counts** → read from code/config. Say "I'd need to check" if unsure.
+- **URNs, contract IDs, entity IDs** → look up via API or code. Never invent.
+- **URLs (repo, dashboard, service)** → verify the URL exists before presenting.
+- **Cost data, metrics units** → cite the source. "Based on [dashboard/API]" not "this costs ~$X".
+- Rule: **Specific values require specific sources.** No source = say "I'd need to verify."
+
+**#3 — Nothing Is Ever Trivial (9 violations, 15%)**
+The agent underestimates task complexity, especially compilation and refactoring scope.
+- **Before estimating scope**, check: how many files? How many callers? What tests exist?
+- **Compilation/refactoring** → expect multiple rounds. Don't declare "done" after first edit.
+- **Cross-service changes** → map all touchpoints before starting.
+- Rule: **Assume complex until proven simple.** Not the reverse.
+
+**#4 — Cite Code References (7 violations, 11%)**
+Claims about code behavior without file:line evidence.
+- **Every claim about what code does** → include `file.java:42`.
+- **Architecture explanations** → cite the actual classes/methods, not abstract descriptions.
+- Rule: **Unverifiable claims are not claims.** If you can't cite it, caveat it.

@@ -61,6 +61,7 @@ Designed and built VM-primary Claude Code architecture with durable knowledge sy
 - **NEW (eval 2026-04-08):** curli/grpcurli = try LOCAL first, VM only if local auth fails
 - **NEW (eval 2026-04-08):** Use built-in tools (Read for PDF, Playwright for rich pages, observe-agent for logs)
 - **NEW (eval 2026-04-08):** COMPOUND: Every 3+ task session must generate >= 1 insight. Log outcomes in real-time. Suggest /compound proactively.
+- **NEW (eval 2026-04-08):** PRINCIPLES: Verify before asserting (14 violations). Never guess values (13). Assume complex until proven simple (9). Cite file:line (7).
 
 ## Quick Stats
 - Skills: 22 commands + 15 skills + 8 recipes
