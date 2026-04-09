@@ -3,6 +3,9 @@
 ## Graduated Insights
 - [Phase 0 Test Insight](insights/phase-0-test-insight.md) — Test insight for dream.py verification
 
+## System Health
+- [Claude Feature Compatibility Status](eval/compat-status.md) — Tracks which native Claude features are available and adopted
+
 ## Other
 - [Build Troubleshooting](build-troubleshooting.md) — 
 - [Engineering Principles](engineering-principles.md) — Universal SDE productivity principles — faith-grounded foundation + Amazon SDE I...
