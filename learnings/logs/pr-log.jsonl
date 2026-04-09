@@ -235,3 +235,7 @@
 {"timestamp": "2026-04-09T05:31:45.095247+00:00", "repo": "", "branch": "", "pr_url": "", "commit_count": "", "commits": []}
 {"timestamp": "2026-04-09T05:32:10.050771+00:00", "repo": "", "branch": "", "pr_url": "", "commit_count": "", "commits": []}
 {"timestamp": "2026-04-09T14:52:11.909445+00:00", "repo": "", "branch": "", "pr_url": "", "commit_count": "", "commits": []}
+{"timestamp": "2026-04-09T15:19:04.140469+00:00", "repo": "", "branch": "", "pr_url": "", "commit_count": "", "commits": []}
+{"timestamp": "2026-04-09T15:20:40.172467+00:00", "repo": "", "branch": "", "pr_url": "", "commit_count": "", "commits": []}
+{"timestamp": "2026-04-09T15:54:19.546761+00:00", "repo": "hp-ats-integration-mt", "branch": "bizhou/fix-null-previousstate-realtime-event", "pr_url": "", "commit_count": "", "commits": ["Fix null previousState in ApplicationStageProcessor realtime event", "Add defensive warning log when identity group hits page limit", "Fix non-member display for candidates in re-connected projects"]}
+{"timestamp": "2026-04-09T16:01:50.268475+00:00", "repo": "hp-ats-integration-mt", "branch": "bizhou/fix-null-previousstate-realtime-event-v2", "pr_url": "", "commit_count": "", "commits": ["Fix null previousState in ApplicationStageProcessor realtime event"]}
