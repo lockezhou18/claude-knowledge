@@ -1,29 +1,20 @@
-# Memory Index
-
-## Workflow Preferences
-- [Workflow Rules](workflow-rules.md) - Two-phase explore-then-implement pattern, interaction preferences
-
-## Tricks
-- [Tricks & Handy Shortcuts](tricks.md) - rerun-check, CI tips, useful commands
-
-## Engineering Principles
-- [Engineering Principles](engineering-principles.md) - 13 principles: estimation, 5 Whys, data-driven decisions, own dependencies, design for failure, no throwaway code, logs
-
-## Espresso
-- [Espresso Metrics](espresso-metrics.md) - HireAccessControlDB metrics are under cluster name MD-2, not the DB name
-- [Espresso Table Traffic](espresso-table-traffic.md) - Per-table traffic via espresso-router `Traffic_Checker_Table_Stats` (note `.` not `_` between cluster and DB)
+# Memory
 
 ## Graduated Insights
-- [V2 Identity findFirst()](v2-identity-findFirst.md) - Never use findFirst() on V2 identity streams; try all V2s with fallback
-- [Research Pipeline Pattern](research-pipeline-pattern.md) - 5-step exploration: simple question → pull threads → map ecosystem → cross-validate → combine dimensions
+- [Phase 0 Test Insight](insights/phase-0-test-insight.md) — Test insight for dream.py verification
 
-## Feedback
-- [Front-load Context](feedback-frontload-context.md) — Always specify service/file/tool upfront to avoid wrong-approach friction (28 instances)
-
-## Eval-Driven (updated by /improve-agent)
-- [Behavioral Gates](eval-behavioral-gates.md) — Approach, tool, principle, compound gates from 35-session eval
-- [Principle Scores](eval-principle-scores.md) — 85.1% adherence, top violations: verify (14x), guess values (13x)
-- [System Architecture](eval-system-architecture.md) — How eval, compound learning, and Auto Dream integrate
-
-## Troubleshooting
-- [Build & Config Troubleshooting](build-troubleshooting.md) - mint build-cfg errors, local deploy issues
+## Other
+- [Build Troubleshooting](build-troubleshooting.md) — 
+- [Engineering Principles](engineering-principles.md) — Universal SDE productivity principles — faith-grounded foundation + Amazon SDE I...
+- [Espresso Metrics — HireAccessControlDB Cluster Name](espresso-metrics.md) — HireAccessControlDB Espresso metrics are indexed under cluster name MD-2, not th...
+- [Espresso Table Traffic Metrics](espresso-table-traffic.md) — How to find per-table read/write traffic for any Espresso table using server-sid...
+- [Eval-driven behavioral gates](eval-behavioral-gates.md) — Rules derived from /improve-agent eval loop (35 sessions, 124 tasks). Updated au...
+- [Principle adherence scores from eval](eval-principle-scores.md) — Tracked by /improve-agent. Foundation score 0.84, adherence rate 85.1% across 32...
+- [Self-improving eval system architecture](eval-system-architecture.md) — How the eval system, compound learning, Auto Memory, and Auto Dream integrate. W...
+- [Front-load context to avoid wrong-approach friction](feedback-frontload-context.md) — User's #1 friction source (28 instances) — always provide specific service/file/...
+- [Plan — Migrate ecosystem to Claude-native memory architecture](plan-memory-native-migration.md) — Restructure the entire Claude ecosystem so Auto Memory/Dream is the knowledge fo...
+- [Research Pipeline Pattern](research-pipeline-pattern.md) — Validated 5-step exploration pattern that produces executive-level intelligence ...
+- [Phase 0 — Auto Dream frontmatter compatibility test](test-frontmatter.md) — Test whether Auto Dream preserves custom frontmatter fields during consolidation...
+- [Tricks](tricks.md) — 
+- [V2 Identity findFirst() Bug](v2-identity-findFirst.md) — When multiple V2 candidate-profile identities exist in a group, findFirst() pick...
+- [Workflow Rules](workflow-rules.md) — 
