@@ -14,7 +14,9 @@ When deciding which tool to call, follow this priority order:
 
 1. **Domain-specific playbooks first** — If a playbook matches the user's query (by topic, keywords, or domain), call the playbook tool. Playbooks contain curated, expert knowledge for specific workflows. For example, if the user asks to clean up a lix, use the lix cleanup playbook.
 2. **Domain-specific tools** — Use tools specific to the relevant domain or namespace when they match the task.
+<!-- AP_REDIRECT:START -->
 3. **Generic tools last** — Only fall back to `unified_context_search` or `jarvis_codesearch` when no playbook or domain-specific tool covers the query. Always search in the current repository first before using `jarvis_codesearch` for external code search.
+<!-- AP_REDIRECT:END -->
 
 When writing to Google docs using the tools, do not use markdown, instead use Google docs formatting.
 
