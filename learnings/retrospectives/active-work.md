@@ -22,6 +22,21 @@
   - Test export status event FAILURE path
 - **Blockers:** ESPENG-57173 (Espresso key maxsize increase) — Espresso team analyzing
 
+### Memory Migration — Single SoT
+- **Started:** 2026-04-09
+- **Status:** Phase 6 complete, Phases 7-10 remaining (improvements)
+- **Repo:** memory-migration (git@github.com:bizhou_LinkedIn/memory-migration.git)
+- **Context:** Migrate from dual knowledge stores to single SoT via autoMemoryDirectory
+- **Last session (2026-04-10):**
+  - Phase 6 complete: autoMemoryDirectory set, 33 project memories migrated, per-project symlinks created
+  - Rules optimized: 11→8 always-loaded, 3 moved to guides/
+  - dream.py: synthesis phase, SORT phase, rules index rebuild, VM cron set up at 3:47am
+  - Discovered: autoMemoryDirectory doesn't override per-project memory (need symlinks too)
+  - Discovered: rules/ files without globs load every prompt (moved on-demand files to guides/)
+- **Architecture:** ~/claude-knowledge/memory/ is THE SoT. autoMemoryDirectory + per-project symlinks. dream.py maintains overnight on VM.
+- **Next:** Phase 7 (rewrite scout hook), Phase 8 (deprecate agent-briefing.md), VM agent for intelligent dreaming
+- **Key files:** plan.md, scripts/dream.py, scripts/probe_features.py
+
 ### Developer Productivity Tooling
 - **Started:** 2026-03-25
 - **Status:** watering phase (stop adding, let data prove what works)
