@@ -35,46 +35,12 @@ for dir in "${DIRS[@]}"; do
     fi
 done
 
-# Symlink global project memory
-# Handle path-key differences: local=/Users/<user>, VM=/home/<user>
-MEMORY_SOURCE="$KNOWLEDGE_DIR/memory"
-LOCAL_KEY="-Users-$(whoami)"
-VM_KEY="-home-$(whoami)"
+# Set autoMemoryDirectory — single SoT for all memory reads/writes
+# This replaces the old symlink approach. Claude reads/writes directly to our repo.
+MEMORY_DIR="$KNOWLEDGE_DIR/memory"
+echo "  memory — autoMemoryDirectory: $MEMORY_DIR"
 
-# Determine which path key this machine uses
-if [[ "$HOME" == /Users/* ]]; then
-    MY_KEY="$LOCAL_KEY"
-    OTHER_KEY="$VM_KEY"
-else
-    MY_KEY="$VM_KEY"
-    OTHER_KEY="$LOCAL_KEY"
-fi
-
-PROJ_DIR="$CLAUDE_DIR/projects/$MY_KEY"
-mkdir -p "$PROJ_DIR"
-
-if [ -L "$PROJ_DIR/memory" ]; then
-    echo "  memory/ — already symlinked, skipping"
-elif [ -d "$PROJ_DIR/memory" ]; then
-    backup="$PROJ_DIR/memory.bak.$(date +%Y%m%d%H%M%S)"
-    echo "  memory/ — backing up existing to $backup"
-    mv "$PROJ_DIR/memory" "$backup"
-    ln -sf "$MEMORY_SOURCE" "$PROJ_DIR/memory"
-    echo "  memory/ — symlinked"
-else
-    ln -sf "$MEMORY_SOURCE" "$PROJ_DIR/memory"
-    echo "  memory/ — symlinked"
-fi
-
-# Also create symlink for the other machine's path key (cross-machine memory access)
-OTHER_PROJ_DIR="$CLAUDE_DIR/projects/$OTHER_KEY"
-mkdir -p "$OTHER_PROJ_DIR"
-if [ ! -L "$OTHER_PROJ_DIR/memory" ]; then
-    ln -sf "$MEMORY_SOURCE" "$OTHER_PROJ_DIR/memory"
-    echo "  memory/ — cross-linked for other machine path key ($OTHER_KEY)"
-fi
-
-# Settings: only copy if no settings.json exists (never overwrite — hooks may differ per machine)
+# Ensure settings.json exists and has autoMemoryDirectory set
 if [ ! -f "$CLAUDE_DIR/settings.json" ]; then
     HOSTNAME_SHORT="$(hostname -s)"
     if [ -f "$KNOWLEDGE_DIR/settings/$HOSTNAME_SHORT.json" ]; then
@@ -83,9 +49,18 @@ if [ ! -f "$CLAUDE_DIR/settings.json" ]; then
     elif [ -f "$KNOWLEDGE_DIR/settings/base.json" ]; then
         echo "  settings — using base settings"
         cp "$KNOWLEDGE_DIR/settings/base.json" "$CLAUDE_DIR/settings.json"
+    else
+        echo '{"autoMemoryDirectory": "'$MEMORY_DIR'", "autoDreamEnabled": false}' > "$CLAUDE_DIR/settings.json"
+        echo "  settings — created with autoMemoryDirectory"
     fi
 else
-    echo "  settings — already exists, skipping (edit manually if needed)"
+    echo "  settings — already exists"
+fi
+
+# Verify autoMemoryDirectory is set (warn if missing)
+if ! grep -q "autoMemoryDirectory" "$CLAUDE_DIR/settings.json" 2>/dev/null; then
+    echo "  WARNING: autoMemoryDirectory not set in settings.json"
+    echo "  Add manually: \"autoMemoryDirectory\": \"$MEMORY_DIR\""
 fi
 
 # Set up auto-sync cron (hourly push)
