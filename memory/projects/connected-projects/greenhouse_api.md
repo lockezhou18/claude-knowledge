@@ -3,13 +3,8 @@
 ## Overview
 Greenhouse provides 3 APIs: **Harvest API** (admin), **Job Board API** (public), and **Webhooks** (events).
 
-## Sandbox Harvest API Credentials
-- **Token**: `2023898e6b73d23de668239f4b96f8af-9` (shared by data provider `urn:li:developerApplication:223878556`)
-- **Usage**: `curl -u "2023898e6b73d23de668239f4b96f8af-9:" https://harvest.greenhouse.io/v1/...`
-
-## Greenhouse Sandbox Logins
-- **tiyer sandbox**: `tiyer+sandbox@linkedin.com` / `ConnectedProjectstest123` (data provider `223878556`)
-- **kgao sandbox**: `kgao+ghsandbox@linkedin.com` / `Welcome@1234` (data provider `225950754`)
+## Credentials
+See `greenhouse-api` skill (`SKILL.md`) for sandbox tokens and login credentials — single source of truth.
 
 ## Harvest API (Main API)
 - **Base URL**: `https://harvest.greenhouse.io/v1/`

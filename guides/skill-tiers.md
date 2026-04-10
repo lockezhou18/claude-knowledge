@@ -1,7 +1,5 @@
 ---
 description: "Skill tier definitions — loaded on demand when routing to skills/recipes"
-globs:
-  - "**"
 ---
 
 # Skill Tiers

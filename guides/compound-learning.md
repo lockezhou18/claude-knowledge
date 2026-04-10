@@ -1,7 +1,5 @@
 ---
 description: "Compound learning system spec — insight lifecycle, search strategy, hooks. Loaded on demand during /compound, SessionEnd, and insight operations."
-globs:
-  - "**"
 ---
 
 # Compound Learning System (Agent-Managed)

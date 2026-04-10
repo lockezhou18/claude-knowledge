@@ -1,7 +1,5 @@
 ---
 description: "6-phase engineering pipeline with gates — loaded on demand for non-trivial tasks"
-globs:
-  - "**"
 ---
 
 # Engineering Pipeline (Research > Clarify > Plan > Execute > Review > Compound)

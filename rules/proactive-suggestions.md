@@ -1,7 +1,5 @@
 ---
 description: "When to proactively suggest skills — loaded on demand, not every session"
-globs:
-  - "**"
 ---
 
 # Proactive Skill Suggestions (always-on, no skill invocation needed)

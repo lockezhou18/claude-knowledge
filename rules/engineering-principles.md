@@ -1,7 +1,5 @@
 ---
 description: "Universal SDE principles — loaded on demand when approaching non-trivial work"
-globs: 
-  - "**"
 ---
 
 # Engineering Principles (from Amazon SDE Insider's Guide)

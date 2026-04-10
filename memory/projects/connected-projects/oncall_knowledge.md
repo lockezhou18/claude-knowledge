@@ -141,15 +141,6 @@ go-status -f prod-ltx1 -a <app-name>
 gh api repos/linkedin-multiproduct/<mp-name>/compare/v<old>...v<new> --jq '.commits[] | {author: .commit.author.name, message: .commit.message | split("\n")[0]}'
 ```
 
-## Active Deployments (2026-03-19, updated 3:20pm PDT)
-- **hire-access-control**: v5.2.517 — lor1 ✅ done, lva1 🔄 91%, ltx1 ⛔ not started — [pipeline](https://engx.corp.linkedin.com/deployments/pipeline/hire-access-control-default?pipelineId=007023be-a4df-434c-82f0-911bf14e80f7&tab=grid)
-- **hire-identity-service**: Deployment in progress — [pipeline](https://engx.corp.linkedin.com/deployments/pipeline/hire-identity-service-default?pipelineId=3ef28e36-0689-4fce-babf-61c28e926bd6&pipelineRunId=5f66e381-a3e5-4205-8892-ef159b760c71&tab=run)
-- **hp-ep-mt**: v7.0.1087 — [CRT](https://crt.prod.linkedin.com/#/deployment/actions?pathName=DEFAULT&productName=hp-ep-mt)
-- **talent-solutions-api**: v95.0.838, promotion lor1 deploy failed, lva1 nominated — [CRT](https://crt.prod.linkedin.com/#/deployment/actions?pathName=DEFAULT&productName=talent-solutions-api)
-- **talent-agent-service**: v2.0.408 deployed all fabrics ✅, v2.0.431 in staging lva1 (Hawker's PR merged) — may continue Monday due to 6pm moratorium
-- **mcm-mt**: v0.7.2600 — EKG override in progress, lor1 blocked by EKG — [CRT](https://crt.prod.linkedin.com/#/deployment/actions?pathName=DEFAULT&productName=mcm-mt)
-- **mcm-nearline**: v0.0.968 — ltx1 ✅, lva1 ✅, lor1 pending — [CRT](https://crt.prod.linkedin.com/#/deployment/actions?pathName=DEFAULT&productName=mcm-nearline)
-
 ## Dashboards
 
 ### Hiring Platform Pipeline Dashboard (Azure Data Explorer)

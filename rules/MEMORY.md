@@ -27,10 +27,7 @@ The foundation beneath all engineering principles. Not a rule — a lens.
 - **Principles**: Verify before asserting. Never guess values. Assume complex. Cite file:line.
 - **Compound**: Every 3+ task session > generate >= 1 insight. Proactive suggestions — see `proactive-suggestions.md`.
 
-## System References (loaded on demand)
-- `engineering-principles.md` — 15 SDE principles from Amazon guide
-- `engineering-pipeline.md` — Full 6-phase pipeline with layer details and gates
-- `compound-learning.md` — Insight lifecycle, search strategy, hooks, maintenance
-- `proactive-suggestions.md` — When to suggest /learn, /compound, /investigate, etc.
-- `skill-tiers.md` — Tier 1/1.5/2/3 definitions and routing
-- `behavioral-gates.md` — Eval-driven rules (approach, tool, principle, compound)
+## On-Demand Guides (read when needed — `~/claude-knowledge/guides/`)
+- `guides/engineering-pipeline.md` — Full 6-phase pipeline with layer details and gates
+- `guides/compound-learning.md` — Insight lifecycle, search strategy, hooks, maintenance
+- `guides/skill-tiers.md` — Tier 1/1.5/2/3 definitions and routing
