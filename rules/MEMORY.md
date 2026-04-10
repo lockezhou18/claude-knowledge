@@ -28,6 +28,6 @@ The foundation beneath all engineering principles. Not a rule — a lens.
 - **Compound**: Every 3+ task session > generate >= 1 insight. Proactive suggestions — see `proactive-suggestions.md`.
 
 ## On-Demand Guides (read when needed — `~/claude-knowledge/guides/`)
-- `guides/engineering-pipeline.md` — Full 6-phase pipeline with layer details and gates
-- `guides/compound-learning.md` — Insight lifecycle, search strategy, hooks, maintenance
-- `guides/skill-tiers.md` — Tier 1/1.5/2/3 definitions and routing
+- `guides/compound-learning.md` — "Compound learning system spec — insight lifecycle, search strategy, hooks. L...
+- `guides/engineering-pipeline.md` — "6-phase engineering pipeline with gates — loaded on demand for non-trivial t...
+- `guides/skill-tiers.md` — "Skill tier definitions — loaded on demand when routing to skills/recipes"
