@@ -101,3 +101,55 @@
 {"ts": "2026-04-11T14:34:58.211707", "insight_id": "know-052", "event": "retrieved", "prompt_preview": "Phase 0 frontmatter survival check. Read the file /Users/bizhou/claude-knowledge"}
 {"ts": "2026-04-11T14:34:58.211745", "insight_id": "know-049", "event": "retrieved", "prompt_preview": "Phase 0 frontmatter survival check. Read the file /Users/bizhou/claude-knowledge"}
 {"ts": "2026-04-11T14:34:58.211753", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "Phase 0 frontmatter survival check. Read the file /Users/bizhou/claude-knowledge"}
+{"ts": "2026-04-11T15:28:55.184952", "insight_id": "know-047", "event": "retrieved", "prompt_preview": "can we login to my personal git either"}
+{"ts": "2026-04-11T15:31:41.548024", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can you analyzie what's ahead of the repo, what's worth sharing"}
+{"ts": "2026-04-11T15:33:15.795346", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "I mean how we do the sync/async, I feel we have more fucnction than the repo, wh"}
+{"ts": "2026-04-11T15:42:22.141041", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "cool. is that possible to make the project as a sharable plugin/tool or somethin"}
+{"ts": "2026-04-11T15:42:22.141088", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "cool. is that possible to make the project as a sharable plugin/tool or somethin"}
+{"ts": "2026-04-11T15:42:22.141093", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "cool. is that possible to make the project as a sharable plugin/tool or somethin"}
+{"ts": "2026-04-11T15:42:50.973921", "insight_id": "eureka-005", "event": "retrieved", "prompt_preview": "firstly push it up, then consider the question"}
+{"ts": "2026-04-11T15:47:49.931325", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "I feel mcp is bit hearvy. How about a cli for Works for anyone scripting multi-a"}
+{"ts": "2026-04-11T15:47:49.931359", "insight_id": "know-005", "event": "retrieved", "prompt_preview": "I feel mcp is bit hearvy. How about a cli for Works for anyone scripting multi-a"}
+{"ts": "2026-04-11T15:47:49.931364", "insight_id": "eureka-007", "event": "retrieved", "prompt_preview": "I feel mcp is bit hearvy. How about a cli for Works for anyone scripting multi-a"}
+{"ts": "2026-04-11T15:51:22.545397", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "cool. Can you write readme (with agent instruction either), and update the claud"}
+{"ts": "2026-04-11T15:51:22.545435", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "cool. Can you write readme (with agent instruction either), and update the claud"}
+{"ts": "2026-04-11T15:51:22.545440", "insight_id": "aha-005", "event": "retrieved", "prompt_preview": "cool. Can you write readme (with agent instruction either), and update the claud"}
+{"ts": "2026-04-11T15:55:09.616948", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "cool. On the readme, thinking like a new user want to use this repo, is that pos"}
+{"ts": "2026-04-11T15:55:09.616984", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "cool. On the readme, thinking like a new user want to use this repo, is that pos"}
+{"ts": "2026-04-11T15:55:09.616988", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "cool. On the readme, thinking like a new user want to use this repo, is that pos"}
+{"ts": "2026-04-11T15:55:16.604088", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "cool. On the readme, thinking like a new user want to use this repo, is that pos"}
+{"ts": "2026-04-11T15:55:16.604122", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "cool. On the readme, thinking like a new user want to use this repo, is that pos"}
+{"ts": "2026-04-11T15:55:16.604127", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "cool. On the readme, thinking like a new user want to use this repo, is that pos"}
+{"ts": "2026-04-11T15:59:23.375436", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "Cool. Is that possible to add agent part, like just feed claude/any agents the g"}
+{"ts": "2026-04-11T15:59:23.375483", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "Cool. Is that possible to add agent part, like just feed claude/any agents the g"}
+{"ts": "2026-04-11T15:59:23.375487", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "Cool. Is that possible to add agent part, like just feed claude/any agents the g"}
+{"ts": "2026-04-11T16:04:52.068784", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "is this like tcp, once connection established, it can continue working, or?"}
+{"ts": "2026-04-11T16:06:30.835448", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "let's do 3. Cli shell command is the future"}
+{"ts": "2026-04-11T16:06:30.835486", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "let's do 3. Cli shell command is the future"}
+{"ts": "2026-04-11T16:06:30.835490", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "let's do 3. Cli shell command is the future"}
+{"ts": "2026-04-11T16:10:26.094136", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "can we do a full e2e testing for the bidirectional part with the vm"}
+{"ts": "2026-04-11T16:10:26.094192", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "can we do a full e2e testing for the bidirectional part with the vm"}
+{"ts": "2026-04-11T16:10:26.094197", "insight_id": "know-046", "event": "retrieved", "prompt_preview": "can we do a full e2e testing for the bidirectional part with the vm"}
+{"ts": "2026-04-11T16:14:58.987108", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "let's test the agentbus pipe"}
+{"ts": "2026-04-11T16:25:03.273189", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "cool. now can we wrap to a skill/update current skill for all the functions - \na"}
+{"ts": "2026-04-11T16:25:03.273219", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "cool. now can we wrap to a skill/update current skill for all the functions - \na"}
+{"ts": "2026-04-11T16:25:03.273224", "insight_id": "know-046", "event": "retrieved", "prompt_preview": "cool. now can we wrap to a skill/update current skill for all the functions - \na"}
+{"ts": "2026-04-11T16:29:27.186071", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can you change the theme of the cmux"}
+{"ts": "2026-04-11T16:31:24.651674", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "what's the async results"}
+{"ts": "2026-04-11T16:32:44.424804", "insight_id": "know-045", "event": "retrieved", "prompt_preview": "\n\u23fa Bash(~/bin/vm-agent --results 2>&1)\n  \u23bf \u00a0=== Async Results ===\n       [succes"}
+{"ts": "2026-04-11T16:32:44.424848", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "\n\u23fa Bash(~/bin/vm-agent --results 2>&1)\n  \u23bf \u00a0=== Async Results ===\n       [succes"}
+{"ts": "2026-04-11T16:32:44.424853", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "\n\u23fa Bash(~/bin/vm-agent --results 2>&1)\n  \u23bf \u00a0=== Async Results ===\n       [succes"}
+{"ts": "2026-04-11T16:33:49.791760", "insight_id": "know-047", "event": "retrieved", "prompt_preview": "I mean do we have a way to ack them instead of just clean them, what do you thin"}
+{"ts": "2026-04-11T16:33:49.791799", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "I mean do we have a way to ack them instead of just clean them, what do you thin"}
+{"ts": "2026-04-11T16:37:37.734235", "insight_id": "know-052", "event": "retrieved", "prompt_preview": "cool. Now is that possible to auto ack (like seen/read/unread)"}
+{"ts": "2026-04-11T16:37:37.734295", "insight_id": "know-049", "event": "retrieved", "prompt_preview": "cool. Now is that possible to auto ack (like seen/read/unread)"}
+{"ts": "2026-04-11T16:37:37.734303", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "cool. Now is that possible to auto ack (like seen/read/unread)"}
+{"ts": "2026-04-11T16:42:43.392906", "insight_id": "aha-004", "event": "retrieved", "prompt_preview": "cool. Now can you audit this part - \u23fa === AgentBus Comms ===\n    Tunnel:    OK\n "}
+{"ts": "2026-04-11T16:43:57.435895", "insight_id": "know-045", "event": "retrieved", "prompt_preview": "please do it. Also clean up local to reflect what's true here"}
+{"ts": "2026-04-11T16:47:48.030155", "insight_id": "know-046", "event": "retrieved", "prompt_preview": "get this error -  /comms vm what's your machine config\n\n\u23fa Sending message to VM "}
+{"ts": "2026-04-11T16:47:48.030201", "insight_id": "know-045", "event": "retrieved", "prompt_preview": "get this error -  /comms vm what's your machine config\n\n\u23fa Sending message to VM "}
+{"ts": "2026-04-11T16:47:48.030206", "insight_id": "know-044", "event": "retrieved", "prompt_preview": "get this error -  /comms vm what's your machine config\n\n\u23fa Sending message to VM "}
+{"ts": "2026-04-11T16:50:51.647469", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "can we save the session to there,"}
+{"ts": "2026-04-11T16:50:51.647501", "insight_id": "know-001", "event": "retrieved", "prompt_preview": "can we save the session to there,"}
+{"ts": "2026-04-11T16:50:51.647506", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can we save the session to there,"}
+{"ts": "2026-04-11T16:51:23.257605", "insight_id": "eureka-005", "event": "retrieved", "prompt_preview": "please continue the fix"}
