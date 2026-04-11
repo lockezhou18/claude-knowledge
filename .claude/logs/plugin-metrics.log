@@ -1,0 +1,4 @@
+[2026-04-11 17:08:38] [INFO] [aha] PreToolUse skill=aha
+[2026-04-11 17:08:38] [INFO] [aha] PostToolUse skill=aha
+[2026-04-11 17:08:40] [OK] [aha] Metric produced for PostToolUse: aha
+[2026-04-11 17:08:40] [OK] [aha] Metric produced for PreToolUse: aha

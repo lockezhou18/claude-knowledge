@@ -32,3 +32,13 @@ When making code changes in Java projects:
 3. **If tests fail, fix them** — don't leave the task in a broken state.
 
 **Why**: Multiple sessions had friction from running builds in the wrong directory or not running tests, leading to incomplete outcomes.
+
+## Visual Artifacts: Open, Don't Suggest
+
+When generating or modifying HTML files (graphs, reports, visualizations, diagrams):
+
+1. **`open` the file immediately** — don't say "you can open this to verify."
+2. In cmux, the browser renders in the adjacent pane — zero context switch.
+3. For verification, screenshot after opening if needed.
+
+**Why**: User uses cmux split panes. `open file://` renders on the right while terminal stays on the left. Visual verification becomes part of the coding loop, not a manual step.

@@ -1,0 +1,12 @@
+{
+  "tasks": [
+    {
+      "id": "66018250",
+      "cron": "23 * * * *",
+      "prompt": "Phase 0 frontmatter survival check. Read the file /Users/bizhou/claude-knowledge/memory/eval/phase0-frontmatter-test.md and check if its MD5 hash still matches 8a94def2acfe511cf5e4400fd0449e68. If the hash changed, Auto Dream modified the file — diff the current frontmatter against the original fields: outcome_score=0, use_count=3, tags=[\"phase0\",\"test\",\"frontmatter\",\"migration\"], test_created=\"2026-04-11\", custom_nested with graduation_threshold=2.0 and prune_threshold=-2.0. Report which fields survived, which were stripped, and which were modified. This determines whether the memory-native migration can proceed with full custom frontmatter (Phase 4+5) or must keep insights in a separate staging area.",
+      "createdAt": 1775926031382,
+      "recurring": true,
+      "lastFiredAt": 1775929033194
+    }
+  ]
+}
