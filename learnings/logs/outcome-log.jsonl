@@ -70,3 +70,5 @@
 {"ts": "2026-04-11T09:37:09.630430", "insight_id": "scout-tee-dev-agent", "event": "retrieved", "prompt_preview": "let's keep the worklog skill and auto run. otherwisee lgtm."}
 {"ts": "2026-04-11T09:37:09.630461", "insight_id": "know-052", "event": "retrieved", "prompt_preview": "let's keep the worklog skill and auto run. otherwisee lgtm."}
 {"ts": "2026-04-11T09:37:09.630466", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "let's keep the worklog skill and auto run. otherwisee lgtm."}
+{"ts": "2026-04-11T09:39:05.256655", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "how to handle it to future session"}
+{"ts": "2026-04-11T09:39:25.140769", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "how I start future session with the queued work"}
