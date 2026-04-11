@@ -1,11 +1,11 @@
 ---
-name: vm-remote
-description: "Remote execution on VM bizhou-ld2.linkedin.biz. Shell commands via SSH/vm-run, thinking tasks via AgentBus (claude -p on VM with tools). Multi-turn sessions with auto-resume."
+name: delegate
+description: "Delegate tasks to the VM agent or other agents. Shell commands, thinking tasks (claude -p with tools), multi-turn sessions with auto-resume. Via AgentBus + SSH."
 allowed-tools: Bash(bash -c "ssh vm*), Bash(bash -c "scp*), Bash(bash -c "rsync*), Bash(bash -c "cd * && vm-run*), Bash(bash -c "vm-run*), Bash(export PATH*vm-run*), Bash(~/bin/vm-agent*)
 inputs: ["task"]
 ---
 
-# VM Remote — Tier 1.5 Capability + User Skill
+# Delegate — Send Work to Another Agent
 
 Remote execution for VM `bizhou-ld2.linkedin.biz`. Two transports:
 - **SSH/vm-run**: sync code + run shell commands (builds, tests, deploys)
