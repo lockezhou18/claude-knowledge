@@ -38,6 +38,20 @@
   .legend { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px; }
   .legend-item { display: flex; align-items: center; gap: 4px; font-size: 11px; }
   .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+  #detail-panel { display: none; position: absolute; right: 0; top: 0; width: 45%; height: 100%; background: #161b22; border-left: 1px solid #30363d; overflow-y: auto; z-index: 5; }
+  #detail-header { padding: 12px 16px; border-bottom: 1px solid #30363d; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; background: #161b22; }
+  #detail-header h2 { font-size: 15px; color: #f0f6fc; }
+  #detail-close { cursor: pointer; color: #8b949e; font-size: 18px; padding: 4px 8px; border-radius: 4px; }
+  #detail-close:hover { background: #30363d; color: #f0f6fc; }
+  #detail-meta { padding: 8px 16px; font-size: 12px; color: #8b949e; border-bottom: 1px solid #21262d; }
+  #detail-meta span { margin-right: 12px; }
+  #detail-connections { padding: 8px 16px; border-bottom: 1px solid #21262d; }
+  #detail-connections h3 { font-size: 12px; color: #58a6ff; margin-bottom: 6px; }
+  .conn-item { font-size: 11px; padding: 2px 0; color: #c9d1d9; cursor: pointer; }
+  .conn-item:hover { color: #58a6ff; }
+  .conn-shared { color: #8b949e; font-size: 10px; }
+  #detail-content { padding: 16px; }
+  #detail-content pre { background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 12px; font-size: 12px; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; color: #c9d1d9; max-height: 60vh; overflow-y: auto; }
 </style>
 </head>
 <body>
@@ -53,6 +67,15 @@
   </div>
   <div id="graph">
     <div id="tooltip"></div>
+    <div id="detail-panel">
+      <div id="detail-header">
+        <h2 id="detail-title"></h2>
+        <span id="detail-close">✕</span>
+      </div>
+      <div id="detail-meta"></div>
+      <div id="detail-connections"><h3>Connected to</h3></div>
+      <div id="detail-content"><pre id="detail-body"></pre></div>
+    </div>
   </div>
 </div>
 <script src="https://d3js.org/d3.v7.min.js"></script>
@@ -155,7 +178,44 @@ node.on('mouseover', (e, d) => {
   tooltip.style.left = (e.pageX + 10) + 'px';
   tooltip.style.top = (e.pageY - 10) + 'px';
 }).on('mouseout', () => tooltip.style.display = 'none')
-.on('click', (e, d) => highlightNode(d.id));
+.on('click', (e, d) => { e.stopPropagation(); highlightNode(d.id); showDetail(d); });
+
+document.getElementById('detail-close').onclick = () => {
+  document.getElementById('detail-panel').style.display = 'none';
+};
+
+function showDetail(d) {
+  const panel = document.getElementById('detail-panel');
+  document.getElementById('detail-title').textContent = d.name;
+  document.getElementById('detail-meta').innerHTML =
+    `<span>Layer: <b>${d.layer}</b></span><span>Path: ${d.path}</span>`;
+
+  // Connections
+  const connsDiv = document.getElementById('detail-connections');
+  const conns = links.filter(l => {
+    const sid = typeof l.source === 'object' ? l.source.id : l.source;
+    const tid = typeof l.target === 'object' ? l.target.id : l.target;
+    return sid === d.id || tid === d.id;
+  });
+  let connHtml = '<h3>Connected to (' + conns.length + ')</h3>';
+  conns.sort((a,b) => (b.strength||0) - (a.strength||0)).slice(0, 15).forEach(c => {
+    const sid = typeof c.source === 'object' ? c.source.id : c.source;
+    const tid = typeof c.target === 'object' ? c.target.id : c.target;
+    const otherId = sid === d.id ? tid : sid;
+    const other = nodes.find(n => n.id === otherId);
+    if (other) {
+      connHtml += `<div class="conn-item" onclick="highlightNode('${otherId}')">${other.name} <span class="conn-shared">${(c.shared||[]).join(', ')}</span></div>`;
+    }
+  });
+  if (conns.length > 15) connHtml += `<div class="conn-shared">...and ${conns.length - 15} more</div>`;
+  connsDiv.innerHTML = connHtml;
+
+  // Content
+  const content = GRAPH_DATA.contents ? GRAPH_DATA.contents[d.id] : null;
+  document.getElementById('detail-body').textContent = content || '(content not embedded — open file directly)';
+
+  panel.style.display = 'block';
+}
 
 function highlightNode(id) {
   const connected = new Set();
