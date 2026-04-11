@@ -11,3 +11,11 @@
 {"ts": "2026-04-11T07:38:23.551950", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "how we can improve the system robustness based on the bugs things,"}
 {"ts": "2026-04-11T07:38:23.551982", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "how we can improve the system robustness based on the bugs things,"}
 {"ts": "2026-04-11T07:38:23.551986", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "how we can improve the system robustness based on the bugs things,"}
+{"ts": "2026-04-11T07:43:40.442675", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "what can be improved in system level"}
+{"ts": "2026-04-11T07:43:40.442701", "insight_id": "aha-005", "event": "retrieved", "prompt_preview": "what can be improved in system level"}
+{"ts": "2026-04-11T07:45:45.861060", "insight_id": "scout-tee-dev-agent", "event": "retrieved", "prompt_preview": "I like the notification and highlight part of cmux, what do you think"}
+{"ts": "2026-04-11T07:45:45.861093", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "I like the notification and highlight part of cmux, what do you think"}
+{"ts": "2026-04-11T07:45:45.861099", "insight_id": "know-004", "event": "retrieved", "prompt_preview": "I like the notification and highlight part of cmux, what do you think"}
+{"ts": "2026-04-11T07:46:04.146827", "insight_id": "eureka-005", "event": "retrieved", "prompt_preview": "I like the notification and highlight part of cmux, change to my manually pull -"}
+{"ts": "2026-04-11T07:46:04.146860", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "I like the notification and highlight part of cmux, change to my manually pull -"}
+{"ts": "2026-04-11T07:46:04.146864", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "I like the notification and highlight part of cmux, change to my manually pull -"}

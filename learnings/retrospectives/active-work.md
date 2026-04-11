@@ -27,14 +27,15 @@
 - **Status:** Phase 6 complete, Phases 7-10 remaining (improvements)
 - **Repo:** memory-migration (git@github.com:bizhou_LinkedIn/memory-migration.git)
 - **Context:** Migrate from dual knowledge stores to single SoT via autoMemoryDirectory
-- **Last session (2026-04-10):**
-  - Phase 6 complete: autoMemoryDirectory set, 33 project memories migrated, per-project symlinks created
-  - Rules optimized: 11→8 always-loaded, 3 moved to guides/
-  - dream.py: synthesis phase, SORT phase, rules index rebuild, VM cron set up at 3:47am
-  - Discovered: autoMemoryDirectory doesn't override per-project memory (need symlinks too)
-  - Discovered: rules/ files without globs load every prompt (moved on-demand files to guides/)
-- **Architecture:** ~/claude-knowledge/memory/ is THE SoT. autoMemoryDirectory + per-project symlinks. dream.py maintains overnight on VM.
-- **Next:** Phase 7 (rewrite scout hook), Phase 8 (deprecate agent-briefing.md), VM agent for intelligent dreaming
+- **Last session (2026-04-11):**
+  - /dream skill created and tested
+  - VM dream cron deployed (3:47am on bizhou-ld2)
+  - Push notifications: scout hook shows overnight dream results automatically
+  - markitdown skill created, 3 design docs converted to memory
+  - cmux evaluated — skip for now (existing infra covers the use cases)
+  - AgentBus bugs fixed: command extraction + NATS auth retry
+- **Architecture:** ~/claude-knowledge/memory/ is THE SoT. autoMemoryDirectory + per-project symlinks. dream.py maintains overnight on VM. Scout hook = notification center.
+- **Next:** Phase 7 (rewrite scout to read memory/ natively), Phase 8 (deprecate agent-briefing.md), intelligent dreaming via /delegate
 - **Key files:** plan.md, scripts/dream.py, scripts/probe_features.py
 
 ### AgentBus — VM Agent Communication
