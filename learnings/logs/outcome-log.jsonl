@@ -51,3 +51,9 @@
 {"ts": "2026-04-11T08:52:33.303321", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "[Image #2] is this one"}
 {"ts": "2026-04-11T08:52:58.897836", "insight_id": "know-013", "event": "retrieved", "prompt_preview": "can we do e2e testing"}
 {"ts": "2026-04-11T08:53:21.434369", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "is there a wikilinks generated"}
+{"ts": "2026-04-11T09:02:30.840942", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "can we have a wikilink for all the current eco system with all the knowledges/do"}
+{"ts": "2026-04-11T09:02:30.840974", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "can we have a wikilink for all the current eco system with all the knowledges/do"}
+{"ts": "2026-04-11T09:02:30.840979", "insight_id": "know-002", "event": "retrieved", "prompt_preview": "can we have a wikilink for all the current eco system with all the knowledges/do"}
+{"ts": "2026-04-11T09:07:40.542928", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "can you give me a weblink for the wiki, goal is human readable and tracable"}
+{"ts": "2026-04-11T09:07:40.542984", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can you give me a weblink for the wiki, goal is human readable and tracable"}
+{"ts": "2026-04-11T09:07:40.542989", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "can you give me a weblink for the wiki, goal is human readable and tracable"}
