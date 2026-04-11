@@ -24,8 +24,8 @@
 - **Status:** proof-of-concept complete
 - **Next:** Consider /recipe ai-usage-report parameterized by crew_id
 
-## Last Session (2026-04-09)
-VM infrastructure hardening session. Started from "how to better leverage VM" → health check → gap analysis → fixed 4 of 5 gaps (clipboard, git config, hooks, settings). Key discovery: Terminal.app doesn't support OSC 52, so installed iTerm2. Clipboard fix required 3 iterations (yank script /dev/tty → tmux client TTY → iTerm2). Also started code-server, set up mutagen sync, added SSH LocalForward. Clean session, no code changes — all infrastructure.
+## Last Session (2026-04-10/11)
+Three major builds. (1) Self-improving eval: Oracle pattern adapted → 35 sessions judged → 76.2% agreement, 85.1% principle adherence → 4 fix iterations on behavioral gates. (2) AgentBus VM agent: NATS messaging, Claude adapter, deployed on VM, e2e tested (shell + thinking + async + multi-turn). Monitor tool for real-time async. (3) /delegate skill: natural language, no flags. Key fixes: --bare auth bug, port 14222, L1/L2 triage prompt.
 
 ## Hot Insights
 
