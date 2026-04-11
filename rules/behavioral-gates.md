@@ -55,9 +55,10 @@
 The agent scores feedback based on what IT did, not how the USER responded.
 - **Signal comes from the USER'S words**, not the agent's self-assessment of its own quality.
 - **+2.0 requires explicit user praise** ("fantastic", "perfect", "awesome"). Not inferred.
-- **Doing the right thing is baseline (+1.0 ACCEPTANCE at most)**, not exceptional (+2.0).
+- **+1.0 requires explicit use of the output** ("sounds good, do it", "yes", building on what was said).
+- **Moving on = 0.0 NEUTRAL.** User changes topic or continues without comment = no signal. Not acceptance.
 - **"Intellectual honesty" is not a bonus.** Saying "skip" when skip is correct is just competence.
-- **When in doubt, score lower.** +0.5 is safer than +2.0. Over-scoring is sycophancy in reverse.
+- **When in doubt, score lower.** 0.0 is safer than +1.0. Over-scoring is sycophancy in reverse.
 - Rule: **Read the user's actual words. Score what THEY said, not what you think you deserve.**
 
 ## Gate: Principle Adherence (61 violations across 32 sessions, 85.1% adherence)
