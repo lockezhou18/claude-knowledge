@@ -1,0 +1,64 @@
+Dream cycle starting...
+  Knowledge dir: /home/bizhou/claude-knowledge
+  Memory dir: /home/bizhou/claude-knowledge/memory
+  Staging dir: /home/bizhou/claude-knowledge/learnings/staging
+
+Phase 1: NREM (Compress + Score)
+  No outcomes to process
+
+Phase 2: REM (Graduate + Prune + Stale)
+  Graduated: 0, Pruned: 0, Stale: 0
+
+Phase Sort: Classify and organize flat files
+  Sorted: 0, Unsorted: 0
+
+Phase 3: Rebuild global MEMORY.md index
+  Index: 63 lines, 6 sections, 49 files
+
+Phase 5: Per-Project Memory Maintenance
+
+  Project: connected-projects (13 files)
+    Index: 16 lines, 12 files
+
+  Project: connected-projects-bug-bash (2 files)
+    Index: 5 lines, 1 files
+
+  Project: general (3 files)
+    Index: 6 lines, 2 files
+
+  Project: memory-migration (4 files)
+    Index: 7 lines, 3 files
+
+  Project: oncall (15 files)
+    Index: 18 lines, 14 files
+
+  Processed 5 projects, 0 stale, 0 potential duplicates
+
+Phase Synthesize: Bridge project memories ↔ insights
+  LINK: insight:know-052 ↔ project:memory-migration
+  LINK: insight:know-053 ↔ project:memory-migration
+  LINK: insight:know-051 ↔ project:memory-migration
+
+  Cross-project patterns: 0
+  Insight↔project links: 3
+  Promoted to staging: 0 (heuristic)
+
+Phase 4: Report
+Dream cycle completed at 2026-04-11T14:25:01.507940
+  Host: bizhou-ld2.linkedin.biz
+  Outcomes processed: 0
+  Graduated: 0
+  Pruned: 0
+  Flagged stale: 0
+  Sorted files: 0
+  Unsorted files: 0
+  Cross-project patterns: 0
+  Insight↔project links: 3
+  Promoted to staging: 0
+  Index lines: 63
+  Projects processed: 5
+  Project stale files: 0
+  Project duplicates: 0
+
+
+Dream cycle complete.
