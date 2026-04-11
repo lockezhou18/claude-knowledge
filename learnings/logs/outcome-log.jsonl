@@ -89,3 +89,15 @@
 {"ts": "2026-04-11T10:37:14.179648", "insight_id": "know-052", "event": "retrieved", "prompt_preview": "Phase 0 frontmatter survival check. Read the file /Users/bizhou/claude-knowledge"}
 {"ts": "2026-04-11T10:37:14.179731", "insight_id": "know-049", "event": "retrieved", "prompt_preview": "Phase 0 frontmatter survival check. Read the file /Users/bizhou/claude-knowledge"}
 {"ts": "2026-04-11T10:37:14.179736", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "Phase 0 frontmatter survival check. Read the file /Users/bizhou/claude-knowledge"}
+{"ts": "2026-04-11T11:47:30.604189", "insight_id": "know-052", "event": "retrieved", "prompt_preview": "Phase 0 frontmatter survival check. Read the file /Users/bizhou/claude-knowledge"}
+{"ts": "2026-04-11T11:47:30.604249", "insight_id": "know-049", "event": "retrieved", "prompt_preview": "Phase 0 frontmatter survival check. Read the file /Users/bizhou/claude-knowledge"}
+{"ts": "2026-04-11T11:47:30.604259", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "Phase 0 frontmatter survival check. Read the file /Users/bizhou/claude-knowledge"}
+{"ts": "2026-04-11T12:34:58.960903", "insight_id": "know-052", "event": "retrieved", "prompt_preview": "Phase 0 frontmatter survival check. Read the file /Users/bizhou/claude-knowledge"}
+{"ts": "2026-04-11T12:34:58.960952", "insight_id": "know-049", "event": "retrieved", "prompt_preview": "Phase 0 frontmatter survival check. Read the file /Users/bizhou/claude-knowledge"}
+{"ts": "2026-04-11T12:34:58.960961", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "Phase 0 frontmatter survival check. Read the file /Users/bizhou/claude-knowledge"}
+{"ts": "2026-04-11T13:37:06.492152", "insight_id": "know-052", "event": "retrieved", "prompt_preview": "Phase 0 frontmatter survival check. Read the file /Users/bizhou/claude-knowledge"}
+{"ts": "2026-04-11T13:37:06.492229", "insight_id": "know-049", "event": "retrieved", "prompt_preview": "Phase 0 frontmatter survival check. Read the file /Users/bizhou/claude-knowledge"}
+{"ts": "2026-04-11T13:37:06.492242", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "Phase 0 frontmatter survival check. Read the file /Users/bizhou/claude-knowledge"}
+{"ts": "2026-04-11T14:34:58.211707", "insight_id": "know-052", "event": "retrieved", "prompt_preview": "Phase 0 frontmatter survival check. Read the file /Users/bizhou/claude-knowledge"}
+{"ts": "2026-04-11T14:34:58.211745", "insight_id": "know-049", "event": "retrieved", "prompt_preview": "Phase 0 frontmatter survival check. Read the file /Users/bizhou/claude-knowledge"}
+{"ts": "2026-04-11T14:34:58.211753", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "Phase 0 frontmatter survival check. Read the file /Users/bizhou/claude-knowledge"}
