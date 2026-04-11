@@ -1,7 +1,10 @@
 ---
 name: Research Pipeline Pattern
 description: Validated 5-step exploration pattern that produces executive-level intelligence from scattered data sources
-type: feedback
+type: reference
+id: know-research-pipeline
+status: graduated
+tags: [research, methodology, exploration, data-driven, cross-validate]
 ---
 
 When exploring an unfamiliar domain with scattered data, follow this 5-step pipeline:

@@ -1,7 +1,11 @@
 ---
 name: V2 Identity findFirst() Bug
 description: When multiple V2 candidate-profile identities exist in a group, findFirst() picks the wrong one. Always try all V2s with fallback.
-type: feedback
+type: reference
+id: bug-001
+status: graduated
+tags: [identity, v2, hp-ats-integration, gotcha, findFirst, mapping]
+repos: [hp-ats-integration-mt]
 ---
 
 ## When [situation]

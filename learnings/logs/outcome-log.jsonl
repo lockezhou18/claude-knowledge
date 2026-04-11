@@ -22,3 +22,32 @@
 {"ts": "2026-04-11T08:01:52.796174", "insight_id": "know-052", "event": "retrieved", "prompt_preview": "this part -  +2.0: cmux eval \u2014 honest \"skip\" recommendation (intellectual honest"}
 {"ts": "2026-04-11T08:02:35.771179", "insight_id": "eureka-005", "event": "retrieved", "prompt_preview": "how do you want to fix"}
 {"ts": "2026-04-11T08:02:35.771223", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "how do you want to fix"}
+{"ts": "2026-04-11T08:24:34.062430", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "cool. I like the tool. can we change the split vertical/horizontal same as curre"}
+{"ts": "2026-04-11T08:24:34.062464", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "cool. I like the tool. can we change the split vertical/horizontal same as curre"}
+{"ts": "2026-04-11T08:30:01.032322", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can we keep those -       122 -  //   \"shortcuts\" : {                           "}
+{"ts": "2026-04-11T08:30:01.032352", "insight_id": "know-seat-entitlements-vs-seatroles", "event": "retrieved", "prompt_preview": "can we keep those -       122 -  //   \"shortcuts\" : {                           "}
+{"ts": "2026-04-11T08:30:01.032357", "insight_id": "know-031", "event": "retrieved", "prompt_preview": "can we keep those -       122 -  //   \"shortcuts\" : {                           "}
+{"ts": "2026-04-11T08:40:43.874117", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "what's the shortcut to go to another screen now, can we use shift + cmd + up/dow"}
+{"ts": "2026-04-11T08:40:43.874151", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "what's the shortcut to go to another screen now, can we use shift + cmd + up/dow"}
+{"ts": "2026-04-11T08:40:43.874156", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "what's the shortcut to go to another screen now, can we use shift + cmd + up/dow"}
+{"ts": "2026-04-11T08:42:56.997267", "insight_id": "eureka-008", "event": "retrieved", "prompt_preview": "cool. how about cmd + 1/2/3/4 to go to tab 1/2/3/4"}
+{"ts": "2026-04-11T08:42:56.997305", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "cool. how about cmd + 1/2/3/4 to go to tab 1/2/3/4"}
+{"ts": "2026-04-11T08:42:56.997310", "insight_id": "aha-004", "event": "retrieved", "prompt_preview": "cool. how about cmd + 1/2/3/4 to go to tab 1/2/3/4"}
+{"ts": "2026-04-11T08:43:17.569856", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "what's the current shortcut to create new workspace"}
+{"ts": "2026-04-11T08:43:17.569918", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "what's the current shortcut to create new workspace"}
+{"ts": "2026-04-11T08:43:17.569922", "insight_id": "know-001", "event": "retrieved", "prompt_preview": "what's the current shortcut to create new workspace"}
+{"ts": "2026-04-11T08:44:51.681182", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "[Image #1] what's the current shortcut to switch this"}
+{"ts": "2026-04-11T08:44:51.681211", "insight_id": "know-001", "event": "retrieved", "prompt_preview": "[Image #1] what's the current shortcut to switch this"}
+{"ts": "2026-04-11T08:44:51.681216", "insight_id": "eureka-005", "event": "retrieved", "prompt_preview": "[Image #1] what's the current shortcut to switch this"}
+{"ts": "2026-04-11T08:47:30.448944", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "nice, what's the shortcut to select surface"}
+{"ts": "2026-04-11T08:47:30.449002", "insight_id": "know-001", "event": "retrieved", "prompt_preview": "nice, what's the shortcut to select surface"}
+{"ts": "2026-04-11T08:47:30.449007", "insight_id": "eureka-005", "event": "retrieved", "prompt_preview": "nice, what's the shortcut to select surface"}
+{"ts": "2026-04-11T08:49:20.009440", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "nice, what's the shortcut to perform global search"}
+{"ts": "2026-04-11T08:49:20.009473", "insight_id": "know-001", "event": "retrieved", "prompt_preview": "nice, what's the shortcut to perform global search"}
+{"ts": "2026-04-11T08:49:20.009477", "insight_id": "eureka-005", "event": "retrieved", "prompt_preview": "nice, what's the shortcut to perform global search"}
+{"ts": "2026-04-11T08:49:59.774322", "insight_id": "eureka-007", "event": "retrieved", "prompt_preview": "I mean current cmd + F only search current surface, what's the shortcut for glob"}
+{"ts": "2026-04-11T08:49:59.774359", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "I mean current cmd + F only search current surface, what's the shortcut for glob"}
+{"ts": "2026-04-11T08:49:59.774364", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "I mean current cmd + F only search current surface, what's the shortcut for glob"}
+{"ts": "2026-04-11T08:52:33.303321", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "[Image #2] is this one"}
+{"ts": "2026-04-11T08:52:58.897836", "insight_id": "know-013", "event": "retrieved", "prompt_preview": "can we do e2e testing"}
+{"ts": "2026-04-11T08:53:21.434369", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "is there a wikilinks generated"}

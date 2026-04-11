@@ -1,7 +1,10 @@
 ---
 name: Engineering Principles
 description: Universal SDE productivity principles — faith-grounded foundation + Amazon SDE Insider's Guide principles
-type: feedback
+type: reference
+id: know-eng-principles
+status: graduated
+tags: [engineering, principles, methodology, debugging, data-driven, root-cause]
 ---
 
 ## Principle 0: Faith of God — The Foundation
