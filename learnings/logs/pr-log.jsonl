@@ -286,3 +286,4 @@
 {"timestamp": "2026-04-10T22:24:30.131074+00:00", "repo": "claude-knowledge", "branch": "main", "pr_url": "", "commit_count": "", "commits": []}
 {"timestamp": "2026-04-10T22:25:58.304951+00:00", "repo": "claude-knowledge", "branch": "main", "pr_url": "", "commit_count": "", "commits": []}
 {"timestamp": "2026-04-10T22:26:06.227520+00:00", "repo": "claude-knowledge", "branch": "main", "pr_url": "", "commit_count": "", "commits": []}
+{"timestamp": "2026-04-11T00:26:04.460187+00:00", "repo": "claude-knowledge", "branch": "main", "pr_url": "", "commit_count": "", "commits": ["Rename vm-remote \u2192 delegate", "Merge vm-agent into vm-remote \u2014 single unified skill", "Add /vm-agent skill \u2014 delegate tasks to VM Claude agent", "Upgrade vm-remote skill: add AgentBus transport for thinking tasks"]}
