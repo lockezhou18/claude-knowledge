@@ -1,15 +1,15 @@
-Dream cycle completed at 2026-04-10T15:15:55.495618
-  Host: bizhou-mn2425.linkedin.biz
+Dream cycle completed at 2026-04-11T14:19:50.573658
+  Host: bizhou-ld2.linkedin.biz
   Outcomes processed: 0
   Graduated: 0
   Pruned: 0
   Flagged stale: 0
   Sorted files: 0
   Unsorted files: 0
-  Cross-project patterns: 18
-  Insight↔project links: 32
-  Promoted to staging: 18
+  Cross-project patterns: 0
+  Insight↔project links: 3
+  Promoted to staging: 0
   Index lines: 63
-  Projects processed: 10
+  Projects processed: 5
   Project stale files: 0
   Project duplicates: 0
