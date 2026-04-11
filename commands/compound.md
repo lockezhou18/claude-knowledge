@@ -24,7 +24,16 @@ Summarize to the user:
 
 ## Step 3: Generate Insights
 
-Identify learnings. For each, ask: "Would this help a future session working in the same area?"
+Identify learnings using **6 analytical perspectives** (inspired by Pluton dreaming system):
+
+1. **Practical** — What tools, commands, patterns saved time or caused friction?
+2. **Epistemic** — What new knowledge was gained about systems, APIs, architecture?
+3. **Temporal** — How did things evolve during the session? What changed from start to end?
+4. **Metacognitive** — Where did reasoning go wrong? What blind spots were exposed?
+5. **Social/team** — What stakeholder context, team decisions, or cross-team patterns emerged?
+6. **Causal** — What caused what? "X happened because Y" — the 5 Whys.
+
+For each insight found, ask: "Would this help a future session working in the same area?"
 
 Format each insight as: **"When [situation], do [action] because [reason]"**
 
@@ -32,7 +41,7 @@ Categorize:
 - **Bug-track** (episodic): Symptoms → Root Cause → Fix → Prevention
 - **Knowledge-track** (semantic): Context → Guidance → When to Apply
 
-Write insight files to `~/.claude/learnings/insights/bug-track/` or `knowledge-track/` with YAML frontmatter per `~/.claude/learnings/SCHEMA.md`. Use tags from the taxonomy. Set `rot_rate` appropriately.
+Write insight files to `~/.claude/learnings/staging/` with YAML frontmatter per `~/.claude/learnings/SCHEMA.md`. Use tags from the taxonomy. Set `rot_rate` appropriately.
 
 Append each insight to `~/.claude/learnings/manifest.jsonl` with `summary_tokens` for search.
 
