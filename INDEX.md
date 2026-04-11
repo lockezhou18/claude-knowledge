@@ -15,17 +15,17 @@
 ### Cluster 1: context + check + what
 - [V2 Identity findFirst() Bug](memory/insights/v2-identity-findFirst.md) (memory)
 - [know-011-2](learnings/staging/know-011-2.md) (staging)
-- [know-014-2](learnings/staging/know-014-2.md) (staging)
+- [know-015](learnings/staging/know-015.md) (staging)
 - [hiring-platform](skills/hiring-platform/SKILL.md) (skills)
 - [know-015-2](learnings/staging/know-015-2.md) (staging)
+- [know-020](learnings/staging/know-020.md) (staging)
 - [Connected Projects Phase 2 Job Requisition Stage Sync Eng Design](memory/projects/connected-projects/docs/connected-projects-phase-2-job-requisition-stage-sync-eng-design.md) (memory)
-- [know-013-2](learnings/staging/know-013-2.md) (staging)
 - [know-014](learnings/staging/know-014.md) (staging)
-- [know-015](learnings/staging/know-015.md) (staging)
-- [bug-002](learnings/staging/bug-002.md) (staging)
+- [know-016-2](learnings/staging/know-016-2.md) (staging)
+- [know-010-2](learnings/staging/know-010-2.md) (staging)
 - ... and 150 more
 
-### Cluster 2: clean + docx + read
+### Cluster 2: convert + pptx + clean
 - [markitdown converts DOCX/XLSX/PPTX to clean markdown for LLM consumption](learnings/staging/know-055.md) (staging)
 - [markitdown](skills/markitdown/SKILL.md) (skills)
 
