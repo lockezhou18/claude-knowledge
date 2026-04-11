@@ -2,21 +2,34 @@
 
 ## VM: bizhou-ld2.linkedin.biz
 
-When running on the local machine (macOS), route heavy commands to the VM via SSH.
+Route work to the VM via the `/delegate` skill. Two transports:
+- **SSH/vm-run**: shell commands (builds, tests, deploys)
+- **AgentBus**: thinking tasks via claude -p on VM (review, investigate, analyze)
 
-### Route to VM — use `vm-run` (syncs code + runs remotely):
+### Use /delegate (preferred — handles routing automatically):
+```bash
+~/bin/vm-agent "mint build hp-ats-integration-mt"      # shell on VM
+~/bin/vm-agent -t "review the latest PR changes"       # thinking on VM
+~/bin/vm-agent --async "run full test suite"            # async + Monitor notification
+~/bin/vm-agent --auto "build, test, fix, re-test"      # autonomous multi-round
+```
+
+### Route to VM (shell via SSH/vm-run):
 - **Build**: `mint build`, `mint test`, `./gradlew`, compilation commands
-- **Docker**: any `docker` or `docker-compose` commands
 - **Long-running tests**: E2E tests, integration test suites
 - **Service operations**: `go-status`, `go-deploy`, KSAP commands
 - **Heavy processing**: large file operations, data transforms
 
+### Route to VM (thinking via AgentBus):
+- **Code review**: `vm-agent -t "review the changes in ..."`
+- **Investigation**: `vm-agent -t "investigate why ..."`
+- **Analysis**: `vm-agent -t "analyze the test failures"`
+- **Eval/dream**: `vm-agent --async "run eval pipeline"`
+
 ### Try LOCAL FIRST, fall back to VM:
-- **gRPC/REST calls**: `grpcurli`, `curli` against internal services
-  - Run locally first — local DV auth is usually active
-  - Only route to VM if local call fails with auth error
-  - NEVER blindly route all curli/grpcurli to VM — DV auth on VM is often expired
-  - If VM call fails with DV auth error, tell the user to run `! ssh vm 'dv-auth'`
+- **gRPC/REST calls**: `grpcurli`, `curli` — run locally first (local DV auth usually active)
+- Only route to VM if local call fails with auth error
+- If VM call fails with DV auth error, tell the user to run `! ssh vm 'dv-auth'`
 
 ### Keep local (run directly):
 - **File reads/edits**: Read, Edit, Write, Glob, Grep tools
@@ -26,26 +39,16 @@ When running on the local machine (macOS), route heavy commands to the VM via SS
 - **Light scripts**: short bash one-liners, jq, etc.
 - **Browser tools**: playwright, observe-agent queries
 
-### Preferred: `vm-run` (auto-sync + run)
-`~/bin/vm-run` detects the current git repo, rsyncs it to `~/workspace/<repo>` on the VM, then runs the command. Works from ANY local path.
-
+### Fallback: direct SSH/vm-run (when AgentBus is down)
 ```bash
-# From any local repo path (e.g., ~/workspace/connected_project_phase2/hp-ats-integration-mt)
 bash -c "cd /path/to/local/repo && vm-run mint build"
-bash -c "cd /path/to/local/repo && vm-run mint test"
-bash -c "cd /path/to/local/repo && vm-run ./gradlew compileJava"
-```
-
-### Direct SSH (for commands not tied to a repo):
-```bash
-bash -c "ssh vm 'grpcurli ...'"
 bash -c "ssh vm 'go-status hp-ats-integration-mt'"
 bash -c "scp vm:~/workspace/<repo>/file.txt /tmp/"
 ```
 
 ### Important:
 - Use `bash -c "..."` wrapper — direct `ssh` is blocked by Claude Code permissions
-- `vm` is an SSH alias defined in `~/.ssh/config.custom` (passwordless via LinkedIn key)
-- `vm-run` rsyncs source code (excluding .gradle, build, out, .git) before running
-- If SSH fails, check: VPN connected? Kerberos valid (`klist`)?
-- For interactive commands, use `linkedin-cli-tools:interactive-cli` with SSH
+- `vm` is an SSH alias in `~/.ssh/config.custom` (ports 8080, 4222 forwarded)
+- SSH tunnel for NATS (port 4222) — vm-agent auto-creates if needed
+- If SSH fails: check VPN connected? Kerberos valid (`klist`)?
+- VM services: tmux `nats` (NATS server), tmux `agentbus` (Claude listener)

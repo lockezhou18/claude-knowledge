@@ -29,7 +29,10 @@ The agent should suggest skills when the moment is right, even if the user didn'
 - Complex multi-service design task > "This spans multiple services. Use `mae-core:architect` for parallel planning?"
 - First time scoping a new repo > "Run `linkedin-framework:map-infrastructure` to auto-detect infra systems?"
 - Plan approved, ready to build > "Use `/implement` to work through units systematically?"
-- About to run mint build/test or gradlew locally > delegate auto-intercepts, but if it doesn't: "This should run on the VM. Use `bash -c \"cd <repo> && vm-run mint build\"`"
+- About to run mint build/test or gradlew locally > delegate auto-intercepts, but if it doesn't: "This should run on the VM. Use `/delegate mint build`"
+- Need VM agent to think about something > "Use `/delegate -t \"investigate why...\"` to have the VM Claude analyze it"
+- Long-running task > "Use `/delegate --async` to fire-and-forget — Monitor will notify when done"
+- Multi-step autonomous task > "Use `/delegate --auto \"build, test, fix\"` — VM agent loops until success"
 - Code ready, need to ship > "Use `/ship` for the full PR > prod pipeline?"
 - PR created, waiting on CI/deploy > "Use `/wait-for` to poll across sessions?"
 Don't be pushy — suggest once, move on if the user doesn't engage.

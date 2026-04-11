@@ -37,6 +37,26 @@
 - **Next:** Phase 7 (rewrite scout hook), Phase 8 (deprecate agent-briefing.md), VM agent for intelligent dreaming
 - **Key files:** plan.md, scripts/dream.py, scripts/probe_features.py
 
+### AgentBus — VM Agent Communication
+- **Started:** 2026-04-10
+- **Status:** operational, Level 1 (session resume) complete
+- **Repo:** ~/projects/compound-learning-ecosystem/agentbus/
+- **Context:** NATS-backed messaging between laptop Claude and VM Claude agent
+- **What's working:**
+  - Shell commands via AgentBus: tested ✓
+  - Thinking tasks (claude -p on VM): tested ✓ (14s round-trip)
+  - Session resume (multi-turn): tested ✓ (3-turn demo)
+  - Async with Monitor (watch_result.py): tested ✓
+  - Auto mode (multi-round): implemented, not yet tested
+  - NATS server + listener auto-start on VM login
+  - SSH tunnel auto-forward port 4222
+- **Skill:** `/delegate` (merged from vm-remote + vm-agent)
+- **Next:**
+  - Test auto mode end-to-end
+  - Explore teammate access (agent cards for team members)
+  - Level 2 (streaming daemon) when needed
+  - Check NATS approval for LinkedIn VMs (ask #ask_sysops)
+
 ### Developer Productivity Tooling
 - **Started:** 2026-03-25
 - **Status:** watering phase (stop adding, let data prove what works)
