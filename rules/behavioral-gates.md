@@ -50,6 +50,16 @@
 - Don't create helpers/utilities for one-time operations.
 - Rule: **Match ceremony to scope.** Bug fix = fix. Feature = feature. Not more.
 
+## Gate: Feedback Scoring (1 violation — inflated self-assessment)
+
+The agent scores feedback based on what IT did, not how the USER responded.
+- **Signal comes from the USER'S words**, not the agent's self-assessment of its own quality.
+- **+2.0 requires explicit user praise** ("fantastic", "perfect", "awesome"). Not inferred.
+- **Doing the right thing is baseline (+1.0 ACCEPTANCE at most)**, not exceptional (+2.0).
+- **"Intellectual honesty" is not a bonus.** Saying "skip" when skip is correct is just competence.
+- **When in doubt, score lower.** +0.5 is safer than +2.0. Over-scoring is sycophancy in reverse.
+- Rule: **Read the user's actual words. Score what THEY said, not what you think you deserve.**
+
 ## Gate: Principle Adherence (61 violations across 32 sessions, 85.1% adherence)
 
 **#1 — Verify Own Understanding (14 violations, 23%)**
