@@ -40,34 +40,46 @@
 
 ### AgentBus — VM Agent Communication
 - **Started:** 2026-04-10
-- **Status:** operational, QA + test suite complete
-- **Repo:** ~/workspace/.agentbus (laptop), /home/bizhou/workspace/.agentbus (VM, not git)
-- **Context:** NATS-backed messaging between laptop Claude and VM Claude agent
+- **Status:** v0.3.0 — A2A + task lifecycle complete, QA verified
+- **Repo:** ~/workspace/.agentbus (laptop), ~/agentbus (VM, deployed via ssh cat pipe)
+- **Context:** NATS-backed messaging + A2A HTTP interop between laptop Claude and VM Claude agent
 - **What's working:**
-  - Shell commands via AgentBus: tested ✓
-  - Thinking tasks (claude -p on VM): tested ✓ (14s round-trip)
-  - Session resume (multi-turn): tested ✓ (3-turn demo)
-  - Async with Monitor (watch_result.py): tested ✓
-  - Auto mode (multi-round): implemented, outcome detection fixed (word-boundary regex)
+  - Shell commands, thinking tasks, session resume, async, auto mode: all tested ✓
+  - **NEW v0.3.0:** A2A HTTP gateway (agent card, message send, task query, cancel) ✓
+  - **NEW v0.3.0:** Task lifecycle (submitted→working→completed/failed/canceled) ✓
+  - **NEW v0.3.0:** CLI: `agentbus tasks`, `agentbus cancel`, `agentbus a2a-server`, `agentbus trust` ✓
+  - **NEW v0.3.0:** Pipe context_id linking tasks to sessions ✓
+  - **NEW v0.3.0:** Guardian TOFU trust model for dynamic agents ✓
   - NATS server + listener auto-start on VM login
-  - SSH tunnel on port 14222 (not 4222)
 - **Skill:** `/delegate` (merged from vm-remote + vm-agent)
 - **Last session (2026-04-12):**
-  - Validated external QA assessment (Architecture 8/10, Code 6/10, Tests 3/10, Docs 8/10, Idea 9/10)
-  - Wrote 109 new tests (143 total): ClaudeAdapter 77 tests, CLI 29 tests, e2e 22 tests
-  - Fixed fragile dispatch_auto success detection (word-boundary regex, _detect_outcome)
-  - Fixed _extract_shell_command (known-tool-first, removed brittle "in repo" regex)
-  - Fixed blocking subprocess.run in listener.py (asyncio.to_thread)
-  - Removed hardcoded NATS credentials from 4 files
-  - Removed sys.path hacks from 8 files
-  - Deduped send.py CLI (redirect to unified CLI)
-  - Deployed to VM via ssh cat pipe + systemd restart
-  - Commit: 1e59470, pushed to origin/main
-- **Next:**
-  - A2A HTTP transport adapter (strategic priority — see strategy-a2a-alignment.md)
-  - Formal task lifecycle (create/get/cancel/status)
-  - Explore teammate access (agent cards for team members)
-  - Level 2 (streaming daemon) when needed
+  - QA review: 15 code bugs, 8 test gaps, 3 design concerns, 4 doc issues
+  - E2E Round 1: 21/24 PASS — Guardian rejection, CLI error swallowing, test warning
+  - Fixes applied: 12 bugs fixed, 3 deferred by design
+  - E2E Round 2: 24/24 PASS — clean sweep
+  - VM deployed v0.3.0 (Python 3.9 compat via future annotations, constraint relaxed)
+  - Trust established: `agentbus trust a2a-gw-bizhou-vm --target bizhou-vm`
+  - QA report: ~/workspace/qa/agentbus/findings-v030.md
+- **Test count:** 235 unit tests passing
+- **Last session (2026-04-11):**
+  - Deep /explore of agent-lifecycle-mt (Starfish), talent-agent-service (LIHA), compared with AgentBus
+  - Verified: agent-lifecycle-mt is real middleware (10 APIs), not just a wrapper
+  - Verified: TAS uses only ~15% of platform (invokeSkillSync + onMessage + ExperientialMemory)
+  - Verified: DragonSwarm's "orchestration" claim is 70% real, 30% vaporware (collective workflows NOT IMPLEMENTED)
+  - Produced aha-007: 7-layer production platform model + 4-phase roadmap for AgentBus
+  - Wire-level cost: AgentBus 280B/2hops/<5ms vs DragonSwarm 10KB/6-8hops/50-200ms (50x overhead)
+  - LIHA = ChatGPT for recruiters (LangGraph planner + LinkedIn APIs + Qwen-3 8B FT for eval)
+  - know-063: fine-tuned small models beat frontier for structured tasks at scale
+  - Future vision: A2A+MCP merge, middleware thins, LLM costs collapse, Claude-as-runtime, DX wins
+- **Strategic direction (aha-007):** Preserve unified Envelope model. Add production machinery underneath (durability, locking, orchestration, MCP bridge). Don't split API.
+- **Roadmap:**
+  - **Phase 1 (P1):** FileTaskStore + retry-on-failure + result persistence
+  - **Phase 2 (P2):** Message dedup + task locking + message state tracking
+  - **Phase 3 (P2):** Workflow primitives (hierarchical tasks, parallel, conditional)
+  - **Phase 4 (P2):** MCP bridge + streaming (Level 2 adapter)
+- **Next immediate:**
+  - Phase 1: FileTaskStore (persist tasks to disk)
+  - Upgrade VM to Python 3.10+ (or keep relaxed constraint)
 
 ### Developer Productivity Tooling
 - **Started:** 2026-03-25

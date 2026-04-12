@@ -1,7 +1,7 @@
 ---
 name: delegate
 description: "Delegate tasks to the VM agent. Just describe what you want in natural language — the skill figures out the mode, transport, and flags automatically."
-allowed-tools: Bash(bash -c "ssh vm*), Bash(bash -c "scp*), Bash(bash -c "rsync*), Bash(bash -c "cd * && vm-run*), Bash(bash -c "vm-run*), Bash(export PATH*vm-run*), Bash(~/bin/vm-agent*), Monitor
+allowed-tools: Bash(bash -c "ssh vm*), Bash(bash -c "scp*), Bash(bash -c "rsync*), Bash(bash -c "cd * && vm-run*), Bash(bash -c "vm-run*), Bash(export PATH*vm-run*), Bash(~/bin/vm-agent*), Bash(cd *agentbus && agentbus tasks*), Bash(cd *agentbus && agentbus cancel*), Monitor
 inputs: ["task"]
 ---
 
@@ -113,6 +113,45 @@ Tell the user: "Task delegated. I'm watching for results — keep working."
 | "start fresh — analyze the test failures" | think, sync, new | `~/bin/vm-agent --new -t "analyze the test failures"` |
 
 **Note on grpcurli/curli with complex JSON**: Always use **think mode** (`-t`). The VM Claude builds the command locally with correct escaping. Don't try to pass complex JSON through shell mode — quoting mangles it.
+
+## Step 5: Task Lifecycle (v0.3.0)
+
+After async/auto delegation, use the task store for lifecycle tracking instead of relying only on NATS watch.
+
+**A. Check task status:**
+```bash
+# After async delegation returns task_id:
+cd $AGENTBUS_DIR && agentbus tasks --target bizhou-vm <task_id>
+```
+
+**B. List delegated tasks:**
+```bash
+cd $AGENTBUS_DIR && agentbus tasks --target bizhou-vm
+cd $AGENTBUS_DIR && agentbus tasks --target bizhou-vm --state working    # what's in flight
+cd $AGENTBUS_DIR && agentbus tasks --target bizhou-vm --state completed  # what finished
+```
+
+**C. Cancel a running task:**
+```bash
+cd $AGENTBUS_DIR && agentbus cancel <task_id> --target bizhou-vm
+```
+Tell user: "Task canceled. Note: the background process on VM may still be running (cancel is state-only in v0.3.0)."
+
+**D. Track multi-step delegations with context_id:**
+For auto-mode (`--auto`), the listener creates tasks with context_id. Query all tasks from a delegation:
+```bash
+cd $AGENTBUS_DIR && agentbus tasks --target bizhou-vm --context <context_id>
+```
+
+### How to present task status
+
+| User says | Action |
+|-----------|--------|
+| "what's the status of that task" | `agentbus tasks --target bizhou-vm <last_task_id>` |
+| "is it done yet" | `agentbus tasks --target bizhou-vm <last_task_id>` — check state |
+| "cancel it" | `agentbus cancel <last_task_id> --target bizhou-vm` |
+| "what's running on vm" | `agentbus tasks --target bizhou-vm --state working` |
+| "show all tasks" | `agentbus tasks --target bizhou-vm` |
 
 ## Session Management
 

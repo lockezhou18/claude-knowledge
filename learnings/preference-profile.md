@@ -56,5 +56,5 @@ User corrected LinkedIn plugins from Engineering Principles → pipeline phases.
 | solution_simplicity | -0.15 | 11 | watch — 4 gentle redirects this session toward simpler approach |
 | tool_choice | -0.05 | 4 | good — LinkedIn plugins wired |
 | ask_vs_assume | +0.30 | 14 | good — but 3 soft clarifications (auto-sync, auto-delegation, IDE) |
-| research_depth | +0.80 | 22 | **strong** — but 1 gentle redirect (knowledge growth concern) |
+| research_depth | +0.82 | 27 | **strong** — QA session: thorough code review + E2E testing praised |
 | code_quality | +1.40 | 14 | **strong** — PR review cycle, principles, /implement all praised |

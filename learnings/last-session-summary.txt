@@ -1,6 +1,6 @@
-Session 2026-04-12: AgentBus QA validation + comprehensive improvements.
-Validated external assessment (7/10 overall). Wrote 109 new tests (143 total),
-fixed 2 fragile code paths (outcome detection, shell extraction), removed
-hardcoded credentials from 4 files, fixed blocking subprocess in listener,
-removed sys.path hacks from 8 files, deduped send.py. Deployed to VM.
-Test coverage went from 3/10 to ~7/10. Next: A2A HTTP transport adapter.
+Session 2026-04-12 (late): AgentBus v0.3.0 QA — code review + E2E testing.
+Found 15 code bugs (3 critical: signal handler, invalid state crash, double timeout).
+E2E Round 1: 21/24 PASS — A2A gateway blocked by Guardian (unknown sender), CLI
+swallowed errors. Fixes applied. E2E Round 2: 24/24 PASS clean sweep. Key: A2A
+gateway needs `agentbus trust` (TOFU model). 3 insights: Guardian TOFU, asyncio
+mock pattern, unit-vs-E2E registry gap. VM Python 3.9 compat confirmed.

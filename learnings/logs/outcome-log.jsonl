@@ -257,3 +257,84 @@
 {"ts": "2026-04-11T18:59:36.424642", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "I have installed the cmux. Can you check the system"}
 {"ts": "2026-04-11T19:01:38.414848", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "If I quit, all the sessions will be gone or still kept"}
 {"ts": "2026-04-11T19:01:38.414888", "insight_id": "bug-006", "event": "retrieved", "prompt_preview": "If I quit, all the sessions will be gone or still kept"}
+{"ts": "2026-04-11T19:04:11.744832", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "what's left in the last sessions"}
+{"ts": "2026-04-11T19:04:11.744868", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "what's left in the last sessions"}
+{"ts": "2026-04-11T19:26:02.775163", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "add Should I add this context_id connection to the plan."}
+{"ts": "2026-04-11T19:26:02.775197", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "add Should I add this context_id connection to the plan."}
+{"ts": "2026-04-11T19:26:02.775202", "insight_id": "know-seat-entitlements-vs-seatroles", "event": "retrieved", "prompt_preview": "add Should I add this context_id connection to the plan."}
+{"ts": "2026-04-11T19:33:52.981903", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "put this positioning in the plan either"}
+{"ts": "2026-04-11T19:33:52.981939", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "put this positioning in the plan either"}
+{"ts": "2026-04-11T19:48:58.698576", "insight_id": "know-046", "event": "retrieved", "prompt_preview": "you are picky tester. there's new things build for the agentbus, can you check"}
+{"ts": "2026-04-11T19:48:58.698619", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "you are picky tester. there's new things build for the agentbus, can you check"}
+{"ts": "2026-04-11T19:48:58.698624", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "you are picky tester. there's new things build for the agentbus, can you check"}
+{"ts": "2026-04-11T20:01:21.111268", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "here is the report - 235 passed, no regressions after all fixes.\n\n\u23fa Here's what "}
+{"ts": "2026-04-11T20:01:21.111302", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "here is the report - 235 passed, no regressions after all fixes.\n\n\u23fa Here's what "}
+{"ts": "2026-04-11T20:01:21.111307", "insight_id": "aha-004", "event": "retrieved", "prompt_preview": "here is the report - 235 passed, no regressions after all fixes.\n\n\u23fa Here's what "}
+{"ts": "2026-04-11T20:02:54.925189", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "check Got it. Here's the root cause:\n\n  In test_shell_error_with_stderr, the tes"}
+{"ts": "2026-04-11T20:02:54.925222", "insight_id": "know-016", "event": "retrieved", "prompt_preview": "check Got it. Here's the root cause:\n\n  In test_shell_error_with_stderr, the tes"}
+{"ts": "2026-04-11T20:02:54.925227", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "check Got it. Here's the root cause:\n\n  In test_shell_error_with_stderr, the tes"}
+{"ts": "2026-04-11T20:10:05.158129", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "2 issues want to check, 1 - port NATS port: 4222 is this correct, 2 - what's the"}
+{"ts": "2026-04-11T20:10:05.158160", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "2 issues want to check, 1 - port NATS port: 4222 is this correct, 2 - what's the"}
+{"ts": "2026-04-11T20:10:05.158164", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "2 issues want to check, 1 - port NATS port: 4222 is this correct, 2 - what's the"}
+{"ts": "2026-04-11T20:11:48.239648", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can you check and audit matthew, luke and eli, they should not be here and in th"}
+{"ts": "2026-04-11T20:11:48.239688", "insight_id": "know-031", "event": "retrieved", "prompt_preview": "can you check and audit matthew, luke and eli, they should not be here and in th"}
+{"ts": "2026-04-11T20:11:48.239693", "insight_id": "aha-005", "event": "retrieved", "prompt_preview": "can you check and audit matthew, luke and eli, they should not be here and in th"}
+{"ts": "2026-04-11T20:20:55.884735", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "where's the full test report located"}
+{"ts": "2026-04-11T20:21:19.990493", "insight_id": "know-013", "event": "retrieved", "prompt_preview": "e2e testing done. Can you check /Users/bizhou/workspace/qa/agentbus/findings-v03"}
+{"ts": "2026-04-11T20:23:14.727251", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "  Actually, the simplest correct fix: use the auto-detected local agent name (sa"}
+{"ts": "2026-04-11T20:23:14.727291", "insight_id": "know-058", "event": "retrieved", "prompt_preview": "  Actually, the simplest correct fix: use the auto-detected local agent name (sa"}
+{"ts": "2026-04-11T20:23:14.727296", "insight_id": "know-045", "event": "retrieved", "prompt_preview": "  Actually, the simplest correct fix: use the auto-detected local agent name (sa"}
+{"ts": "2026-04-11T20:27:54.295243", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "above that, how about ask user once, if user approve, add it to the registetry l"}
+{"ts": "2026-04-11T20:27:54.295279", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "above that, how about ask user once, if user approve, add it to the registetry l"}
+{"ts": "2026-04-11T20:27:54.295283", "insight_id": "know-seat-entitlements-vs-seatroles", "event": "retrieved", "prompt_preview": "above that, how about ask user once, if user approve, add it to the registetry l"}
+{"ts": "2026-04-11T20:29:40.685179", "insight_id": "know-058", "event": "retrieved", "prompt_preview": "we may want to keep the presence check, as this is pre-requisite for the TOFU co"}
+{"ts": "2026-04-11T20:29:40.685219", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "we may want to keep the presence check, as this is pre-requisite for the TOFU co"}
+{"ts": "2026-04-11T20:29:40.685224", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "we may want to keep the presence check, as this is pre-requisite for the TOFU co"}
+{"ts": "2026-04-11T20:33:37.099860", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "cool let's do these -  Quick fixes (docs):\n  - DOC-02: README doesn't mention ta"}
+{"ts": "2026-04-11T20:33:37.099897", "insight_id": "know-058", "event": "retrieved", "prompt_preview": "cool let's do these -  Quick fixes (docs):\n  - DOC-02: README doesn't mention ta"}
+{"ts": "2026-04-11T20:33:37.099902", "insight_id": "know-051", "event": "retrieved", "prompt_preview": "cool let's do these -  Quick fixes (docs):\n  - DOC-02: README doesn't mention ta"}
+{"ts": "2026-04-11T20:34:18.841888", "insight_id": "know-046", "event": "retrieved", "prompt_preview": "let's fix this either -  - VM Python 3.9 vs requires-python >= 3.10 \u2014 needs from"}
+{"ts": "2026-04-11T20:34:18.841922", "insight_id": "know-045", "event": "retrieved", "prompt_preview": "let's fix this either -  - VM Python 3.9 vs requires-python >= 3.10 \u2014 needs from"}
+{"ts": "2026-04-11T20:34:18.841927", "insight_id": "know-043", "event": "retrieved", "prompt_preview": "let's fix this either -  - VM Python 3.9 vs requires-python >= 3.10 \u2014 needs from"}
+{"ts": "2026-04-11T20:36:06.486464", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "cool. the bug seems to be fixed. Can we do the testing again"}
+{"ts": "2026-04-11T20:36:06.486505", "insight_id": "know-003", "event": "retrieved", "prompt_preview": "cool. the bug seems to be fixed. Can we do the testing again"}
+{"ts": "2026-04-11T20:36:06.486510", "insight_id": "know-001", "event": "retrieved", "prompt_preview": "cool. the bug seems to be fixed. Can we do the testing again"}
+{"ts": "2026-04-11T20:41:58.898701", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "cool. what's the command for me to give a try"}
+{"ts": "2026-04-11T20:41:58.898735", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "cool. what's the command for me to give a try"}
+{"ts": "2026-04-11T20:41:58.898740", "insight_id": "know-seat-entitlements-vs-seatroles", "event": "retrieved", "prompt_preview": "cool. what's the command for me to give a try"}
+{"ts": "2026-04-11T20:50:52.563085", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "\n  I notice know-056 (Guardian rejects dynamic agents) and know-058 (unit tests "}
+{"ts": "2026-04-11T20:50:52.563122", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "\n  I notice know-056 (Guardian rejects dynamic agents) and know-058 (unit tests "}
+{"ts": "2026-04-11T20:50:52.563127", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "\n  I notice know-056 (Guardian rejects dynamic agents) and know-058 (unit tests "}
+{"ts": "2026-04-11T20:52:33.463852", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "yah, meanwhile maybe absorb the /simplify to /review, what do you think"}
+{"ts": "2026-04-11T20:52:33.463899", "insight_id": "know-047", "event": "retrieved", "prompt_preview": "yah, meanwhile maybe absorb the /simplify to /review, what do you think"}
+{"ts": "2026-04-11T20:52:33.463903", "insight_id": "know-001", "event": "retrieved", "prompt_preview": "yah, meanwhile maybe absorb the /simplify to /review, what do you think"}
+{"ts": "2026-04-11T20:56:42.952322", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "how about this page - https://fantastic-doodle-n8z87ly.pages.github.io/docs/deve"}
+{"ts": "2026-04-11T20:56:42.952368", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "how about this page - https://fantastic-doodle-n8z87ly.pages.github.io/docs/deve"}
+{"ts": "2026-04-11T20:56:42.952373", "insight_id": "know-041", "event": "retrieved", "prompt_preview": "how about this page - https://fantastic-doodle-n8z87ly.pages.github.io/docs/deve"}
+{"ts": "2026-04-11T20:57:08.190080", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "how about this page - https://fantastic-doodle-n8z87ly.pages.github.io/docs/deve"}
+{"ts": "2026-04-11T20:57:08.190116", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "how about this page - https://fantastic-doodle-n8z87ly.pages.github.io/docs/deve"}
+{"ts": "2026-04-11T20:57:08.190120", "insight_id": "know-044", "event": "retrieved", "prompt_preview": "how about this page - https://fantastic-doodle-n8z87ly.pages.github.io/docs/deve"}
+{"ts": "2026-04-11T21:03:25.845450", "insight_id": "aha-005", "event": "retrieved", "prompt_preview": "can you /explore agent-lifecycle-mt to /verify and compare ^"}
+{"ts": "2026-04-11T21:03:25.845489", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "can you /explore agent-lifecycle-mt to /verify and compare ^"}
+{"ts": "2026-04-11T21:05:40.774768", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "the codebase is not in my local. Use captain to search^"}
+{"ts": "2026-04-11T21:05:40.774806", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "the codebase is not in my local. Use captain to search^"}
+{"ts": "2026-04-11T21:05:40.774811", "insight_id": "know-seat-entitlements-vs-seatroles", "event": "retrieved", "prompt_preview": "the codebase is not in my local. Use captain to search^"}
+{"ts": "2026-04-11T21:12:09.088171", "insight_id": "know-062", "event": "retrieved", "prompt_preview": "Key question is does dragonswarm support inter agents communication, if so why t"}
+{"ts": "2026-04-11T21:14:48.801810", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "let's do this - /aha to synthesize a higher-level pattern about \"what a producti"}
+{"ts": "2026-04-11T21:14:48.801848", "insight_id": "know-058", "event": "retrieved", "prompt_preview": "let's do this - /aha to synthesize a higher-level pattern about \"what a producti"}
+{"ts": "2026-04-11T21:14:48.801853", "insight_id": "know-seat-entitlements-vs-seatroles", "event": "retrieved", "prompt_preview": "let's do this - /aha to synthesize a higher-level pattern about \"what a producti"}
+{"ts": "2026-04-11T21:17:42.538352", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "meanwhile I still feel gaps between TAS/DragonSwarm's claim and what they really"}
+{"ts": "2026-04-11T21:22:19.001531", "insight_id": "know-047", "event": "retrieved", "prompt_preview": "aha is what we want to be"}
+{"ts": "2026-04-11T21:22:19.001557", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "aha is what we want to be"}
+{"ts": "2026-04-11T21:22:19.001561", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "aha is what we want to be"}
+{"ts": "2026-04-11T21:31:59.188105", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "cool. How do you think enhance/enrich our /delegate and /comms skill"}
+{"ts": "2026-04-11T21:38:21.912486", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "key question how about the cost comparison"}
+{"ts": "2026-04-11T21:41:05.565460", "insight_id": "know-058", "event": "retrieved", "prompt_preview": "maybe reframe the question, cost analysis for per message delivery by comparing "}
+{"ts": "2026-04-11T21:41:05.565520", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "maybe reframe the question, cost analysis for per message delivery by comparing "}
+{"ts": "2026-04-11T21:41:05.565529", "insight_id": "know-005", "event": "retrieved", "prompt_preview": "maybe reframe the question, cost analysis for per message delivery by comparing "}
+{"ts": "2026-04-11T21:41:19.026368", "insight_id": "know-058", "event": "retrieved", "prompt_preview": "maybe reframe the question, cost analysis (bytes, lentgh etc) for per message de"}
+{"ts": "2026-04-11T21:41:19.026424", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "maybe reframe the question, cost analysis (bytes, lentgh etc) for per message de"}
+{"ts": "2026-04-11T21:41:19.026429", "insight_id": "know-005", "event": "retrieved", "prompt_preview": "maybe reframe the question, cost analysis (bytes, lentgh etc) for per message de"}
+{"ts": "2026-04-11T21:41:29.298952", "insight_id": "know-058", "event": "retrieved", "prompt_preview": "maybe reframe the question, cost analysis (bytes, lentgh, token, etc) for per me"}
+{"ts": "2026-04-11T21:41:29.298989", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "maybe reframe the question, cost analysis (bytes, lentgh, token, etc) for per me"}
+{"ts": "2026-04-11T21:41:29.298993", "insight_id": "know-005", "event": "retrieved", "prompt_preview": "maybe reframe the question, cost analysis (bytes, lentgh, token, etc) for per me"}

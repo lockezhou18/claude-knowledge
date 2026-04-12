@@ -1,1 +1,6 @@
-Session 2026-04-11: AgentBus fixes (command extraction + NATS auth retry), multi-turn conversation test (3-step, context retained). markitdown skill created + 3 design docs converted to memory. cmux evaluated via /delegate → skip (existing infra covers it). Push notifications: scout hook shows dream results on first prompt (replaces manual checking). VM dream cron live at 3:47am. 2 new insights: push-vs-pull notifications, markitdown adoption.
+Session 2026-04-12 (late): AgentBus v0.3.0 QA — code review + E2E testing.
+Found 15 code bugs (3 critical: signal handler, invalid state crash, double timeout).
+E2E Round 1: 21/24 PASS — A2A gateway blocked by Guardian (unknown sender), CLI
+swallowed errors. Fixes applied. E2E Round 2: 24/24 PASS clean sweep. Key: A2A
+gateway needs `agentbus trust` (TOFU model). 3 insights: Guardian TOFU, asyncio
+mock pattern, unit-vs-E2E registry gap. VM Python 3.9 compat confirmed.

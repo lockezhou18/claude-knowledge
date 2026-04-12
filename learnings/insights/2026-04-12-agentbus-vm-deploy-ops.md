@@ -13,6 +13,7 @@ use_count: 0
 outcome_score: 0
 origin_skill: learn
 related_to: ["know-054"]
+feeds_into: "aha-007"
 ---
 
 ## AgentBus VM Deployment: Operational Facts

@@ -1,7 +1,7 @@
 ---
 name: comms
 description: "Agent communication layer — check who's online, view health, manage sessions, send messages, start pipes. The situational awareness skill for multi-agent work."
-allowed-tools: Bash(python3 -m agentbus*), Bash(agentbus *), Bash(~/bin/vm-agent --health*), Bash(~/bin/vm-agent --sessions*), Bash(~/bin/vm-agent --results*), Bash(~/bin/vm-agent --result*), Bash(bash -c "ssh vm*), Bash(lsof *), Bash(cat *inbox*), Bash(pkill *), Bash(kill *), Bash(export AGENTBUS*), Monitor
+allowed-tools: Bash(python3 -m agentbus*), Bash(agentbus *), Bash(cd *agentbus && agentbus *), Bash(~/bin/vm-agent --health*), Bash(~/bin/vm-agent --sessions*), Bash(~/bin/vm-agent --results*), Bash(~/bin/vm-agent --result*), Bash(bash -c "ssh vm*), Bash(lsof *), Bash(cat *inbox*), Bash(pkill *), Bash(kill *), Bash(export AGENTBUS*), Bash(curl *), Monitor
 inputs: ["request"]
 ---
 
@@ -22,6 +22,10 @@ Just describe what you want. The skill figures out the subcommand.
 /comms open a channel to vm         — start bidirectional pipe
 /comms check inbox                  — read incoming messages
 /comms stop listening               — stop background listener
+/comms tasks                        — task dashboard across agents
+/comms tasks working                — what's in flight
+/comms trust a2a-gw-bizhou-vm       — approve untrusted agent (TOFU)
+/comms a2a status                   — A2A gateway health
 ```
 
 ## Step 1: Classify the Request
@@ -30,7 +34,7 @@ Read the user's input and classify into one of these intents:
 
 | Signal in user's words | Intent | Route to |
 |------------------------|--------|----------|
-| No args, "status", "dashboard", "overview", "how's", "what's up", "sitrep" | **Dashboard** | Run full dashboard |
+| No args, "status", "dashboard", "overview", "how's", "what's up", "sitrep" | **Dashboard** | Run full dashboard (includes tasks + trust) |
 | "who", "agents", "list agents", "online", "registered", "available" | **Who** | List agents |
 | "health", "healthy", "infra", "tunnel", "nats", "connected", "reachable" | **Health** | Infra check |
 | "session", "sessions", "active sessions", "conversations" | **Sessions** | List sessions |
@@ -40,6 +44,9 @@ Read the user's input and classify into one of these intents:
 | "pipe", "channel", "connect to", "open", "bidirectional", "listen to" | **Pipe** | Start channel |
 | "inbox", "incoming", "check messages", "what did.*send" | **Inbox** | Read inbox file |
 | "stop", "close", "disconnect", "kill listener", "stop listening" | **Stop** | Kill listener |
+| "task", "tasks", "what's running", "in flight", "working", "completed" | **Tasks** | Task dashboard |
+| "trust", "approve", "allow", "accept" + agent name | **Trust** | Approve agent (TOFU) |
+| "a2a", "gateway", "http", "external" | **A2A** | A2A gateway status |
 
 **Agent name resolution:** If the user says "vm", resolve to `bizhou-vm`. If "laptop", resolve to `bizhou-laptop`. Match against registered agent card names.
 
@@ -210,6 +217,106 @@ cat ~/agentbus-inbox.log 2>/dev/null || echo "(no messages yet)"
 
 ```bash
 pkill -f "hook_listener.*bizhou-laptop" 2>/dev/null && echo "Listener stopped" || echo "No listener running"
+```
+
+---
+
+### Tasks (v0.3.0)
+
+Query the task lifecycle store on the VM agent.
+
+```bash
+# All tasks
+cd $AGENTBUS_DIR && agentbus tasks --target bizhou-vm
+
+# Filter by state
+cd $AGENTBUS_DIR && agentbus tasks --target bizhou-vm --state working     # in flight
+cd $AGENTBUS_DIR && agentbus tasks --target bizhou-vm --state completed   # finished
+cd $AGENTBUS_DIR && agentbus tasks --target bizhou-vm --state failed      # errors
+
+# Filter by context (pipe session or delegation group)
+cd $AGENTBUS_DIR && agentbus tasks --target bizhou-vm --context <context_id>
+
+# Detail for specific task
+cd $AGENTBUS_DIR && agentbus tasks --target bizhou-vm <task_id>
+
+# Cancel a running task
+cd $AGENTBUS_DIR && agentbus cancel <task_id> --target bizhou-vm
+```
+
+Present as:
+```
+=== Tasks on bizhou-vm ===
+  [>] 2026-04-12T10:30 abc123.. working          mint build hp-ats...
+  [+] 2026-04-12T10:28 def456.. completed        echo hello
+  [-] 2026-04-12T10:25 ghi789.. failed            grpcurli ...
+
+  3 task(s)
+```
+
+---
+
+### Trust (TOFU — v0.3.0)
+
+Approve an untrusted agent. Used when Guardian rejects a sender with: "Agent 'X' detected on bus but not trusted."
+
+```bash
+# Trust a specific agent
+cd $AGENTBUS_DIR && agentbus trust <agent_name> --target bizhou-vm
+
+# Example: trust the A2A gateway
+cd $AGENTBUS_DIR && agentbus trust a2a-gw-bizhou-vm --target bizhou-vm
+```
+
+This writes an agent card to the VM's agents directory. One-time — persistent across restarts.
+
+---
+
+### A2A (v0.3.0)
+
+Check A2A gateway status.
+
+```bash
+# Check if gateway is running (local process)
+lsof -i :8080 2>/dev/null | grep -c LISTEN && echo "A2A Gateway: OK (port 8080)" || echo "A2A Gateway: NOT RUNNING"
+
+# Fetch the agent card
+curl -s http://localhost:8080/.well-known/agent-card 2>/dev/null | python3 -m json.tool || echo "(gateway not reachable)"
+```
+
+Present as:
+```
+=== A2A Gateway ===
+  Status:  OK (port 8080)
+  Agent:   bizhou-vm
+  Skills:  8
+  URL:     http://localhost:8080
+```
+
+---
+
+## Dashboard Enhancement (v0.3.0)
+
+When running the full dashboard, also include tasks and A2A status:
+
+```
+=== AgentBus Comms ===
+  Tunnel:    OK / DOWN
+  NATS:      OK / DOWN
+  Agents:    N registered
+  Sessions:  ...
+  Results:   N new
+  Tasks:     N total (M working, K completed)
+  A2A:       OK (port 8080) / NOT RUNNING
+```
+
+Add these to the parallel dashboard queries:
+```bash
+# 6. Tasks summary
+cd $AGENTBUS_DIR && agentbus tasks --target bizhou-vm 2>/dev/null | tail -1 || echo "    (unreachable)"
+
+# 7. A2A gateway
+lsof -i :8080 2>/dev/null | grep -c LISTEN && echo "    OK (port 8080)" || echo "    not running"
 ```
 
 ---

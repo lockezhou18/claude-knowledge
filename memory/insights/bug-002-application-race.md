@@ -1,19 +1,9 @@
 ---
-id: bug-002
-track: bug
-repos: [hp-ats-integration-mt]
-tags: [race-condition, mapping, sync, phase2, kafka]
-severity: high
-created: 2026-03-23
-last_verified: 2026-03-25
-use_count: 3
-outcome_score: 3
-status: graduated
-graduated_to: "memory/insights/bug-002-application-race.md"
-rot_rate: slow
-paths: ["**/ApplicationProcessor.java", "**/ApplicationStageProcessor.java"]
+name: "ApplicationProcessor race condition — stage mapping missing on CREATE"
+description: "When ATS applicants stuck in sourcing stage, check HPC→ApplicationStage mapping. Race: CREATE event processed before stage exists in IP."
+type: project
+originSessionId: 0e9b0eb1-5032-446a-81a7-04633c37b4ea
 ---
-
 **When** new ATS applicants are stuck in HP sourcing stage ("potential candidate") instead of ATS stage, **check** if the HPC→ApplicationStage mapping exists **because** the IntegrationApplication CREATE event can be processed before the IntegrationApplicationStage exists in IP.
 
 ## Symptoms
@@ -26,3 +16,8 @@ ApplicationProcessor.getAllStages() returns empty when the stage hasn't been syn
 
 ## Fix
 PR #526: ensureApplicationStageMappingExists() before resolveAndSyncCurrentState() in processPhase2(). Zero overhead when mapping exists, creates it on the recovery path.
+
+## Prevention
+When processing Kafka events that depend on other entities, always verify the dependency exists before proceeding. Don't assume event ordering guarantees entity availability.
+
+**Graduated from:** `~/.claude/learnings/staging/bug-002.md` (use_count=3, score=3)

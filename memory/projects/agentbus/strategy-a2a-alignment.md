@@ -33,15 +33,28 @@ Single-machine only (not competitors for distributed): CrewAI (48.6k stars), Lan
 
 ## QA Results (April 2026)
 
-Full audit at `~/workspace/qa/agentbus/findings.md` and `retest-report.md`.
-- 25 findings, 11 code fixes applied and verified
-- 17/18 CLI commands pass, pipe bidirectional confirmed
-- Test coverage is 3/10 — ClaudeAdapter has zero tests (top priority)
-- Architecture rated 8/10, code quality 6/10, idea 9/10
+**v0.2.0 audit:** `~/workspace/qa/agentbus/findings.md` — 25 findings, 11 fixed
+**v0.3.0 audit:** `~/workspace/qa/agentbus/findings-v030.md` — 15 code bugs, 12 fixed, 24/24 E2E PASS
+- A2A gateway: verified end-to-end (HTTP → NATS → Claude → response with artifacts)
+- Task lifecycle: full state machine verified (create, list, detail, filter, cancel)
+- Guardian TOFU: requires `agentbus trust a2a-gw-{agent} --target {agent}` for gateway
+- Test count: 235 unit tests (49 task + 39 A2A + 147 existing)
+
+## Completed (2026-04-11)
+
+1. ~~Tests for ClaudeAdapter~~ **DONE** (2026-04-12): 143 unit tests, adapter 77 tests, CLI 29 tests
+2. ~~A2A HTTP gateway~~ **DONE**: `agentbus/a2a/server.py` — aiohttp HTTP server with 4 endpoints
+3. ~~A2A HTTP client~~ **DONE**: `agentbus/a2a/client.py` — transparent routing in `Agent.request()`
+4. ~~Formal task lifecycle~~ **DONE**: `agentbus/task.py` — TaskState machine, Task, InMemoryTaskStore. 6 states, enforced transitions, context_id for pipe-task linking
+5. ~~CLI: tasks + cancel~~ **DONE**: `agentbus tasks`, `agentbus cancel`, `agentbus a2a-server`
+6. ~~Pipe-task integration~~ **DONE**: pipe generates context_id, subscribes to task events
+
+**Test count: 235** (49 task + 39 A2A + 147 existing)
 
 ## Next Steps
 
-1. A2A HTTP transport adapter in `agentbus/transports/a2a_http.py`
-2. ~~Tests for ClaudeAdapter~~ **DONE** (2026-04-12): 143 unit tests, adapter 77 tests, CLI 29 tests
-3. Formal task lifecycle (create/get/cancel/status) — align with A2A Tasks
-4. Fix remaining 3 low-severity issues (duplicate CLAUDE.md bullet, watch duplicate delivery, AGENTBUS_FROM undocumented)
+1. SSE streaming (`POST /message/stream`)
+2. Push notifications (webhook callbacks)
+3. Persistent task store (JetStream-backed)
+4. `input_required` state with multi-turn conversation
+5. Fix remaining 3 low-severity issues (duplicate CLAUDE.md bullet, watch duplicate delivery, AGENTBUS_FROM undocumented)

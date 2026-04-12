@@ -14,6 +14,7 @@ rot_rate: slow
 use_count: 0
 outcome_score: 0.0
 origin_skill: learn
+feeds_into: "aha-007"
 ---
 
 ## Context
