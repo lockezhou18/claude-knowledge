@@ -8,6 +8,7 @@
 
 ## Active Work
 - [Plan — Migrate ecosystem to Claude-native memory architecture](project/plan-memory-native-migration.md) — Restructure the entire Claude ecosystem so Auto Memory/Dream is the knowledge fo...
+- [AgentBus Strategy: A2A HTTP transport adapter](projects/agentbus/strategy-a2a-alignment.md) — Add A2A HTTP transport, keep NATS for speed. QA audit done, 11 fixes verified. N...
 
 ## Reference
 - [Build Troubleshooting](reference/build-troubleshooting.md) — 

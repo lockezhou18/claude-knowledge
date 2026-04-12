@@ -210,3 +210,21 @@
 {"ts": "2026-04-11T18:06:16.706637", "insight_id": "know-052", "event": "retrieved", "prompt_preview": "cool. Now for the /comms skill, is that possible to input natural language, and "}
 {"ts": "2026-04-11T18:06:16.706642", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "cool. Now for the /comms skill, is that possible to input natural language, and "}
 {"ts": "2026-04-11T18:12:42.530931", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "cool. btw how you rate the agentbus"}
+{"ts": "2026-04-11T18:16:10.775459", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can you check - Honest assessment after reading every file and testing every fea"}
+{"ts": "2026-04-11T18:16:10.775500", "insight_id": "eureka-007", "event": "retrieved", "prompt_preview": "can you check - Honest assessment after reading every file and testing every fea"}
+{"ts": "2026-04-11T18:16:10.775506", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "can you check - Honest assessment after reading every file and testing every fea"}
+{"ts": "2026-04-11T18:17:58.986155", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>acc7231c29b1ad656</task-id>\n<tool-use-id>toolu_019w"}
+{"ts": "2026-04-11T18:17:58.986196", "insight_id": "eureka-007", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>acc7231c29b1ad656</task-id>\n<tool-use-id>toolu_019w"}
+{"ts": "2026-04-11T18:17:58.986200", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>acc7231c29b1ad656</task-id>\n<tool-use-id>toolu_019w"}
+{"ts": "2026-04-11T18:20:18.866439", "insight_id": "know-046", "event": "retrieved", "prompt_preview": "can you check knowledge/memory for the cmux we installed this morning"}
+{"ts": "2026-04-11T18:20:18.866471", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can you check knowledge/memory for the cmux we installed this morning"}
+{"ts": "2026-04-11T18:20:18.866475", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "can you check knowledge/memory for the cmux we installed this morning"}
+{"ts": "2026-04-11T18:21:45.628084", "insight_id": "eureka-007", "event": "retrieved", "prompt_preview": "I agree with - Strategic move: Add an A2A HTTP transport adapter. Keep NATS for "}
+{"ts": "2026-04-11T18:21:45.628114", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "I agree with - Strategic move: Add an A2A HTTP transport adapter. Keep NATS for "}
+{"ts": "2026-04-11T18:21:45.628119", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "I agree with - Strategic move: Add an A2A HTTP transport adapter. Keep NATS for "}
+{"ts": "2026-04-11T18:23:55.656358", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "I mean this - The system already handles this. When you open a new Claude sessio"}
+{"ts": "2026-04-11T18:23:55.656399", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "I mean this - The system already handles this. When you open a new Claude sessio"}
+{"ts": "2026-04-11T18:23:55.656404", "insight_id": "know-058", "event": "retrieved", "prompt_preview": "I mean this - The system already handles this. When you open a new Claude sessio"}
+{"ts": "2026-04-11T18:24:58.555847", "insight_id": "know-058", "event": "retrieved", "prompt_preview": "got this,     \u23bf \u00a0/Users/bizhou/claude-knowledge\n\n\n\u23fa Got it \u2014 you want the strate"}
+{"ts": "2026-04-11T18:24:58.555881", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "got this,     \u23bf \u00a0/Users/bizhou/claude-knowledge\n\n\n\u23fa Got it \u2014 you want the strate"}
+{"ts": "2026-04-11T18:24:58.555886", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "got this,     \u23bf \u00a0/Users/bizhou/claude-knowledge\n\n\n\u23fa Got it \u2014 you want the strate"}
