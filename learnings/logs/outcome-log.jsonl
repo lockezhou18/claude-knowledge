@@ -81,3 +81,30 @@
 {"ts": "2026-04-12T11:27:39.516850", "insight_id": "know-055", "event": "retrieved", "prompt_preview": "for the watch result, can we leverage the claude monitor tool"}
 {"ts": "2026-04-12T11:27:39.516855", "insight_id": "eureka-007", "event": "retrieved", "prompt_preview": "for the watch result, can we leverage the claude monitor tool"}
 {"ts": "2026-04-12T11:29:53.727428", "insight_id": "eureka-007", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>brn9a41yk</task-id>\n<tool-use-id>toolu_01Pjm3d9mj2i"}
+{"ts": "2026-04-12T11:32:18.176520", "insight_id": "know-060", "event": "retrieved", "prompt_preview": "why the user get the authorization violation - Bash(basename $(pwd))\n  \u23bf \u00a0connec"}
+{"ts": "2026-04-12T11:32:18.176545", "insight_id": "know-055", "event": "retrieved", "prompt_preview": "why the user get the authorization violation - Bash(basename $(pwd))\n  \u23bf \u00a0connec"}
+{"ts": "2026-04-12T11:32:18.176550", "insight_id": "know-045", "event": "retrieved", "prompt_preview": "why the user get the authorization violation - Bash(basename $(pwd))\n  \u23bf \u00a0connec"}
+{"ts": "2026-04-12T11:33:42.206757", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you restore all the changes"}
+{"ts": "2026-04-12T11:33:42.206786", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can you restore all the changes"}
+{"ts": "2026-04-12T11:33:42.206790", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "can you restore all the changes"}
+{"ts": "2026-04-12T11:37:19.086778", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "seems like the export doesn't work for every session to pick it up, and it needs"}
+{"ts": "2026-04-12T11:37:19.086807", "insight_id": "know-055", "event": "retrieved", "prompt_preview": "seems like the export doesn't work for every session to pick it up, and it needs"}
+{"ts": "2026-04-12T11:37:19.086812", "insight_id": "know-046", "event": "retrieved", "prompt_preview": "seems like the export doesn't work for every session to pick it up, and it needs"}
+{"ts": "2026-04-12T11:43:15.281469", "insight_id": "know-055", "event": "retrieved", "prompt_preview": "cool, let the vm do web search for the current location and whether"}
+{"ts": "2026-04-12T11:43:15.281513", "insight_id": "know-046", "event": "retrieved", "prompt_preview": "cool, let the vm do web search for the current location and whether"}
+{"ts": "2026-04-12T11:43:15.281518", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "cool, let the vm do web search for the current location and whether"}
+{"ts": "2026-04-12T11:44:31.371814", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you check why you can, but he cannot, both of you are running same claude ri"}
+{"ts": "2026-04-12T11:44:31.371867", "insight_id": "know-051", "event": "retrieved", "prompt_preview": "can you check why you can, but he cannot, both of you are running same claude ri"}
+{"ts": "2026-04-12T11:44:31.371872", "insight_id": "aha-006", "event": "retrieved", "prompt_preview": "can you check why you can, but he cannot, both of you are running same claude ri"}
+{"ts": "2026-04-12T11:47:37.586533", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "can you check - cool, let the vm do web search for the current location and whet"}
+{"ts": "2026-04-12T11:47:37.586579", "insight_id": "aha-006", "event": "retrieved", "prompt_preview": "can you check - cool, let the vm do web search for the current location and whet"}
+{"ts": "2026-04-12T11:47:37.586584", "insight_id": "eureka-008", "event": "retrieved", "prompt_preview": "can you check - cool, let the vm do web search for the current location and whet"}
+{"ts": "2026-04-12T11:47:40.454224", "insight_id": "eureka-007", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>bxbhc87px</task-id>\n<tool-use-id>toolu_01EzeJCnEW2D"}
+{"ts": "2026-04-12T11:47:40.454257", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>bxbhc87px</task-id>\n<tool-use-id>toolu_01EzeJCnEW2D"}
+{"ts": "2026-04-12T11:50:49.888572", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "So the agentbus running in seperate shell?"}
+{"ts": "2026-04-12T11:50:49.888606", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "So the agentbus running in seperate shell?"}
+{"ts": "2026-04-12T11:50:49.888611", "insight_id": "aha-006", "event": "retrieved", "prompt_preview": "So the agentbus running in seperate shell?"}
+{"ts": "2026-04-12T11:52:17.803073", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you output this to a file"}
+{"ts": "2026-04-12T11:52:17.803110", "insight_id": "eureka-008", "event": "retrieved", "prompt_preview": "can you output this to a file"}
+{"ts": "2026-04-12T11:52:17.803115", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "can you output this to a file"}
+{"ts": "2026-04-12T11:54:01.205873", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you check ~/claude-knowledge/memory/global/agentbus-shell-path.md"}
