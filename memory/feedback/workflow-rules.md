@@ -33,6 +33,17 @@ When making code changes in Java projects:
 
 **Why**: Multiple sessions had friction from running builds in the wrong directory or not running tests, leading to incomplete outcomes.
 
+## VM Task Routing: Agent vs Shell
+
+When sending work to the VM:
+
+1. **Specific shell commands** (`mint build`, `mint test`, `go-status`, `grpcurli`, etc.) → use direct VM skills (`/delegate -c`, `vm-run`, SSH). No Claude overhead needed.
+2. **Thinking tasks** (review, investigate, analyze, plan) → use `/comms` or `/delegate -t` to invoke Claude on the VM.
+
+**Why**: Routing `mint build` through the VM Claude agent adds unnecessary latency and token cost. Claude has to parse the request, decide to run a shell command, then run it — when a direct `bash -c` would do. Reserve agent invocation for tasks that need reasoning.
+
+**How to apply**: If the user says "run X on VM" and X is a concrete command, use shell transport. If the user says "have the VM Claude do X" or the task requires judgment, use agent transport.
+
 ## Visual Artifacts: Open, Don't Suggest
 
 When generating or modifying HTML files (graphs, reports, visualizations, diagrams):

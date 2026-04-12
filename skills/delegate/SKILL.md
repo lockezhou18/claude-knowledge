@@ -1,7 +1,7 @@
 ---
 name: delegate
 description: "Delegate tasks to the VM agent. Just describe what you want in natural language — the skill figures out the mode, transport, and flags automatically."
-allowed-tools: Bash(bash -c "ssh vm*), Bash(bash -c "scp*), Bash(bash -c "rsync*), Bash(bash -c "cd * && vm-run*), Bash(bash -c "vm-run*), Bash(export PATH*vm-run*), Bash(~/bin/vm-agent*), Bash(cd *agentbus && agentbus *), Bash(curl *), Monitor
+allowed-tools: Bash(bash -c "ssh vm*), Bash(bash -c "scp*), Bash(bash -c "rsync*), Bash(bash -c "cd * && vm-run*), Bash(bash -c "vm-run*), Bash(export PATH*vm-run*), Bash(~/bin/vm-agent*), Bash(cd *agentbus && agentbus *), Bash(curl *), TaskOutput
 inputs: ["task"]
 ---
 
@@ -81,8 +81,8 @@ The skill chooses the right mode from natural language. Three layers of signals:
 | Mode | Execute with | Result delivery |
 |------|-------------|-----------------|
 | **Sync** | `~/bin/vm-agent "<cmd>"` or `~/bin/vm-agent -t "<msg>"` | Block, show result |
-| **Async** | `~/bin/vm-agent --async "<msg>"` + Monitor | Background, notify when done |
-| **Auto** | `~/bin/vm-agent --auto "<msg>"` + Monitor | Multi-round, stream checkpoints |
+| **Async** | `~/bin/vm-agent --async "<msg>"` + background watcher | Background, notify when done |
+| **Auto** | `~/bin/vm-agent --auto "<msg>"` + background watcher | Multi-round, stream checkpoints |
 | **Pipe** | `agentbus pipe --agent $LOCAL_AGENT --to $TARGET_AGENT` | Interactive bidirectional |
 | **SSE Streaming** | `curl -N POST http://localhost:8080/message/stream` | Real-time HTTP events |
 | **A2A Sync** | `curl POST http://localhost:8080/message/send` | HTTP request/response |
