@@ -108,3 +108,6 @@
 {"ts": "2026-04-12T11:52:17.803110", "insight_id": "eureka-008", "event": "retrieved", "prompt_preview": "can you output this to a file"}
 {"ts": "2026-04-12T11:52:17.803115", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "can you output this to a file"}
 {"ts": "2026-04-12T11:54:01.205873", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you check ~/claude-knowledge/memory/global/agentbus-shell-path.md"}
+{"ts": "2026-04-12T11:55:19.959370", "insight_id": "know-044", "event": "retrieved", "prompt_preview": "can you fix   Invalid Settings\n  /Users/bizhou/.claude/settings.json\n   \u2514 permis"}
+{"ts": "2026-04-12T11:55:19.959418", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you fix   Invalid Settings\n  /Users/bizhou/.claude/settings.json\n   \u2514 permis"}
+{"ts": "2026-04-12T11:56:00.905080", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you test 3c8d00c"}
