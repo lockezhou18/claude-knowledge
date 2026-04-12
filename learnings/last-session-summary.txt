@@ -1,6 +1,7 @@
-Session 2026-04-12 (late): AgentBus v0.3.0 QA — code review + E2E testing.
-Found 15 code bugs (3 critical: signal handler, invalid state crash, double timeout).
-E2E Round 1: 21/24 PASS — A2A gateway blocked by Guardian (unknown sender), CLI
-swallowed errors. Fixes applied. E2E Round 2: 24/24 PASS clean sweep. Key: A2A
-gateway needs `agentbus trust` (TOFU model). 3 insights: Guardian TOFU, asyncio
-mock pattern, unit-vs-E2E registry gap. VM Python 3.9 compat confirmed.
+Session 2026-04-12: AgentBus v0.3.0 shipped (137fb91). Core task state machine
+(6 states, enforced transitions), A2A HTTP gateway+client (transparent routing),
+Guardian TOFU trust (Presence+Registry), 4 new CLI commands, pipe context_id.
+15 QA bugs fixed, 2 E2E bugs fixed, 235 tests, 0 warnings. /delegate and /comms
+skills enhanced with task lifecycle + trust + NL mappings. Python 3.9+ compat.
+3 insights: know-064 (lifecycle in core), know-065 (TOFU design), know-066 (QA rounds).
+Next: FileTaskStore, test gaps (8), PII cleanup before public.

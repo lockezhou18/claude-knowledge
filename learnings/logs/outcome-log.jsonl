@@ -338,3 +338,28 @@
 {"ts": "2026-04-11T21:41:29.298952", "insight_id": "know-058", "event": "retrieved", "prompt_preview": "maybe reframe the question, cost analysis (bytes, lentgh, token, etc) for per me"}
 {"ts": "2026-04-11T21:41:29.298989", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "maybe reframe the question, cost analysis (bytes, lentgh, token, etc) for per me"}
 {"ts": "2026-04-11T21:41:29.298993", "insight_id": "know-005", "event": "retrieved", "prompt_preview": "maybe reframe the question, cost analysis (bytes, lentgh, token, etc) for per me"}
+{"ts": "2026-04-11T23:04:32.701677", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "there's a research branch, can you see it"}
+{"ts": "2026-04-11T23:04:32.701702", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "there's a research branch, can you see it"}
+{"ts": "2026-04-11T23:10:08.723466", "insight_id": "know-058", "event": "retrieved", "prompt_preview": "leave it. how do you think the agentbus part for the next"}
+{"ts": "2026-04-11T23:10:08.723505", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "leave it. how do you think the agentbus part for the next"}
+{"ts": "2026-04-11T23:10:08.723510", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "leave it. how do you think the agentbus part for the next"}
+{"ts": "2026-04-11T23:13:01.869981", "insight_id": "know-058", "event": "retrieved", "prompt_preview": "what do you think to enhance /explore, as it first check local. I feel like this"}
+{"ts": "2026-04-11T23:13:01.870016", "insight_id": "know-047", "event": "retrieved", "prompt_preview": "what do you think to enhance /explore, as it first check local. I feel like this"}
+{"ts": "2026-04-11T23:13:01.870020", "insight_id": "know-046", "event": "retrieved", "prompt_preview": "what do you think to enhance /explore, as it first check local. I feel like this"}
+{"ts": "2026-04-11T23:20:49.269910", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "would the layer be context dependent, what do you think"}
+{"ts": "2026-04-11T23:22:26.050750", "insight_id": "know-058", "event": "retrieved", "prompt_preview": "cool. that's good. what do you think seperate the compare with the explore"}
+{"ts": "2026-04-11T23:31:12.803542", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you try again, I just establish the vpn"}
+{"ts": "2026-04-11T23:31:12.803588", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can you try again, I just establish the vpn"}
+{"ts": "2026-04-11T23:37:06.173454", "insight_id": "bug-003", "event": "retrieved", "prompt_preview": "cool. commit and push as qa testing passed"}
+{"ts": "2026-04-12T00:10:10.825525", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you check Users/bizhou/workspace/qa/agentbus/e2e-report-retry-sse.md"}
+{"ts": "2026-04-12T00:14:37.329266", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you check, it fixed"}
+{"ts": "2026-04-12T00:17:58.386556", "insight_id": "know-047", "event": "retrieved", "prompt_preview": "do we want to deploy to vm either"}
+{"ts": "2026-04-12T00:17:58.386591", "insight_id": "know-045", "event": "retrieved", "prompt_preview": "do we want to deploy to vm either"}
+{"ts": "2026-04-12T00:17:58.386596", "insight_id": "bug-009", "event": "retrieved", "prompt_preview": "do we want to deploy to vm either"}
+{"ts": "2026-04-12T00:21:12.243487", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "cool. can you provide couple of examples of the streaming,"}
+{"ts": "2026-04-12T00:21:12.243532", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "cool. can you provide couple of examples of the streaming,"}
+{"ts": "2026-04-12T00:21:12.243537", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "cool. can you provide couple of examples of the streaming,"}
+{"ts": "2026-04-12T00:35:53.978464", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "there are some new changes, can you /review /qa b827752"}
+{"ts": "2026-04-12T00:44:53.530482", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you address  -/Users/bizhou/workspace/qa/agentbus/findings-p2p4.md"}
+{"ts": "2026-04-12T00:48:52.348517", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "seems like addressed. Can you test again"}
+{"ts": "2026-04-12T00:53:01.103268", "insight_id": "know-051", "event": "retrieved", "prompt_preview": "nice. do you need to ship"}

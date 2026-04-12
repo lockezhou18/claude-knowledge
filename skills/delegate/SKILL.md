@@ -96,6 +96,15 @@ Tell the user: "Task delegated. I'm watching for results — keep working."
 - **Sync**: show the result directly
 - **Async**: Monitor catches result → present it when it arrives
 - **Escalation**: if VM agent returns "ESCALATE:", show the escalation to the user with the suggested action
+- **Retry**: Async tasks auto-retry up to 2 times on transient failures (3s → 6s → 12s backoff). Tell user: "Task failed but retrying..." if you see retry logs. Override with `max_retries` in payload (0 = no retry, try once).
+
+### Retry-aware natural language
+
+| User says | Interpretation |
+|-----------|---------------|
+| "try again if it fails", "keep trying", "retry" | Add `max_retries: 3` to payload |
+| "just try once", "no retries", "one shot" | Add `max_retries: 0` to payload |
+| "keep retrying until it works" | Use auto mode (`--auto`) instead — that's the multi-round loop |
 
 ## Examples
 
@@ -114,9 +123,9 @@ Tell the user: "Task delegated. I'm watching for results — keep working."
 
 **Note on grpcurli/curli with complex JSON**: Always use **think mode** (`-t`). The VM Claude builds the command locally with correct escaping. Don't try to pass complex JSON through shell mode — quoting mangles it.
 
-## Step 5: Task Lifecycle (v0.3.0)
+## Step 5: Task Lifecycle (v0.3.1)
 
-After async/auto delegation, use the task store for lifecycle tracking instead of relying only on NATS watch.
+After async/auto delegation, use the task store for lifecycle tracking. Tasks are **persistent** (FileTaskStore) — they survive listener restarts. No more lost state.
 
 **A. Check task status:**
 ```bash
@@ -143,15 +152,18 @@ For auto-mode (`--auto`), the listener creates tasks with context_id. Query all 
 cd $AGENTBUS_DIR && agentbus tasks --target bizhou-vm --context <context_id>
 ```
 
-### How to present task status
+### Natural language → task command
 
 | User says | Action |
 |-----------|--------|
-| "what's the status of that task" | `agentbus tasks --target bizhou-vm <last_task_id>` |
-| "is it done yet" | `agentbus tasks --target bizhou-vm <last_task_id>` — check state |
-| "cancel it" | `agentbus cancel <last_task_id> --target bizhou-vm` |
-| "what's running on vm" | `agentbus tasks --target bizhou-vm --state working` |
-| "show all tasks" | `agentbus tasks --target bizhou-vm` |
+| "what's the status", "how's it going", "is it done yet", "check on that" | `agentbus tasks --target bizhou-vm <last_task_id>` |
+| "cancel it", "stop that", "kill the build", "abort", "nevermind" | `agentbus cancel <last_task_id> --target bizhou-vm` |
+| "what's running", "anything in flight", "what's the vm doing" | `agentbus tasks --target bizhou-vm --state working` |
+| "show all tasks", "task history", "what did the vm do" | `agentbus tasks --target bizhou-vm` |
+| "what failed", "any errors", "what broke" | `agentbus tasks --target bizhou-vm --state failed` |
+| "show everything from that pipe session" | `agentbus tasks --target bizhou-vm --context <context_id>` |
+
+**Remembering the last task_id:** After any async delegation, remember the returned `task_id` so follow-up questions ("is it done?", "cancel it") can reference it without the user repeating it.
 
 ## Session Management
 

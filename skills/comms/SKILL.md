@@ -44,9 +44,9 @@ Read the user's input and classify into one of these intents:
 | "pipe", "channel", "connect to", "open", "bidirectional", "listen to" | **Pipe** | Start channel |
 | "inbox", "incoming", "check messages", "what did.*send" | **Inbox** | Read inbox file |
 | "stop", "close", "disconnect", "kill listener", "stop listening" | **Stop** | Kill listener |
-| "task", "tasks", "what's running", "in flight", "working", "completed" | **Tasks** | Task dashboard |
-| "trust", "approve", "allow", "accept" + agent name | **Trust** | Approve agent (TOFU) |
-| "a2a", "gateway", "http", "external" | **A2A** | A2A gateway status |
+| "task", "tasks", "what's running", "in flight", "working", "completed", "what did vm do", "any errors", "what failed", "what finished" | **Tasks** | Task dashboard |
+| "trust", "approve", "allow", "accept", "authorize", "let it in", "add to whitelist" + agent name | **Trust** | Approve agent (TOFU) |
+| "a2a", "gateway", "http", "external", "is the gateway up", "a2a status" | **A2A** | A2A gateway status |
 
 **Agent name resolution:** If the user says "vm", resolve to `bizhou-vm`. If "laptop", resolve to `bizhou-laptop`. Match against registered agent card names.
 
@@ -225,22 +225,23 @@ pkill -f "hook_listener.*bizhou-laptop" 2>/dev/null && echo "Listener stopped" |
 
 Query the task lifecycle store on the VM agent.
 
+**Natural language → command:**
+
+| User says | Interpretation | Command |
+|-----------|---------------|---------|
+| "tasks", "show tasks", "task list" | all tasks | `agentbus tasks --target bizhou-vm` |
+| "what's running", "anything in flight", "what's the vm doing" | working tasks | `agentbus tasks --target bizhou-vm --state working` |
+| "what finished", "completed tasks", "what got done" | completed | `agentbus tasks --target bizhou-vm --state completed` |
+| "any errors", "what failed", "what broke" | failed | `agentbus tasks --target bizhou-vm --state failed` |
+| "what about task abc123", "details on that task" | specific task | `agentbus tasks --target bizhou-vm <task_id>` |
+| "cancel that", "stop the build", "kill it" | cancel | `agentbus cancel <task_id> --target bizhou-vm` |
+
 ```bash
-# All tasks
 cd $AGENTBUS_DIR && agentbus tasks --target bizhou-vm
-
-# Filter by state
-cd $AGENTBUS_DIR && agentbus tasks --target bizhou-vm --state working     # in flight
-cd $AGENTBUS_DIR && agentbus tasks --target bizhou-vm --state completed   # finished
-cd $AGENTBUS_DIR && agentbus tasks --target bizhou-vm --state failed      # errors
-
-# Filter by context (pipe session or delegation group)
+cd $AGENTBUS_DIR && agentbus tasks --target bizhou-vm --state working
+cd $AGENTBUS_DIR && agentbus tasks --target bizhou-vm --state failed
 cd $AGENTBUS_DIR && agentbus tasks --target bizhou-vm --context <context_id>
-
-# Detail for specific task
 cd $AGENTBUS_DIR && agentbus tasks --target bizhou-vm <task_id>
-
-# Cancel a running task
 cd $AGENTBUS_DIR && agentbus cancel <task_id> --target bizhou-vm
 ```
 
@@ -260,15 +261,20 @@ Present as:
 
 Approve an untrusted agent. Used when Guardian rejects a sender with: "Agent 'X' detected on bus but not trusted."
 
-```bash
-# Trust a specific agent
-cd $AGENTBUS_DIR && agentbus trust <agent_name> --target bizhou-vm
+**Natural language → command:**
 
-# Example: trust the A2A gateway
-cd $AGENTBUS_DIR && agentbus trust a2a-gw-bizhou-vm --target bizhou-vm
+| User says | Interpretation | Command |
+|-----------|---------------|---------|
+| "trust the gateway", "approve a2a-gw" | trust A2A gateway | `agentbus trust a2a-gw-bizhou-vm --target bizhou-vm` |
+| "let it in", "authorize that agent", "accept <name>" | trust named agent | `agentbus trust <name> --target bizhou-vm` |
+
+```bash
+cd $AGENTBUS_DIR && agentbus trust <agent_name> --target bizhou-vm
 ```
 
 This writes an agent card to the VM's agents directory. One-time — persistent across restarts.
+
+**Auto-detect from error:** If a previous command failed with "Agent 'X' detected on bus but not trusted", extract the agent name from the error and suggest the trust command.
 
 ---
 
@@ -293,11 +299,33 @@ Present as:
   URL:     http://localhost:8080
 ```
 
+**SSE Streaming (v0.3.1):** The gateway supports real-time streaming via `POST /message/stream`. Returns Server-Sent Events (submitted → working → completed → done).
+
+**Natural language → A2A commands:**
+
+| User says | Interpretation | Command |
+|-----------|---------------|---------|
+| "stream a message to the gateway", "watch it in real-time" | SSE stream | `curl -N -X POST http://localhost:8080/message/stream -H 'Content-Type: application/json' -d '{"role":"user","parts":[{"type":"text","text":"..."}]}'` |
+| "send via a2a", "http message" | Sync A2A send | `curl -X POST http://localhost:8080/message/send -H 'Content-Type: application/json' -d '{"role":"user","parts":[{"type":"text","text":"..."}]}'` |
+| "start the gateway", "run a2a server" | Start gateway | `cd $AGENTBUS_DIR && agentbus a2a-server --agent bizhou-vm --port 8080` |
+
 ---
 
-## Dashboard Enhancement (v0.3.0)
+### Agent Card Setup (v0.3.1)
 
-When running the full dashboard, also include tasks and A2A status:
+Personal agent cards go in `agents/local/` (gitignored). Copy from examples:
+```bash
+cp $AGENTBUS_DIR/agents/examples/bizhou-vm.json $AGENTBUS_DIR/agents/local/my-vm.json
+# Edit name, capabilities, etc.
+```
+
+The listener loads cards from the `agents/` directory (including subdirectories).
+
+---
+
+## Dashboard Enhancement (v0.3.1)
+
+When running the full dashboard, include tasks and A2A status. Tasks are **persistent** (FileTaskStore) — they survive listener restarts.
 
 ```
 === AgentBus Comms ===
