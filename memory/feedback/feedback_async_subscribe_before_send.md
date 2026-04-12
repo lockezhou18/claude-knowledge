@@ -10,9 +10,9 @@ Always use the subscribe-before-send pattern for async agentbus tasks — never 
 
 **How to apply:**
 1. Generate task ID: `python3 -c "import uuid; print(uuid.uuid4())"`
-2. Start background watcher FIRST: `Bash(run_in_background=true)` → `agentbus watch_result --task-id $ID`
+2. Start watcher FIRST: use `Monitor` tool (preferred) or `Bash(run_in_background=true)` as fallback → `agentbus watch_result --task-id $ID`
 3. Then send: `agentbus send --async --task-id $ID`
-4. `<task-notification>` auto-fires → `Read` the output file
+4. Result auto-arrives via Monitor injection or `<task-notification>`
 5. Present result with stats block:
    ```
    ### Stats

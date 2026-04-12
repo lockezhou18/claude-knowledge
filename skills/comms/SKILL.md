@@ -1,7 +1,7 @@
 ---
 name: comms
 description: "Agent communication layer — check who's online, view health, manage sessions, send messages, start pipes. The situational awareness skill for multi-agent work."
-allowed-tools: Bash(python3 -m agentbus*), Bash(agentbus *), Bash(cd *agentbus && agentbus *), Bash(~/bin/vm-agent --health*), Bash(~/bin/vm-agent --sessions*), Bash(~/bin/vm-agent --results*), Bash(~/bin/vm-agent --result*), Bash(bash -c "ssh vm*), Bash(lsof *), Bash(cat *inbox*), Bash(pkill *), Bash(kill *), Bash(export AGENTBUS*), Bash(curl *), TaskOutput
+allowed-tools: Bash(python3 -m agentbus*), Bash(agentbus *), Bash(cd *agentbus && agentbus *), Bash(~/bin/vm-agent --health*), Bash(~/bin/vm-agent --sessions*), Bash(~/bin/vm-agent --results*), Bash(~/bin/vm-agent --result*), Bash(bash -c "ssh vm*), Bash(lsof *), Bash(cat *inbox*), Bash(pkill *), Bash(kill *), Bash(export AGENTBUS*), Bash(curl *), Monitor
 inputs: ["request"]
 ---
 
@@ -205,7 +205,7 @@ cd $AGENTBUS_DIR && agentbus send --to $TARGET_AGENT -c "<command>" --nats-url "
 
 # NATS Async:
 cd $AGENTBUS_DIR && agentbus send --to $TARGET_AGENT -m "<message>" --async --nats-url "$AGENTBUS_NATS_URL" --agents-dir $AGENTS_DIR
-# Then start background watcher for result (see subscribe-before-send below)
+# Then start Monitor for result
 
 # Pipe:
 cd $AGENTBUS_DIR && agentbus pipe --agent $LOCAL_AGENT --to $TARGET_AGENT --nats-url "$AGENTBUS_NATS_URL" --agents-dir $AGENTS_DIR
@@ -217,17 +217,17 @@ curl -N -X POST http://localhost:8080/message/stream -H 'Content-Type: applicati
 curl -X POST http://localhost:8080/message/send -H 'Content-Type: application/json' -d '{"role":"user","parts":[{"type":"text","text":"<message>"}]}'
 ```
 
-**CRITICAL — Subscribe-Before-Send for async:** Use a **background Bash task** to catch results in real-time. Start the watcher BEFORE firing the task — NATS drops events with no subscriber.
+**CRITICAL — Subscribe-Before-Send for async:** Use Claude Code's **Monitor tool** to catch results in real-time. Start Monitor BEFORE firing the task — NATS drops events with no subscriber.
 
 ```
 Step 1 → Bash: TASK_ID=$(python3 -c "import uuid; print(uuid.uuid4())")
-Step 2 → Bash(run_in_background=true): cd $AGENTBUS_DIR && python3 -m agentbus.watch_result --task-id $TASK_ID --count 1 --timeout 600 --nats-url "$AGENTBUS_NATS_URL"
+Step 2 → Monitor: cd $AGENTBUS_DIR && python3 -m agentbus.watch_result --task-id $TASK_ID --count 1 --timeout 600 --nats-url "$AGENTBUS_NATS_URL"
 Step 3 → Bash: cd $AGENTBUS_DIR && agentbus send --to $TARGET_AGENT -m "<message>" --async --task-id $TASK_ID --nats-url "$AGENTBUS_NATS_URL" --agents-dir $AGENTS_DIR
 ```
 
-The background Bash task runs in the background. When the result arrives via NATS, a `<task-notification>` is automatically injected into this conversation with the output file path. Use `Read` on that path to get the result. No polling needed.
+The Monitor runs in the background. When the result arrives via NATS, Monitor prints it → Claude Code injects it into the conversation. No polling needed.
 
-**Safety net** (if watcher times out): poll the task store:
+**Safety net** (if Monitor times out): poll the task store:
 ```bash
 cd $AGENTBUS_DIR && agentbus tasks --target $TARGET_AGENT <task_id>
 ```
@@ -237,7 +237,7 @@ cd $AGENTBUS_DIR && agentbus tasks --target $TARGET_AGENT <task_id>
 | Mode | How result arrives |
 |------|-------------------|
 | NATS Sync | Blocks, show reply directly |
-| NATS Async | Background watcher catches it via `<task-notification>`, show when ready |
+| NATS Async | Monitor catches it, show when ready |
 | Pipe | Interactive — each message gets a reply inline |
 | SSE | Events stream in real-time: submitted → working → completed |
 | A2A HTTP | JSON response with task object |
