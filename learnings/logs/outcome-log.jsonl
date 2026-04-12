@@ -1,0 +1,37 @@
+{"ts": "2026-04-12T07:48:36.346688", "insight_id": "bug-008", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>b3s62sc3k</task-id>\n<tool-use-id>toolu_01TduwaReq4s"}
+{"ts": "2026-04-12T07:48:36.346718", "insight_id": "eureka-007", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>b3s62sc3k</task-id>\n<tool-use-id>toolu_01TduwaReq4s"}
+{"ts": "2026-04-12T07:48:54.152907", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can you debug why the cron not run"}
+{"ts": "2026-04-12T07:48:54.152937", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you debug why the cron not run"}
+{"ts": "2026-04-12T07:48:54.152942", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "can you debug why the cron not run"}
+{"ts": "2026-04-12T07:50:12.278186", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "it's back, can you check"}
+{"ts": "2026-04-12T07:51:09.273680", "insight_id": "aha-006", "event": "retrieved", "prompt_preview": "what's on the remote branch"}
+{"ts": "2026-04-12T08:04:20.225739", "insight_id": "know-062", "event": "retrieved", "prompt_preview": "have we fixed this -   2. The real problem: two separate repos on VM. The dream "}
+{"ts": "2026-04-12T08:04:20.225781", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "have we fixed this -   2. The real problem: two separate repos on VM. The dream "}
+{"ts": "2026-04-12T08:04:20.225786", "insight_id": "aha-006", "event": "retrieved", "prompt_preview": "have we fixed this -   2. The real problem: two separate repos on VM. The dream "}
+{"ts": "2026-04-12T08:05:04.938853", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "what's the ai safety link again"}
+{"ts": "2026-04-12T08:05:30.133864", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "LinkedIn's internal AI tools policy (approved tools, usage guidelines)? this one"}
+{"ts": "2026-04-12T08:05:30.133898", "insight_id": "eureka-003", "event": "retrieved", "prompt_preview": "LinkedIn's internal AI tools policy (approved tools, usage guidelines)? this one"}
+{"ts": "2026-04-12T08:06:00.149830", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "cool, can we close the branches -  auto/feat-listener-sink-async-delegation-*   "}
+{"ts": "2026-04-12T08:06:00.149878", "insight_id": "eureka-005", "event": "retrieved", "prompt_preview": "cool, can we close the branches -  auto/feat-listener-sink-async-delegation-*   "}
+{"ts": "2026-04-12T08:06:00.149883", "insight_id": "know-055", "event": "retrieved", "prompt_preview": "cool, can we close the branches -  auto/feat-listener-sink-async-delegation-*   "}
+{"ts": "2026-04-12T08:10:16.895721", "insight_id": "know-060", "event": "retrieved", "prompt_preview": "are we in snyc, like local push to the git repo, vm pull and dream then push to "}
+{"ts": "2026-04-12T08:10:16.895752", "insight_id": "know-047", "event": "retrieved", "prompt_preview": "are we in snyc, like local push to the git repo, vm pull and dream then push to "}
+{"ts": "2026-04-12T08:10:16.895757", "insight_id": "know-045", "event": "retrieved", "prompt_preview": "are we in snyc, like local push to the git repo, vm pull and dream then push to "}
+{"ts": "2026-04-12T08:35:32.111000", "insight_id": "know-051", "event": "retrieved", "prompt_preview": "cool. Now is the claude-knowledge repo true single SoT to reflect our system"}
+{"ts": "2026-04-12T08:35:32.111025", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "cool. Now is the claude-knowledge repo true single SoT to reflect our system"}
+{"ts": "2026-04-12T08:35:32.111029", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "cool. Now is the claude-knowledge repo true single SoT to reflect our system"}
+{"ts": "2026-04-12T10:38:16.198146", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "how about the delegate skill, and how about the new streaming feature, please up"}
+{"ts": "2026-04-12T10:38:16.198187", "insight_id": "know-036", "event": "retrieved", "prompt_preview": "how about the delegate skill, and how about the new streaming feature, please up"}
+{"ts": "2026-04-12T10:38:16.198192", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "how about the delegate skill, and how about the new streaming feature, please up"}
+{"ts": "2026-04-12T10:40:00.278268", "insight_id": "know-seat-entitlements-vs-seatroles", "event": "retrieved", "prompt_preview": "are these 2 skill context dependent to see which cli to use"}
+{"ts": "2026-04-12T10:40:00.278325", "insight_id": "know-055", "event": "retrieved", "prompt_preview": "are these 2 skill context dependent to see which cli to use"}
+{"ts": "2026-04-12T10:40:00.278334", "insight_id": "eureka-008", "event": "retrieved", "prompt_preview": "are these 2 skill context dependent to see which cli to use"}
+{"ts": "2026-04-12T10:40:19.933185", "insight_id": "eureka-008", "event": "retrieved", "prompt_preview": "are these 2 skill context dependent to see which cli to use, the goal is the 2 s"}
+{"ts": "2026-04-12T10:40:19.933213", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "are these 2 skill context dependent to see which cli to use, the goal is the 2 s"}
+{"ts": "2026-04-12T10:40:19.933218", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "are these 2 skill context dependent to see which cli to use, the goal is the 2 s"}
+{"ts": "2026-04-12T10:42:15.081333", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "meanwhile which mode to choose (sync, async, pipe, streaming) for the 2 skills a"}
+{"ts": "2026-04-12T10:42:15.081364", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "meanwhile which mode to choose (sync, async, pipe, streaming) for the 2 skills a"}
+{"ts": "2026-04-12T10:42:15.081369", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "meanwhile which mode to choose (sync, async, pipe, streaming) for the 2 skills a"}
+{"ts": "2026-04-12T10:44:30.878128", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "the /comms skill and /delegate skill is updated. /review and /qa"}
+{"ts": "2026-04-12T10:44:30.878170", "insight_id": "know-052", "event": "retrieved", "prompt_preview": "the /comms skill and /delegate skill is updated. /review and /qa"}
+{"ts": "2026-04-12T10:44:30.878175", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "the /comms skill and /delegate skill is updated. /review and /qa"}

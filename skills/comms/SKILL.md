@@ -24,7 +24,7 @@ Just describe what you want. The skill figures out the subcommand.
 /comms stop listening               — stop background listener
 /comms tasks                        — task dashboard across agents
 /comms tasks working                — what's in flight
-/comms trust a2a-gw-bizhou-vm       — approve untrusted agent (TOFU)
+/comms trust a2a-gw-$TARGET_AGENT       — approve untrusted agent (TOFU)
 /comms a2a status                   — A2A gateway health
 ```
 
@@ -46,19 +46,40 @@ Read the user's input and classify into one of these intents:
 | "stop", "close", "disconnect", "kill listener", "stop listening" | **Stop** | Kill listener |
 | "task", "tasks", "what's running", "in flight", "working", "completed", "what did vm do", "any errors", "what failed", "what finished" | **Tasks** | Task dashboard |
 | "trust", "approve", "allow", "accept", "authorize", "let it in", "add to whitelist" + agent name | **Trust** | Approve agent (TOFU) |
-| "a2a", "gateway", "http", "external", "is the gateway up", "a2a status" | **A2A** | A2A gateway status |
+| "a2a", "gateway", "http", "external", "is the gateway up", "a2a status", "stream", "sse" | **A2A** | A2A gateway status + streaming |
+| "needs input", "waiting for answer", "paused", "input required", "answer the question" | **InputRequired** | Resume paused tasks |
+| "webhook", "push notification", "notify me", "callback" | **Webhooks** | Manage push notifications |
 
-**Agent name resolution:** If the user says "vm", resolve to `bizhou-vm`. If "laptop", resolve to `bizhou-laptop`. Match against registered agent card names.
+**Agent name resolution:** Match user's words against registered agent card names. "vm" → card with "vm" in name. "laptop" → card with "laptop" in name.
 
-## Step 2: Execute
+## Step 2: Resolve Context (run once per session)
 
-### Environment (set before EVERY command)
+Before any command, discover the environment dynamically:
 
 ```bash
-export AGENTBUS_NATS_URL="nats://bizhou-laptop:laptop-agent-token-2026@localhost:14222"
-export AGENTS_DIR="$HOME/workspace/.agentbus/agents"
-export AGENTBUS_DIR="$HOME/workspace/.agentbus"
+# 1. Find agentbus dir
+AGENTBUS_DIR="${AGENTBUS_DIR:-$HOME/workspace/.agentbus}"
+AGENTS_DIR="$AGENTBUS_DIR/agents"
+
+# 2. Discover agents (read card files — determine LOCAL_AGENT and TARGET_AGENT)
+ls $AGENTS_DIR/*.json $AGENTS_DIR/local/*.json 2>/dev/null
+
+# 3. NATS URL from env
+echo "${AGENTBUS_NATS_URL:-nats://localhost:4222}"
+
+# 4. NATS port (for health check)
+# Parse from NATS_URL or use AGENTBUS_NATS_PORT env var
 ```
+
+From the agent cards, determine:
+- **LOCAL_AGENT**: Card with "laptop" in name, or `AGENTBUS_FROM` env var
+- **TARGET_AGENT**: Card with "vm" in name, or the non-local agent
+- **NATS_URL**: `AGENTBUS_NATS_URL` env var
+- **NATS_PORT**: Port from NATS_URL, or `AGENTBUS_NATS_PORT`
+
+Use these variables in ALL commands below. **Never hardcode agent names or URLs.**
+
+## Step 3: Execute
 
 ---
 
@@ -68,7 +89,7 @@ Run all in parallel where possible, present as unified view:
 
 ```bash
 # 1. Tunnel
-lsof -i :14222 2>/dev/null | grep -c LISTEN
+lsof -i :$NATS_PORT 2>/dev/null | grep -c LISTEN
 
 # 2. Health
 cd $AGENTBUS_DIR && python3 -m agentbus.cli health --port 14222
@@ -82,7 +103,7 @@ import asyncio, sys, os
 sys.path.insert(0, '.')
 from agentbus.send import send_message
 try:
-    r = asyncio.run(send_message('bizhou-laptop', 'bizhou-vm', {'meta':'list_sessions'}, os.environ['AGENTBUS_NATS_URL'], '$AGENTS_DIR', timeout=8))
+    r = asyncio.run(send_message('$LOCAL_AGENT', '$TARGET_AGENT', {'meta':'list_sessions'}, os.environ['AGENTBUS_NATS_URL'], '$AGENTS_DIR', timeout=8))
     sessions = r.get('sessions', {})
     if not sessions: print('    (no active sessions)')
     for k,v in sessions.items():
@@ -117,7 +138,7 @@ cd $AGENTBUS_DIR && python3 -m agentbus.cli agents --agents-dir $AGENTS_DIR
 ### Health
 
 ```bash
-lsof -i :14222 2>/dev/null | grep LISTEN && echo "Tunnel: OK" || echo "Tunnel: DOWN"
+lsof -i :$NATS_PORT 2>/dev/null | grep LISTEN && echo "Tunnel: OK" || echo "Tunnel: DOWN"
 cd $AGENTBUS_DIR && python3 -m agentbus.cli health --port 14222
 ~/bin/vm-agent --health 2>&1 || echo "(VM unreachable)"
 ```
@@ -157,24 +178,43 @@ cd $AGENTBUS_DIR && python3 -m agentbus.cli ack <task_id>
 
 ---
 
-### Send
+### Send — Mode-Aware Router
 
-**Classify the message type:**
+Choose the right transport based on natural language:
 
-| Signal | Type | Flag |
-|--------|------|------|
-| Exact command: `mint build`, `echo`, `ls`, `uname`, `docker`, `kubectl` | Shell | `-c` |
-| Needs reasoning: "what", "why", "how", "review", "investigate", "explain" | Thinking | `-m` |
-| User says "in background", "async", "don't wait" | Async | add `--async` |
-| Ambiguous | Thinking | `-m` (safer) |
+**Step A: Determine transport mode**
+
+| User says | Mode | Why |
+|-----------|------|-----|
+| "tell vm to X", "ask vm Y", "send message" | **NATS Sync** | Direct, one-shot |
+| "run this in the background", "don't wait" | **NATS Async** | Long-running |
+| "build then test then fix", "keep going" | **NATS Auto** | Multi-round loop |
+| "open a channel", "talk to vm", "chat" | **Pipe** | Ongoing conversation |
+| "stream it", "watch live", "show progress" | **SSE Streaming** | Real-time visibility |
+| "send via http", "a2a message" | **A2A HTTP** | External protocol |
+| Known long task (`mint build`, `mint test`) | **NATS Async** | Inferred from task type |
+
+**Step B: Execute**
 
 ```bash
-cd $AGENTBUS_DIR && python3 -m agentbus.cli send \
-  --to <agent> \
-  -m "<message>" \  # or -c "<command>" for shell
-  --nats-url "$AGENTBUS_NATS_URL" \
-  --agents-dir $AGENTS_DIR \
-  --timeout 30
+# NATS Sync:
+cd $AGENTBUS_DIR && agentbus send --to $TARGET_AGENT -m "<message>" --nats-url "$AGENTBUS_NATS_URL" --agents-dir $AGENTS_DIR
+
+# NATS Sync (shell):
+cd $AGENTBUS_DIR && agentbus send --to $TARGET_AGENT -c "<command>" --nats-url "$AGENTBUS_NATS_URL" --agents-dir $AGENTS_DIR
+
+# NATS Async:
+cd $AGENTBUS_DIR && agentbus send --to $TARGET_AGENT -m "<message>" --async --nats-url "$AGENTBUS_NATS_URL" --agents-dir $AGENTS_DIR
+# Then start Monitor for result
+
+# Pipe:
+cd $AGENTBUS_DIR && agentbus pipe --agent $LOCAL_AGENT --to $TARGET_AGENT --nats-url "$AGENTBUS_NATS_URL" --agents-dir $AGENTS_DIR
+
+# SSE Streaming (needs A2A gateway running):
+curl -N -X POST http://localhost:8080/message/stream -H 'Content-Type: application/json' -d '{"role":"user","parts":[{"type":"text","text":"<message>"}]}'
+
+# A2A HTTP Sync:
+curl -X POST http://localhost:8080/message/send -H 'Content-Type: application/json' -d '{"role":"user","parts":[{"type":"text","text":"<message>"}]}'
 ```
 
 For async, after getting the task_id:
@@ -182,26 +222,51 @@ For async, after getting the task_id:
 Monitor: cd $AGENTBUS_DIR && python3 -m agentbus.watch_result --task-id <task_id> --count 1 --timeout 600 --nats-url "$AGENTBUS_NATS_URL"
 ```
 
+**Step C: Present result based on mode**
+
+| Mode | How result arrives |
+|------|-------------------|
+| NATS Sync | Blocks, show reply directly |
+| NATS Async | Monitor catches it, show when ready |
+| Pipe | Interactive — each message gets a reply inline |
+| SSE | Events stream in real-time: submitted → working → completed |
+| A2A HTTP | JSON response with task object |
+
 ---
 
-### Pipe (Bidirectional Channel)
+### Pipe (Bidirectional Channel — v0.3.1)
 
-Start a background listener + tell user they can now send.
+The `agentbus pipe` command handles everything: bidirectional messaging, context_id for task tracking, and inline task state events.
+
+**Natural language → command:**
+
+| User says | Interpretation | Command |
+|-----------|---------------|---------|
+| "open a channel to vm", "pipe to vm", "connect to vm" | Interactive pipe | `cd $AGENTBUS_DIR && agentbus pipe --agent $LOCAL_AGENT --to $TARGET_AGENT --nats-url "$AGENTBUS_NATS_URL" --agents-dir $AGENTS_DIR` |
+| "pipe with hooks", "channel with handler" | Pipe + shell hook | Add `--on-message "./handler.sh"` |
 
 ```bash
-INBOX_FILE="$HOME/agentbus-inbox.log"
-cd $AGENTBUS_DIR && python3 -m agentbus.hook_listener \
-  --agent bizhou-laptop \
-  --on-message 'MSG=$(cat); echo "[$(date +%H:%M:%S)] from=$AGENTBUS_FROM: $AGENTBUS_MESSAGE" >> '"$INBOX_FILE"'; echo "received"' \
+# Interactive pipe (type messages, see replies + task events inline)
+cd $AGENTBUS_DIR && agentbus pipe \
+  --agent $LOCAL_AGENT \
+  --to $TARGET_AGENT \
   --nats-url "$AGENTBUS_NATS_URL" \
-  --agents-dir $AGENTS_DIR \
-  --log-level WARNING &
-LISTENER_PID=$!
-echo "Channel open (PID: $LISTENER_PID). Incoming → $INBOX_FILE"
+  --agents-dir $AGENTS_DIR
 ```
 
-Run with `run_in_background: true`. Then tell the user:
-"Channel to <agent> is open. Use `/comms send <agent> <message>` to send. Incoming messages land in ~/agentbus-inbox.log. Use `/comms inbox` to check. `/comms stop` to close."
+**What the pipe provides:**
+- **Bidirectional**: both sides send and receive simultaneously
+- **context_id**: auto-generated session ID links all tasks created during the pipe
+- **Task events inline**: when async tasks run, state changes (working → completed) appear in the pipe
+- **Shell detection**: commands like `mint build` auto-route as shell; questions route as thinking
+
+Tell the user:
+"Pipe to <agent> is open. Type messages and press Enter. Shell commands auto-detected. Async task updates appear inline. Ctrl+C to close."
+
+**To see tasks from a pipe session later:**
+```bash
+cd $AGENTBUS_DIR && agentbus tasks --target $TARGET_AGENT --context <pipe-session-id>
+```
 
 ---
 
@@ -216,7 +281,7 @@ cat ~/agentbus-inbox.log 2>/dev/null || echo "(no messages yet)"
 ### Stop
 
 ```bash
-pkill -f "hook_listener.*bizhou-laptop" 2>/dev/null && echo "Listener stopped" || echo "No listener running"
+pkill -f "hook_listener.*$LOCAL_AGENT" 2>/dev/null && echo "Listener stopped" || echo "No listener running"
 ```
 
 ---
@@ -229,25 +294,25 @@ Query the task lifecycle store on the VM agent.
 
 | User says | Interpretation | Command |
 |-----------|---------------|---------|
-| "tasks", "show tasks", "task list" | all tasks | `agentbus tasks --target bizhou-vm` |
-| "what's running", "anything in flight", "what's the vm doing" | working tasks | `agentbus tasks --target bizhou-vm --state working` |
-| "what finished", "completed tasks", "what got done" | completed | `agentbus tasks --target bizhou-vm --state completed` |
-| "any errors", "what failed", "what broke" | failed | `agentbus tasks --target bizhou-vm --state failed` |
-| "what about task abc123", "details on that task" | specific task | `agentbus tasks --target bizhou-vm <task_id>` |
-| "cancel that", "stop the build", "kill it" | cancel | `agentbus cancel <task_id> --target bizhou-vm` |
+| "tasks", "show tasks", "task list" | all tasks | `agentbus tasks --target $TARGET_AGENT` |
+| "what's running", "anything in flight", "what's the vm doing" | working tasks | `agentbus tasks --target $TARGET_AGENT --state working` |
+| "what finished", "completed tasks", "what got done" | completed | `agentbus tasks --target $TARGET_AGENT --state completed` |
+| "any errors", "what failed", "what broke" | failed | `agentbus tasks --target $TARGET_AGENT --state failed` |
+| "what about task abc123", "details on that task" | specific task | `agentbus tasks --target $TARGET_AGENT <task_id>` |
+| "cancel that", "stop the build", "kill it" | cancel | `agentbus cancel <task_id> --target $TARGET_AGENT` |
 
 ```bash
-cd $AGENTBUS_DIR && agentbus tasks --target bizhou-vm
-cd $AGENTBUS_DIR && agentbus tasks --target bizhou-vm --state working
-cd $AGENTBUS_DIR && agentbus tasks --target bizhou-vm --state failed
-cd $AGENTBUS_DIR && agentbus tasks --target bizhou-vm --context <context_id>
-cd $AGENTBUS_DIR && agentbus tasks --target bizhou-vm <task_id>
-cd $AGENTBUS_DIR && agentbus cancel <task_id> --target bizhou-vm
+cd $AGENTBUS_DIR && agentbus tasks --target $TARGET_AGENT
+cd $AGENTBUS_DIR && agentbus tasks --target $TARGET_AGENT --state working
+cd $AGENTBUS_DIR && agentbus tasks --target $TARGET_AGENT --state failed
+cd $AGENTBUS_DIR && agentbus tasks --target $TARGET_AGENT --context <context_id>
+cd $AGENTBUS_DIR && agentbus tasks --target $TARGET_AGENT <task_id>
+cd $AGENTBUS_DIR && agentbus cancel <task_id> --target $TARGET_AGENT
 ```
 
 Present as:
 ```
-=== Tasks on bizhou-vm ===
+=== Tasks on $TARGET_AGENT ===
   [>] 2026-04-12T10:30 abc123.. working          mint build hp-ats...
   [+] 2026-04-12T10:28 def456.. completed        echo hello
   [-] 2026-04-12T10:25 ghi789.. failed            grpcurli ...
@@ -265,11 +330,11 @@ Approve an untrusted agent. Used when Guardian rejects a sender with: "Agent 'X'
 
 | User says | Interpretation | Command |
 |-----------|---------------|---------|
-| "trust the gateway", "approve a2a-gw" | trust A2A gateway | `agentbus trust a2a-gw-bizhou-vm --target bizhou-vm` |
-| "let it in", "authorize that agent", "accept <name>" | trust named agent | `agentbus trust <name> --target bizhou-vm` |
+| "trust the gateway", "approve a2a-gw" | trust A2A gateway | `agentbus trust a2a-gw-$TARGET_AGENT --target $TARGET_AGENT` |
+| "let it in", "authorize that agent", "accept <name>" | trust named agent | `agentbus trust <name> --target $TARGET_AGENT` |
 
 ```bash
-cd $AGENTBUS_DIR && agentbus trust <agent_name> --target bizhou-vm
+cd $AGENTBUS_DIR && agentbus trust <agent_name> --target $TARGET_AGENT
 ```
 
 This writes an agent card to the VM's agents directory. One-time — persistent across restarts.
@@ -294,7 +359,7 @@ Present as:
 ```
 === A2A Gateway ===
   Status:  OK (port 8080)
-  Agent:   bizhou-vm
+  Agent:   $TARGET_AGENT
   Skills:  8
   URL:     http://localhost:8080
 ```
@@ -307,7 +372,32 @@ Present as:
 |-----------|---------------|---------|
 | "stream a message to the gateway", "watch it in real-time" | SSE stream | `curl -N -X POST http://localhost:8080/message/stream -H 'Content-Type: application/json' -d '{"role":"user","parts":[{"type":"text","text":"..."}]}'` |
 | "send via a2a", "http message" | Sync A2A send | `curl -X POST http://localhost:8080/message/send -H 'Content-Type: application/json' -d '{"role":"user","parts":[{"type":"text","text":"..."}]}'` |
-| "start the gateway", "run a2a server" | Start gateway | `cd $AGENTBUS_DIR && agentbus a2a-server --agent bizhou-vm --port 8080` |
+| "start the gateway", "run a2a server" | Start gateway | `cd $AGENTBUS_DIR && agentbus a2a-server --agent $TARGET_AGENT --port 8080` |
+
+---
+
+### Input Required (v0.3.1)
+
+When a task pauses because the agent needs user input:
+
+| User says | Interpretation | Command |
+|-----------|---------------|---------|
+| "what's waiting for input", "anything paused" | Find paused tasks | `cd $AGENTBUS_DIR && agentbus tasks --target $TARGET_AGENT --state input_required` |
+| "answer with X", "tell it X" | Resume task | `cd $AGENTBUS_DIR && agentbus send --to $TARGET_AGENT -m '{"resume_task_id":"<id>","message":"<answer>"}'` |
+
+---
+
+### Webhooks (v0.3.1)
+
+Manage push notification callbacks on A2A gateway tasks:
+
+| User says | Interpretation | Command |
+|-----------|---------------|---------|
+| "notify me when done", "webhook for this task" | Register webhook | `curl -X POST http://localhost:8080/tasks/<id>/pushNotificationConfigs -H 'Content-Type: application/json' -d '{"url":"<callback-url>"}'` |
+| "check webhooks", "what's watching this task" | List webhooks | `curl http://localhost:8080/tasks/<id>/pushNotificationConfigs` |
+| "remove webhooks" | Delete all for task | `curl -X DELETE http://localhost:8080/tasks/<id>/pushNotificationConfigs` |
+
+Webhooks fire on every terminal state change (completed, failed, canceled). Works for both `/message/send` and `/message/stream`.
 
 ---
 
@@ -315,7 +405,7 @@ Present as:
 
 Personal agent cards go in `agents/local/` (gitignored). Copy from examples:
 ```bash
-cp $AGENTBUS_DIR/agents/examples/bizhou-vm.json $AGENTBUS_DIR/agents/local/my-vm.json
+cp $AGENTBUS_DIR/agents/examples/$TARGET_AGENT.json $AGENTBUS_DIR/agents/local/my-vm.json
 # Edit name, capabilities, etc.
 ```
 
@@ -341,7 +431,7 @@ When running the full dashboard, include tasks and A2A status. Tasks are **persi
 Add these to the parallel dashboard queries:
 ```bash
 # 6. Tasks summary
-cd $AGENTBUS_DIR && agentbus tasks --target bizhou-vm 2>/dev/null | tail -1 || echo "    (unreachable)"
+cd $AGENTBUS_DIR && agentbus tasks --target $TARGET_AGENT 2>/dev/null | tail -1 || echo "    (unreachable)"
 
 # 7. A2A gateway
 lsof -i :8080 2>/dev/null | grep -c LISTEN && echo "    OK (port 8080)" || echo "    not running"
@@ -358,5 +448,5 @@ If any command fails:
 | Tunnel DOWN | `bash -c "ssh -f -N -L 14222:localhost:4222 vm"` |
 | NATS DOWN | Check VM: `bash -c "ssh vm 'docker ps \| grep nats'"` |
 | "No responders" | VM listener not running: `bash -c "ssh vm 'tmux attach -t agentbus'"` |
-| Timeout on sessions | VM listener crashed — restart: `bash -c "ssh vm 'cd ~/agentbus && tmux send-keys -t agentbus C-c; sleep 2; tmux send-keys -t agentbus \"python3 -m agentbus.claude_listener --agent bizhou-vm --nats-url nats://bizhou-vm:vm-agent-token-2026@localhost:4222 --agents-dir ./agents --workspace ~/workspace\" Enter'"` |
+| Timeout on sessions | VM listener crashed — restart: `bash -c "ssh vm 'tmux send-keys -t agentbus C-c; sleep 2; tmux send-keys -t agentbus \"cd ~/agentbus && agentbus listen --agent $TARGET_AGENT --workspace ~/workspace\" Enter'"` |
 | Auth expired | Kerberos: `! kinit`; Claude on VM: `! ssh -t vm 'claude auth login'` |
