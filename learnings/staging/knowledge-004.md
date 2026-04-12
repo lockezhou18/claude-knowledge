@@ -2,13 +2,13 @@
 id: knowledge-004
 track: knowledge
 type: semantic
-repos: ["*"]
+repos: [*]
 tags: [espresso, metrics, observe, monitoring, oncall]
 severity: medium
 created: 2026-03-28
 last_verified: 2026-03-28
 use_count: 1
-outcome_score: 1.0
+outcome_score: 0.91
 status: active
 rot_rate: medium
 ---

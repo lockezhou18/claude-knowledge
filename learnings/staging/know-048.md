@@ -2,14 +2,14 @@
 id: know-048
 track: knowledge
 type: semantic
-repos: ["mcm-mt", "hp-ats-integration-mt", "talent-solutions-api", "*"]
-tags: ["entity-routing", "curli", "multi-colo", "contract", "fabric", "money-entity-routing", "d2"]
+repos: [mcm-mt, hp-ats-integration-mt, talent-solutions-api, *]
+tags: [entity-routing, curli, multi-colo, contract, fabric, money-entity-routing, d2]
 severity: high
 rot_rate: slow
 status: active
 created: 2026-04-08
 last_verified: 2026-04-08
-use_count: 0
+use_count: 1
 outcome_score: 0
 origin_skill: learn
 ---

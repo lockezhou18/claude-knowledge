@@ -2,18 +2,18 @@
 id: eureka-007
 track: knowledge
 type: semantic
-repos: ['*']
-tags: ['eureka', 'context-repo', 'team-sharing', 'knowledge-management', 'claude-code', 'onboarding', 'productivity', 'force-multiplier']
+repos: [*]
+tags: [eureka, context-repo, team-sharing, knowledge-management, claude-code, onboarding, productivity, force-multiplier]
 severity: critical
 created: '2026-04-04'
 last_verified: '2026-04-04'
-use_count: 0
+use_count: 9
 outcome_score: 0.0
 rot_rate: permanent
 status: active
 origin_skill: eureka
 emerged_from: 'eureka-006'
-graduation_candidate: true
+graduation_candidate: True
 visibility: team
 ---
 

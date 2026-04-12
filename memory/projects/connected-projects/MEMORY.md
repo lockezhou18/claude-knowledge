@@ -13,3 +13,8 @@
 - [Oncall Knowledge](oncall_knowledge.md) — 
 - [Pr584 E2E Testing](pr584_e2e_testing.md) — 
 - [Sandbox 2 LiX Configuration](sandbox2_lix_config.md) — TReX experiment IDs and lix keys for Greenhouse Sandbox 2 (contract 2043270072)
+
+## Docs
+- [Ats Bi Directional Sync Principles](docs/ats-bi-directional-sync-principles.md) — 
+- [Connected Projects Phase 2 Job Requisition Stage Sync Eng Design](docs/connected-projects-phase-2-job-requisition-stage-sync-eng-design.md) — 
+- [Ip Interface App Stage Sync ](docs/ip-interface-app-stage-sync-.md) — 

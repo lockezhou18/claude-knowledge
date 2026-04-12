@@ -2,13 +2,13 @@
 id: know-032
 track: knowledge
 type: semantic
-repos: ["*"]
-tags: ["meta", "compound-learning", "behavior", "reward-system", "aha"]
+repos: [*]
+tags: [meta, compound-learning, behavior, reward-system, aha]
 severity: high
 rot_rate: permanent
 created: "2026-04-02"
 last_verified: "2026-04-02"
-use_count: 0
+use_count: 22
 outcome_score: 0
 status: active
 synthesized_into: "aha-005"

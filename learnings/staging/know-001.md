@@ -6,8 +6,8 @@ tags: [kafka, export-event, topic, ip, phase2]
 severity: medium
 created: 2026-03-25
 last_verified: 2026-03-25
-use_count: 1
-outcome_score: 2
+use_count: 8
+outcome_score: 1.92
 status: active
 rot_rate: medium
 ---

@@ -8,7 +8,7 @@ created: 2026-04-11
 last_verified: 2026-04-11
 repos: [memory-migration, agentbus]
 tags: [notification, scout-hook, push-vs-pull, ux, dreaming]
-use_count: 0
+use_count: 2
 outcome_score: 0.0
 rot_rate: slow
 ---

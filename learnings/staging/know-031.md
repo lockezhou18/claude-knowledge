@@ -2,13 +2,13 @@
 id: know-031
 track: knowledge
 type: semantic
-repos: ["*"]
-tags: ["meta", "friction", "wrong-approach", "compound-learning", "behavior", "self-improvement"]
+repos: [*]
+tags: [meta, friction, wrong-approach, compound-learning, behavior, self-improvement]
 severity: high
 rot_rate: slow
 created: "2026-04-02"
 last_verified: "2026-04-02"
-use_count: 0
+use_count: 4
 outcome_score: 0
 status: active
 ---

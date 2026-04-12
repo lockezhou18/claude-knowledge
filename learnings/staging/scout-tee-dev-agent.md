@@ -1,12 +1,12 @@
 ---
 id: scout-tee-dev-agent
 track: knowledge-track
-repos: ["linkedin-context/tee-dev-agent"]
+repos: [linkedin-context/tee-dev-agent]
 tags: [scout, agent-systems, ralph-loop, convention-audit, autonomous-coding, pr-review]
 severity: info
 created: "2026-04-07"
 last_verified: "2026-04-07"
-use_count: 0
+use_count: 3
 outcome_score: 0
 status: active
 rot_rate: slow

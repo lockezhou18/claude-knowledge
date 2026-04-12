@@ -2,14 +2,14 @@
 id: know-045
 track: knowledge
 type: semantic
-repos: ["*"]
-tags: ["vm", "remote-build", "ssh", "infrastructure", "devex", "vm-run"]
+repos: [*]
+tags: [vm, remote-build, ssh, infrastructure, devex, vm-run]
 severity: high
 rot_rate: slow
 status: active
 created: "2026-04-08"
 last_verified: "2026-04-08"
-use_count: 0
+use_count: 14
 outcome_score: 0
 ---
 

@@ -6,8 +6,8 @@ tags: [espresso, key-size, workaround, mapping, history]
 severity: medium
 created: 2026-03-25
 last_verified: 2026-03-25
-use_count: 1
-outcome_score: 1
+use_count: 2
+outcome_score: 0.91
 status: active
 rot_rate: medium
 ---

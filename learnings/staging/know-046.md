@@ -2,12 +2,12 @@
 id: know-046
 track: knowledge
 type: episodic
-repos: ["*"]
-tags: ["vm", "tmux", "clipboard", "osc52", "iterm2", "ssh", "infrastructure"]
+repos: [*]
+tags: [vm, tmux, clipboard, osc52, iterm2, ssh, infrastructure]
 severity: medium
 created: "2026-04-08"
 last_verified: "2026-04-08"
-use_count: 0
+use_count: 10
 outcome_score: 0.0
 status: active
 rot_rate: permanent

@@ -2,14 +2,14 @@
 id: "know-058"
 track: "knowledge"
 type: "semantic"
-repos: [".agentbus"]
-tags: ["qa", "e2e", "unit-test", "mock", "registry", "agentbus"]
+repos: [.agentbus]
+tags: [qa, e2e, unit-test, mock, registry, agentbus]
 severity: "high"
 rot_rate: "slow"
 created: "2026-04-12"
 last_verified: "2026-04-12"
 use_count: 1
-outcome_score: 1
+outcome_score: 0.93
 status: "active"
 synthesized_into: "know-059"
 ---

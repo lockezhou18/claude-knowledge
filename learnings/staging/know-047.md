@@ -2,12 +2,12 @@
 id: know-047
 track: knowledge
 type: semantic
-repos: ["*"]
-tags: ["vm", "setup", "infrastructure", "claude-code", "parity", "checklist"]
+repos: [*]
+tags: [vm, setup, infrastructure, claude-code, parity, checklist]
 severity: high
 created: "2026-04-08"
 last_verified: "2026-04-08"
-use_count: 0
+use_count: 9
 outcome_score: 0.0
 status: active
 rot_rate: slow

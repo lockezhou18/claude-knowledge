@@ -2,18 +2,18 @@
 id: eureka-006
 track: knowledge
 type: semantic
-repos: ['*']
-tags: ['eureka', 'mental-model', 'cross-boundary', 'design', 'frontend', 'backend', 'infrastructure', 'figma', 'playwright', 'e2e-testing', 'system-thinking', 'paradigm']
+repos: [*]
+tags: [eureka, mental-model, cross-boundary, design, frontend, backend, infrastructure, figma, playwright, e2e-testing, system-thinking, paradigm]
 severity: critical
 created: '2026-04-03'
 last_verified: '2026-04-03'
-use_count: 0
+use_count: 67
 outcome_score: 0.0
 rot_rate: permanent
 status: active
 origin_skill: eureka
 emerged_from: 'eureka-004,eureka-005'
-graduation_candidate: true
+graduation_candidate: True
 visibility: team
 ---
 

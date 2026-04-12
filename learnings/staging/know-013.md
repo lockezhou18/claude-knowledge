@@ -2,16 +2,16 @@
 id: know-013
 track: knowledge
 type: semantic
-repos: ["hp-ats-integration-mt", "talent-partner-integrations-mt"]
-tags: ["ei", "testing", "e2e", "local-dev", "grpcurli", "kafka", "espresso", "connected-projects"]
+repos: [hp-ats-integration-mt, talent-partner-integrations-mt]
+tags: [ei, testing, e2e, local-dev, grpcurli, kafka, espresso, connected-projects]
 severity: high
 created: "2026-04-02"
 last_verified: "2026-04-02"
-use_count: 0
+use_count: 4
 outcome_score: 0
 rot_rate: slow
 status: active
-paths: ["**/ApplicationProcessor.java", "**/CandidateProcessor.java", "**/ApplicationStageProcessor.java"]
+paths: [**/ApplicationProcessor.java, **/CandidateProcessor.java, **/ApplicationStageProcessor.java]
 ---
 
 ## EI Testing Patterns for hp-ats-integration-mt (Application + Candidate Sync)

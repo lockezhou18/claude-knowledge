@@ -2,14 +2,14 @@
 id: "know-057"
 track: "knowledge"
 type: "semantic"
-repos: ["*"]
-tags: ["testing", "mock", "asyncio", "python", "coroutine"]
+repos: [*]
+tags: [testing, mock, asyncio, python, coroutine]
 severity: "medium"
 rot_rate: "slow"
 created: "2026-04-12"
 last_verified: "2026-04-12"
 use_count: 1
-outcome_score: 1
+outcome_score: 0.93
 status: "active"
 ---
 

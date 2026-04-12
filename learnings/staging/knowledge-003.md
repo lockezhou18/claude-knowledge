@@ -2,13 +2,13 @@
 id: knowledge-003
 track: knowledge
 type: semantic
-repos: ["*"]
+repos: [*]
 tags: [pem, pipeline, availability, oncall, monitoring, investigation]
 severity: medium
 created: 2026-03-28
 last_verified: 2026-03-28
 use_count: 1
-outcome_score: 1.0
+outcome_score: 0.91
 status: active
 rot_rate: medium
 ---

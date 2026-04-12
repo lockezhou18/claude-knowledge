@@ -2,12 +2,12 @@
 id: know-016
 track: knowledge
 type: semantic
-repos: ["*"]
-tags: ["k8s", "kubernetes", "ksap", "nimbus", "lideployment", "infrastructure", "deployment", "kubectl-in"]
+repos: [*]
+tags: [k8s, kubernetes, ksap, nimbus, lideployment, infrastructure, deployment, kubectl-in]
 severity: high
 created: "2026-04-02"
 last_verified: "2026-04-02"
-use_count: 0
+use_count: 1
 outcome_score: 0
 rot_rate: slow
 status: active

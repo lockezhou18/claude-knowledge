@@ -2,12 +2,12 @@
 id: eureka-001
 track: knowledge
 type: semantic
-repos: ["*"]
-tags: ["eureka", "workflow", "cron", "async", "cross-session", "polling", "automation"]
+repos: [*]
+tags: [eureka, workflow, cron, async, cross-session, polling, automation]
 severity: critical
 created: "2026-04-02"
 last_verified: "2026-04-02"
-use_count: 0
+use_count: 14
 outcome_score: 0
 rot_rate: permanent
 status: active

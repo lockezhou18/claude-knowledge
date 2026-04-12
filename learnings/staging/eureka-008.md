@@ -2,18 +2,18 @@
 id: eureka-008
 track: knowledge
 type: semantic
-repos: ['*']
-tags: ['eureka', 'goal-driven', 'paradigm', 'context-repo', 'execution', 'design-driven', 'cross-boundary', 'workflow', 'figma', 'playwright', 'worktree']
+repos: [*]
+tags: [eureka, goal-driven, paradigm, context-repo, execution, design-driven, cross-boundary, workflow, figma, playwright, worktree]
 severity: critical
 created: '2026-04-05'
 last_verified: '2026-04-05'
-use_count: 0
+use_count: 4
 outcome_score: 0.0
 rot_rate: permanent
 status: active
 origin_skill: eureka
 emerged_from: 'eureka-006,eureka-007'
-graduation_candidate: true
+graduation_candidate: True
 visibility: team
 ---
 

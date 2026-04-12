@@ -8,7 +8,7 @@ created: 2026-04-10
 last_verified: 2026-04-10
 repos: [memory-migration]
 tags: [claude-code, memory, architecture, autoMemoryDirectory, settings]
-use_count: 0
+use_count: 4
 outcome_score: 0.0
 rot_rate: slow
 ---

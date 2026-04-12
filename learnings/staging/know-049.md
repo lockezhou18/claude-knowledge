@@ -2,14 +2,14 @@
 id: know-049
 track: knowledge
 type: semantic
-repos: ["*"]
-tags: ["curli", "rest-li", "d2", "debugging", "process", "code-search", "lps", "complex-key"]
+repos: [*]
+tags: [curli, rest-li, d2, debugging, process, code-search, lps, complex-key]
 severity: high
 rot_rate: permanent
 status: active
 created: 2026-04-08
 last_verified: 2026-04-08
-use_count: 0
+use_count: 6
 outcome_score: 0
 origin_skill: learn
 ---

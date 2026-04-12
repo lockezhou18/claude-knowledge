@@ -6,11 +6,11 @@ tags: [seatsV2, entitlements, seatRoles, aperture, recruiter-plus, hp-ep-api, pr
 severity: high
 created: 2026-04-03
 last_verified: 2026-04-03
-use_count: 0
+use_count: 8
 outcome_score: 0
 status: active
 rot_rate: slow
-paths: ["**/datafetchers/**", "**/hire/**"]
+paths: [**/datafetchers/**, **/hire/**]
 ---
 
 ## When checking HP feature entitlements (e.g., CAN_ACCESS_RECRUITER_PLUS_FEATURES), use `seatEntitlements` on Seat, not `seatRoles`

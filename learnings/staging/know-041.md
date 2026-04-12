@@ -2,14 +2,14 @@
 id: know-041
 track: knowledge
 type: episodic
-repos: ["*"]
-tags: ["claude-code", "trino", "cost", "metrics", "ai-usage", "developer-productivity-analysis"]
+repos: [*]
+tags: [claude-code, trino, cost, metrics, ai-usage, developer-productivity-analysis]
 severity: high
 rot_rate: medium
 status: active
 created: "2026-04-03"
 last_verified: "2026-04-03"
-use_count: 0
+use_count: 3
 outcome_score: 0
 origin_skill: learn
 ---

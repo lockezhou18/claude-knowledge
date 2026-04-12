@@ -6,8 +6,8 @@ tags: [ip, job-requisition, greenhouse, api, testing]
 severity: low
 created: 2026-03-25
 last_verified: 2026-03-25
-use_count: 2
-outcome_score: 2
+use_count: 3
+outcome_score: 1.94
 status: active
 rot_rate: slow
 ---

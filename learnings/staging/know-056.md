@@ -2,16 +2,16 @@
 id: "know-056"
 track: "knowledge"
 type: "semantic"
-repos: [".agentbus"]
-tags: ["guardian", "a2a", "auth", "trust", "agentbus"]
+repos: [.agentbus]
+tags: [guardian, a2a, auth, trust, agentbus]
 severity: "high"
 rot_rate: "slow"
 created: "2026-04-12"
 last_verified: "2026-04-12"
 use_count: 1
-outcome_score: 1
+outcome_score: 0.93
 status: "active"
-synthesized_into: ["know-059", "aha-007"]
+synthesized_into: [know-059, aha-007]
 ---
 
 ## Context

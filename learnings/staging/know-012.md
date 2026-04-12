@@ -2,16 +2,16 @@
 id: know-012
 track: knowledge
 type: semantic
-repos: ["talent-solutions-web", "talent-solutions-api", "mcm-mt", "hp-ats-integration-mt"]
-tags: ["phase2", "writeback", "frontend", "e2e", "connected-projects", "rest-li", "ui-flow"]
+repos: [talent-solutions-web, talent-solutions-api, mcm-mt, hp-ats-integration-mt]
+tags: [phase2, writeback, frontend, e2e, connected-projects, rest-li, ui-flow]
 severity: high
 created: "2026-04-01"
 last_verified: "2026-04-01"
-use_count: 0
+use_count: 1
 outcome_score: 0
 rot_rate: slow
 status: active
-paths: ["**/HiringProjectCandidatesServiceImpl.java", "**/talentHiringProjectCandidates/**"]
+paths: [**/HiringProjectCandidatesServiceImpl.java, **/talentHiringProjectCandidates/**]
 ---
 
 ## Frontend → mcm-mt → ActionWriteBack: Full UI Write-Back Chain

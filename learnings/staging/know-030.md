@@ -2,13 +2,13 @@
 id: know-030
 track: knowledge
 type: semantic
-repos: ["*"]
-tags: ["compound-learning", "architecture", "productivity", "meta", "skills"]
+repos: [*]
+tags: [compound-learning, architecture, productivity, meta, skills]
 severity: high
 rot_rate: slow
 created: "2026-04-01"
 last_verified: "2026-04-01"
-use_count: 0
+use_count: 1
 outcome_score: 0
 status: active
 ---

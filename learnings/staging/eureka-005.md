@@ -2,20 +2,20 @@
 id: eureka-005
 track: knowledge
 type: semantic
-repos: ['hp-ats-integration-mt', 'mcm-mt', 'talent-solutions-api', 'talent-solutions-web', 'talent-partner-integrations-mt']
-tags: ['eureka', 'phase2', 'connected-projects', 'architecture', 'pattern', 'pipeline-sync', 'writeback', 'realtime', 'entity-mapping', 'mental-model']
+repos: [hp-ats-integration-mt, mcm-mt, talent-solutions-api, talent-solutions-web, talent-partner-integrations-mt]
+tags: [eureka, phase2, connected-projects, architecture, pattern, pipeline-sync, writeback, realtime, entity-mapping, mental-model]
 severity: critical
 created: '2026-04-03'
 last_verified: '2026-04-03'
-use_count: 0
+use_count: 11
 outcome_score: 0.0
 rot_rate: permanent
 status: active
 origin_skill: eureka
 emerged_from: aha-004
-graduation_candidate: true
+graduation_candidate: True
 visibility: team
-synthesized_from: ['know-010', 'know-011', 'know-014', 'know-015', 'know-016', 'know-035', 'know-040']
+synthesized_from: [know-010, know-011, know-014, know-015, know-016, know-035, know-040]
 ---
 
 ## Breakthrough
