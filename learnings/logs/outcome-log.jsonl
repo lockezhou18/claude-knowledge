@@ -111,3 +111,10 @@
 {"ts": "2026-04-12T11:55:19.959370", "insight_id": "know-044", "event": "retrieved", "prompt_preview": "can you fix   Invalid Settings\n  /Users/bizhou/.claude/settings.json\n   \u2514 permis"}
 {"ts": "2026-04-12T11:55:19.959418", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you fix   Invalid Settings\n  /Users/bizhou/.claude/settings.json\n   \u2514 permis"}
 {"ts": "2026-04-12T11:56:00.905080", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you test 3c8d00c"}
+{"ts": "2026-04-12T12:04:37.133703", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you check /Users/bizhou/workspace/qa/agentbus/findings-login-shell.md"}
+{"ts": "2026-04-12T12:07:14.382011", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "the question is should be start subshell, or just directly use the login shell"}
+{"ts": "2026-04-12T12:07:14.382055", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "the question is should be start subshell, or just directly use the login shell"}
+{"ts": "2026-04-12T12:07:14.382060", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "the question is should be start subshell, or just directly use the login shell"}
+{"ts": "2026-04-12T12:14:52.836105", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "can we just dispatch to the claude for the agentbus comms"}
+{"ts": "2026-04-12T12:14:52.836152", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "can we just dispatch to the claude for the agentbus comms"}
+{"ts": "2026-04-12T12:14:52.836157", "insight_id": "know-seat-entitlements-vs-seatroles", "event": "retrieved", "prompt_preview": "can we just dispatch to the claude for the agentbus comms"}
