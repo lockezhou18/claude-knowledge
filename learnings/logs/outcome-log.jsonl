@@ -35,3 +35,6 @@
 {"ts": "2026-04-12T10:44:30.878128", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "the /comms skill and /delegate skill is updated. /review and /qa"}
 {"ts": "2026-04-12T10:44:30.878170", "insight_id": "know-052", "event": "retrieved", "prompt_preview": "the /comms skill and /delegate skill is updated. /review and /qa"}
 {"ts": "2026-04-12T10:44:30.878175", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "the /comms skill and /delegate skill is updated. /review and /qa"}
+{"ts": "2026-04-12T10:54:41.856913", "insight_id": "eureka-007", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>b8wiz3y5p</task-id>\n<tool-use-id>toolu_01Dk87jkPHAQ"}
+{"ts": "2026-04-12T10:54:41.856950", "insight_id": "bug-008", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>b8wiz3y5p</task-id>\n<tool-use-id>toolu_01Dk87jkPHAQ"}
+{"ts": "2026-04-12T10:57:44.288247", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you check -  /Users/bizhou/workspace/qa/agentbus/e2e-report-skills.md"}

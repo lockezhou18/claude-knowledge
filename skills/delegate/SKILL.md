@@ -262,7 +262,7 @@ If a delegated task pauses because Claude needs more information:
 2. The question appears in the result: `"status": "input_required", "result": "Which branch should I use?"`
 3. Resume with follow-up:
 ```bash
-cd $AGENTBUS_DIR && agentbus send --to $TARGET_AGENT -m '{"resume_task_id": "<task_id>", "message": "use the main branch"}'
+echo '{"resume_task_id": "<task_id>", "message": "use the main branch"}' | cd $AGENTBUS_DIR && agentbus send --to $TARGET_AGENT --stdin
 ```
 
 | User says | Interpretation |

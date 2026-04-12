@@ -92,7 +92,7 @@ Run all in parallel where possible, present as unified view:
 lsof -i :$NATS_PORT 2>/dev/null | grep -c LISTEN
 
 # 2. Health
-cd $AGENTBUS_DIR && python3 -m agentbus.cli health --port 14222
+cd $AGENTBUS_DIR && python3 -m agentbus.cli health --port $NATS_PORT
 
 # 3. Agents
 cd $AGENTBUS_DIR && python3 -m agentbus.cli agents --agents-dir $AGENTS_DIR
@@ -139,7 +139,7 @@ cd $AGENTBUS_DIR && python3 -m agentbus.cli agents --agents-dir $AGENTS_DIR
 
 ```bash
 lsof -i :$NATS_PORT 2>/dev/null | grep LISTEN && echo "Tunnel: OK" || echo "Tunnel: DOWN"
-cd $AGENTBUS_DIR && python3 -m agentbus.cli health --port 14222
+cd $AGENTBUS_DIR && python3 -m agentbus.cli health --port $NATS_PORT
 ~/bin/vm-agent --health 2>&1 || echo "(VM unreachable)"
 ```
 
@@ -383,7 +383,7 @@ When a task pauses because the agent needs user input:
 | User says | Interpretation | Command |
 |-----------|---------------|---------|
 | "what's waiting for input", "anything paused" | Find paused tasks | `cd $AGENTBUS_DIR && agentbus tasks --target $TARGET_AGENT --state input_required` |
-| "answer with X", "tell it X" | Resume task | `cd $AGENTBUS_DIR && agentbus send --to $TARGET_AGENT -m '{"resume_task_id":"<id>","message":"<answer>"}'` |
+| "answer with X", "tell it X" | Resume task | `cd $AGENTBUS_DIR && echo '{"resume_task_id":"<id>","message":"<answer>"}' | agentbus send --to $TARGET_AGENT --stdin` |
 
 ---
 
@@ -445,7 +445,7 @@ If any command fails:
 
 | Symptom | Fix |
 |---------|-----|
-| Tunnel DOWN | `bash -c "ssh -f -N -L 14222:localhost:4222 vm"` |
+| Tunnel DOWN | `bash -c "ssh -f -N -L $NATS_PORT:localhost:4222 vm"` |
 | NATS DOWN | Check VM: `bash -c "ssh vm 'docker ps \| grep nats'"` |
 | "No responders" | VM listener not running: `bash -c "ssh vm 'tmux attach -t agentbus'"` |
 | Timeout on sessions | VM listener crashed — restart: `bash -c "ssh vm 'tmux send-keys -t agentbus C-c; sleep 2; tmux send-keys -t agentbus \"cd ~/agentbus && agentbus listen --agent $TARGET_AGENT --workspace ~/workspace\" Enter'"` |
