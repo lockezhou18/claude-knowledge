@@ -153,3 +153,60 @@
 {"ts": "2026-04-11T16:50:51.647501", "insight_id": "know-001", "event": "retrieved", "prompt_preview": "can we save the session to there,"}
 {"ts": "2026-04-11T16:50:51.647506", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can we save the session to there,"}
 {"ts": "2026-04-11T16:51:23.257605", "insight_id": "eureka-005", "event": "retrieved", "prompt_preview": "please continue the fix"}
+{"ts": "2026-04-11T16:59:29.030389", "insight_id": "eureka-007", "event": "retrieved", "prompt_preview": "you are general QA for anything. current one is the agentbus project"}
+{"ts": "2026-04-11T16:59:29.030434", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "you are general QA for anything. current one is the agentbus project"}
+{"ts": "2026-04-11T16:59:29.030438", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "you are general QA for anything. current one is the agentbus project"}
+{"ts": "2026-04-11T16:59:47.284765", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "cool. can you commit the fix"}
+{"ts": "2026-04-11T16:59:47.284826", "insight_id": "eureka-005", "event": "retrieved", "prompt_preview": "cool. can you commit the fix"}
+{"ts": "2026-04-11T17:07:51.371065", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "what's the full path"}
+{"ts": "2026-04-11T17:13:19.948376", "insight_id": "know-051", "event": "retrieved", "prompt_preview": "fix this one  BUG-03 claude binary not on VM PATH         \u2502 Not fixed (VM ops is"}
+{"ts": "2026-04-11T17:13:19.948422", "insight_id": "know-047", "event": "retrieved", "prompt_preview": "fix this one  BUG-03 claude binary not on VM PATH         \u2502 Not fixed (VM ops is"}
+{"ts": "2026-04-11T17:13:19.948427", "insight_id": "know-045", "event": "retrieved", "prompt_preview": "fix this one  BUG-03 claude binary not on VM PATH         \u2502 Not fixed (VM ops is"}
+{"ts": "2026-04-11T17:13:32.720966", "insight_id": "know-051", "event": "retrieved", "prompt_preview": "fix this one  BUG-03 claude binary not on VM PATH         \u2502 Not fixed (VM ops is"}
+{"ts": "2026-04-11T17:13:32.721001", "insight_id": "know-047", "event": "retrieved", "prompt_preview": "fix this one  BUG-03 claude binary not on VM PATH         \u2502 Not fixed (VM ops is"}
+{"ts": "2026-04-11T17:13:32.721006", "insight_id": "know-045", "event": "retrieved", "prompt_preview": "fix this one  BUG-03 claude binary not on VM PATH         \u2502 Not fixed (VM ops is"}
+{"ts": "2026-04-11T17:23:43.817788", "insight_id": "eureka-005", "event": "retrieved", "prompt_preview": "cool, can you output the status and fix report to /Users/bizhou/workspace/qa/age"}
+{"ts": "2026-04-11T17:23:43.817823", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "cool, can you output the status and fix report to /Users/bizhou/workspace/qa/age"}
+{"ts": "2026-04-11T17:23:43.817827", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "cool, can you output the status and fix report to /Users/bizhou/workspace/qa/age"}
+{"ts": "2026-04-11T17:26:20.229800", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "the fix report is /Users/bizhou/workspace/qa/agentbus/fix-report.md. Could you h"}
+{"ts": "2026-04-11T17:26:20.229845", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "the fix report is /Users/bizhou/workspace/qa/agentbus/fix-report.md. Could you h"}
+{"ts": "2026-04-11T17:26:20.229849", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "the fix report is /Users/bizhou/workspace/qa/agentbus/fix-report.md. Could you h"}
+{"ts": "2026-04-11T17:34:07.704573", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "meanwhile can you test from user perspective (/comms, agentbus cli) with all the"}
+{"ts": "2026-04-11T17:34:07.704614", "insight_id": "know-030", "event": "retrieved", "prompt_preview": "meanwhile can you test from user perspective (/comms, agentbus cli) with all the"}
+{"ts": "2026-04-11T17:34:07.704619", "insight_id": "eureka-008", "event": "retrieved", "prompt_preview": "meanwhile can you test from user perspective (/comms, agentbus cli) with all the"}
+{"ts": "2026-04-11T17:44:00.395976", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "cool. Can we test pipe, this is the most important"}
+{"ts": "2026-04-11T17:44:00.396020", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "cool. Can we test pipe, this is the most important"}
+{"ts": "2026-04-11T17:44:00.396025", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "cool. Can we test pipe, this is the most important"}
+{"ts": "2026-04-11T17:45:45.330367", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "how do I use the pipe via /comms, can you provide couple of example"}
+{"ts": "2026-04-11T17:45:45.330400", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "how do I use the pipe via /comms, can you provide couple of example"}
+{"ts": "2026-04-11T17:46:44.752251", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "got this -   \u23bf \u00a0Shell cwd was reset to /Users/bizhou/claude-knowledge\n  \u23bf \u00a0(time"}
+{"ts": "2026-04-11T17:46:44.752291", "insight_id": "know-045", "event": "retrieved", "prompt_preview": "got this -   \u23bf \u00a0Shell cwd was reset to /Users/bizhou/claude-knowledge\n  \u23bf \u00a0(time"}
+{"ts": "2026-04-11T17:46:44.752296", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "got this -   \u23bf \u00a0Shell cwd was reset to /Users/bizhou/claude-knowledge\n  \u23bf \u00a0(time"}
+{"ts": "2026-04-11T17:47:52.939501", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "can we spot the issue and fix"}
+{"ts": "2026-04-11T17:47:52.939535", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can we spot the issue and fix"}
+{"ts": "2026-04-11T17:47:52.939539", "insight_id": "eureka-005", "event": "retrieved", "prompt_preview": "can we spot the issue and fix"}
+{"ts": "2026-04-11T17:51:47.295394", "insight_id": "bug-008", "event": "retrieved", "prompt_preview": "\u276f /comms pipe vm\n\n\u23fa Bash(export AGENTBUS_NATS_URL=\"nats://bizhou-laptop:laptop-a"}
+{"ts": "2026-04-11T17:51:47.295438", "insight_id": "know-046", "event": "retrieved", "prompt_preview": "\u276f /comms pipe vm\n\n\u23fa Bash(export AGENTBUS_NATS_URL=\"nats://bizhou-laptop:laptop-a"}
+{"ts": "2026-04-11T17:51:47.295443", "insight_id": "know-045", "event": "retrieved", "prompt_preview": "\u276f /comms pipe vm\n\n\u23fa Bash(export AGENTBUS_NATS_URL=\"nats://bizhou-laptop:laptop-a"}
+{"ts": "2026-04-11T17:52:12.201491", "insight_id": "bug-008", "event": "retrieved", "prompt_preview": "get this for my manual testing in another session - /comms pipe vm\n\n\u23fa Bash(expor"}
+{"ts": "2026-04-11T17:52:12.201532", "insight_id": "know-046", "event": "retrieved", "prompt_preview": "get this for my manual testing in another session - /comms pipe vm\n\n\u23fa Bash(expor"}
+{"ts": "2026-04-11T17:52:12.201536", "insight_id": "know-045", "event": "retrieved", "prompt_preview": "get this for my manual testing in another session - /comms pipe vm\n\n\u23fa Bash(expor"}
+{"ts": "2026-04-11T17:53:42.822888", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can we fix the issue, expectation is I can use the /comms to establish pipe conn"}
+{"ts": "2026-04-11T17:53:42.822920", "insight_id": "eureka-005", "event": "retrieved", "prompt_preview": "can we fix the issue, expectation is I can use the /comms to establish pipe conn"}
+{"ts": "2026-04-11T17:53:42.822924", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "can we fix the issue, expectation is I can use the /comms to establish pipe conn"}
+{"ts": "2026-04-11T17:56:27.121548", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "so the pipe will works with same claude session on the vm right"}
+{"ts": "2026-04-11T17:56:27.121600", "insight_id": "know-045", "event": "retrieved", "prompt_preview": "so the pipe will works with same claude session on the vm right"}
+{"ts": "2026-04-11T17:56:27.121607", "insight_id": "know-044", "event": "retrieved", "prompt_preview": "so the pipe will works with same claude session on the vm right"}
+{"ts": "2026-04-11T17:58:10.094105", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can you check the mint build status"}
+{"ts": "2026-04-11T18:00:10.141222", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "how about the vm side"}
+{"ts": "2026-04-11T18:02:01.992223", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "cool. anything left commit/push for the public repo,"}
+{"ts": "2026-04-11T18:03:46.854495", "insight_id": "know-047", "event": "retrieved", "prompt_preview": "cool, what should be pushed, and what should not"}
+{"ts": "2026-04-11T18:03:46.854544", "insight_id": "bug-006", "event": "retrieved", "prompt_preview": "cool, what should be pushed, and what should not"}
+{"ts": "2026-04-11T18:03:46.854549", "insight_id": "aha-005", "event": "retrieved", "prompt_preview": "cool, what should be pushed, and what should not"}
+{"ts": "2026-04-11T18:04:58.386097", "insight_id": "know-045", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>b5r6a41sc</task-id>\n<tool-use-id>toolu_011GjWxFghaX"}
+{"ts": "2026-04-11T18:04:58.386129", "insight_id": "eureka-008", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>b5r6a41sc</task-id>\n<tool-use-id>toolu_011GjWxFghaX"}
+{"ts": "2026-04-11T18:04:58.386133", "insight_id": "eureka-007", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>b5r6a41sc</task-id>\n<tool-use-id>toolu_011GjWxFghaX"}
+{"ts": "2026-04-11T18:06:16.706594", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "cool. Now for the /comms skill, is that possible to input natural language, and "}
+{"ts": "2026-04-11T18:06:16.706637", "insight_id": "know-052", "event": "retrieved", "prompt_preview": "cool. Now for the /comms skill, is that possible to input natural language, and "}
+{"ts": "2026-04-11T18:06:16.706642", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "cool. Now for the /comms skill, is that possible to input natural language, and "}
+{"ts": "2026-04-11T18:12:42.530931", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "cool. btw how you rate the agentbus"}

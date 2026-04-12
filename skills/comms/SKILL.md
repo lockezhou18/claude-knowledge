@@ -1,48 +1,66 @@
 ---
 name: comms
 description: "Agent communication layer — check who's online, view health, manage sessions, send messages, start pipes. The situational awareness skill for multi-agent work."
-allowed-tools: Bash(python3 -m agentbus*), Bash(agentbus *), Bash(~/bin/vm-agent --health*), Bash(~/bin/vm-agent --sessions*), Bash(~/bin/vm-agent --results*), Bash(~/bin/vm-agent --result*), Bash(bash -c "ssh vm*), Bash(lsof *), Bash(cat */results/*.json*), Monitor
-inputs: ["subcommand"]
+allowed-tools: Bash(python3 -m agentbus*), Bash(agentbus *), Bash(~/bin/vm-agent --health*), Bash(~/bin/vm-agent --sessions*), Bash(~/bin/vm-agent --results*), Bash(~/bin/vm-agent --result*), Bash(bash -c "ssh vm*), Bash(lsof *), Bash(cat *inbox*), Bash(pkill *), Bash(kill *), Bash(export AGENTBUS*), Monitor
+inputs: ["request"]
 ---
 
 # Comms — Agent Communication Layer
 
-Situational awareness for the multi-agent network. Check who's reachable, view sessions, send quick messages, manage listeners.
+Just describe what you want. The skill figures out the subcommand.
 
 ```
-/comms              — full dashboard (health + agents + sessions + results)
-/comms status       — same as above
-/comms who          — list agents and capabilities
-/comms health       — NATS, tunnel, infra check
-/comms sessions     — active stateful sessions
-/comms results      — unread async results
-/comms ack          — archive all results (mark as seen)
-/comms ack <id>     — archive one specific result
-/comms send <agent> <message>  — quick send
-/comms pipe <agent> — start bidirectional pipe
-/comms listen       — start hook listener on this machine
+/comms                              — full dashboard
+/comms how's the network            — full dashboard
+/comms who's online                 — list agents
+/comms is everything healthy        — infra check
+/comms any active sessions on vm    — sessions
+/comms anything new                 — unread results
+/comms clear the inbox              — ack all results
+/comms tell vm to run the tests     — send to VM
+/comms ask vm what OS it's running  — send thinking task
+/comms open a channel to vm         — start bidirectional pipe
+/comms check inbox                  — read incoming messages
+/comms stop listening               — stop background listener
 ```
 
-## Environment
+## Step 1: Classify the Request
+
+Read the user's input and classify into one of these intents:
+
+| Signal in user's words | Intent | Route to |
+|------------------------|--------|----------|
+| No args, "status", "dashboard", "overview", "how's", "what's up", "sitrep" | **Dashboard** | Run full dashboard |
+| "who", "agents", "list agents", "online", "registered", "available" | **Who** | List agents |
+| "health", "healthy", "infra", "tunnel", "nats", "connected", "reachable" | **Health** | Infra check |
+| "session", "sessions", "active sessions", "conversations" | **Sessions** | List sessions |
+| "results", "anything new", "pending", "async", "what came back" | **Results** | Show results |
+| "ack", "clear", "archive", "mark read", "dismiss", "clean up results" | **Ack** | Archive results |
+| "send", "tell", "ask", "say to", "message", "run on" + agent name | **Send** | Send to agent |
+| "pipe", "channel", "connect to", "open", "bidirectional", "listen to" | **Pipe** | Start channel |
+| "inbox", "incoming", "check messages", "what did.*send" | **Inbox** | Read inbox file |
+| "stop", "close", "disconnect", "kill listener", "stop listening" | **Stop** | Kill listener |
+
+**Agent name resolution:** If the user says "vm", resolve to `bizhou-vm`. If "laptop", resolve to `bizhou-laptop`. Match against registered agent card names.
+
+## Step 2: Execute
+
+### Environment (set before EVERY command)
 
 ```bash
 export AGENTBUS_NATS_URL="nats://bizhou-laptop:laptop-agent-token-2026@localhost:14222"
-AGENTS_DIR="$HOME/workspace/.agentbus/agents"
-AGENTBUS_DIR="$HOME/workspace/.agentbus"
+export AGENTS_DIR="$HOME/workspace/.agentbus/agents"
+export AGENTBUS_DIR="$HOME/workspace/.agentbus"
 ```
 
-Always set these before running any agentbus command.
+---
 
-## Subcommand Routing
+### Dashboard (default)
 
-Parse the user's input after `/comms` and route:
-
-### `/comms` or `/comms status` — Full Dashboard
-
-Run all of these and present as a unified view:
+Run all in parallel where possible, present as unified view:
 
 ```bash
-# 1. Tunnel check
+# 1. Tunnel
 lsof -i :14222 2>/dev/null | grep -c LISTEN
 
 # 2. Health
@@ -51,7 +69,7 @@ cd $AGENTBUS_DIR && python3 -m agentbus.cli health --port 14222
 # 3. Agents
 cd $AGENTBUS_DIR && python3 -m agentbus.cli agents --agents-dir $AGENTS_DIR
 
-# 4. Sessions (may timeout if VM listener is down — catch gracefully)
+# 4. Sessions (catch timeout gracefully)
 cd $AGENTBUS_DIR && python3 -c "
 import asyncio, sys, os
 sys.path.insert(0, '.')
@@ -65,134 +83,136 @@ try:
 except: print('    (VM unreachable)')
 "
 
-# 5. Unread async results
+# 5. Unread results
 cd $AGENTBUS_DIR && python3 -m agentbus.cli results 2>/dev/null || echo "    (no results)"
 ```
 
 Present as:
-
 ```
 === AgentBus Comms ===
   Tunnel:    OK / DOWN
   NATS:      OK / DOWN
   Agents:    N registered
-    name1    [status] description
-    name2    [status] description
-  Sessions:  N active
-    key      session=... idle=...s
-  Results:   N pending
+  Sessions:  ...
+  Results:   ...
 ```
 
-### `/comms who` — List Agents
+---
+
+### Who
 
 ```bash
 cd $AGENTBUS_DIR && python3 -m agentbus.cli agents --agents-dir $AGENTS_DIR
 ```
 
-### `/comms health` — Infrastructure Check
+---
+
+### Health
 
 ```bash
-# Check tunnel
 lsof -i :14222 2>/dev/null | grep LISTEN && echo "Tunnel: OK" || echo "Tunnel: DOWN"
-
-# AgentBus health
 cd $AGENTBUS_DIR && python3 -m agentbus.cli health --port 14222
-
-# VM agent health (if reachable)
 ~/bin/vm-agent --health 2>&1 || echo "(VM unreachable)"
 ```
 
-### `/comms sessions` — Active Sessions
+---
 
-Try vm-agent first (faster, handles errors), fall back to CLI:
+### Sessions
 
 ```bash
-# Primary: via vm-agent (catches timeouts gracefully)
-~/bin/vm-agent --sessions 2>&1 || echo "(VM unreachable — listener may be down)"
+~/bin/vm-agent --sessions 2>&1 || echo "(VM unreachable)"
 ```
 
-### `/comms results` — Async Results
+---
+
+### Results
 
 ```bash
-# List unread results
+# Default: unread only
 cd $AGENTBUS_DIR && python3 -m agentbus.cli results
 
-# Include archived (already ack'd)
-cd $AGENTBUS_DIR && python3 -m agentbus.cli results --all
-
-# Detail for a specific task
+# If user asks for "all" or "everything": add --all
+# If user asks about a specific task: pass the task_id
 cd $AGENTBUS_DIR && python3 -m agentbus.cli results <task_id>
-
-# Raw JSON output
-cd $AGENTBUS_DIR && python3 -m agentbus.cli results --json
 ```
 
-### `/comms ack` — Acknowledge Results
+---
 
-Move results to `.archive/` — acknowledged but kept for audit.
+### Ack
 
 ```bash
-# Archive all unread results
+# All
 cd $AGENTBUS_DIR && python3 -m agentbus.cli ack
 
-# Archive one specific result
+# Specific task
 cd $AGENTBUS_DIR && python3 -m agentbus.cli ack <task_id>
 ```
 
-After ack, results no longer show in `/comms results` but are visible with `--all`.
+---
 
-### `/comms send <agent> <message>` — Quick Send
+### Send
 
-Parse agent name and message from the input, then:
+**Classify the message type:**
+
+| Signal | Type | Flag |
+|--------|------|------|
+| Exact command: `mint build`, `echo`, `ls`, `uname`, `docker`, `kubectl` | Shell | `-c` |
+| Needs reasoning: "what", "why", "how", "review", "investigate", "explain" | Thinking | `-m` |
+| User says "in background", "async", "don't wait" | Async | add `--async` |
+| Ambiguous | Thinking | `-m` (safer) |
 
 ```bash
 cd $AGENTBUS_DIR && python3 -m agentbus.cli send \
-  --to <agent> --from bizhou-laptop \
-  --message "<message>" \
+  --to <agent> \
+  -m "<message>" \  # or -c "<command>" for shell
   --nats-url "$AGENTBUS_NATS_URL" \
   --agents-dir $AGENTS_DIR \
   --timeout 30
 ```
 
-If the message looks like a shell command (starts with known tool: `mint`, `echo`, `ls`, etc.), use `--command` instead of `--message`.
-
-For async: if user says "in the background" or "async", add `--async` and start Monitor:
-
+For async, after getting the task_id:
 ```bash
-# After getting the task_id from the async response:
 Monitor: cd $AGENTBUS_DIR && python3 -m agentbus.watch_result --task-id <task_id> --count 1 --timeout 600 --nats-url "$AGENTBUS_NATS_URL"
 ```
 
-### `/comms pipe <agent>` — Bidirectional Pipe
+---
+
+### Pipe (Bidirectional Channel)
+
+Start a background listener + tell user they can now send.
 
 ```bash
-cd $AGENTBUS_DIR && python3 -m agentbus.cli pipe \
-  --agent bizhou-laptop --to <agent> \
+INBOX_FILE="$HOME/agentbus-inbox.log"
+cd $AGENTBUS_DIR && python3 -m agentbus.hook_listener \
+  --agent bizhou-laptop \
+  --on-message 'MSG=$(cat); echo "[$(date +%H:%M:%S)] from=$AGENTBUS_FROM: $AGENTBUS_MESSAGE" >> '"$INBOX_FILE"'; echo "received"' \
   --nats-url "$AGENTBUS_NATS_URL" \
-  --agents-dir $AGENTS_DIR
+  --agents-dir $AGENTS_DIR \
+  --log-level WARNING &
+LISTENER_PID=$!
+echo "Channel open (PID: $LISTENER_PID). Incoming → $INBOX_FILE"
 ```
 
-Tell the user: "Starting bidirectional pipe. Type messages to send, incoming messages appear inline. Ctrl+C to stop."
+Run with `run_in_background: true`. Then tell the user:
+"Channel to <agent> is open. Use `/comms send <agent> <message>` to send. Incoming messages land in ~/agentbus-inbox.log. Use `/comms inbox` to check. `/comms stop` to close."
 
-### `/comms listen` — Start Hook Listener
+---
 
-Ask the user what the hook command should be, or use a sensible default:
+### Inbox
 
 ```bash
-# Default: log to file + print
-cd $AGENTBUS_DIR && python3 -m agentbus.cli listen \
-  --agent bizhou-laptop \
-  --on-message 'echo "[$(date +%H:%M:%S)] from=$AGENTBUS_FROM: $AGENTBUS_MESSAGE" | tee -a ~/agentbus-inbox.log' \
-  --nats-url "$AGENTBUS_NATS_URL" \
-  --agents-dir $AGENTS_DIR
-
-# Custom hook example:
-cd $AGENTBUS_DIR && python3 -m agentbus.cli listen \
-  --agent bizhou-laptop \
-  --on-message '<user-provided-command>' \
-  --nats-url "$AGENTBUS_NATS_URL" \
-  --agents-dir $AGENTS_DIR
+cat ~/agentbus-inbox.log 2>/dev/null || echo "(no messages yet)"
 ```
+
+---
+
+### Stop
+
+```bash
+pkill -f "hook_listener.*bizhou-laptop" 2>/dev/null && echo "Listener stopped" || echo "No listener running"
+```
+
+---
 
 ## Troubleshooting
 
