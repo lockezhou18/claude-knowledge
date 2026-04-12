@@ -40,23 +40,34 @@
 
 ### AgentBus — VM Agent Communication
 - **Started:** 2026-04-10
-- **Status:** operational, Level 1 (session resume) complete
-- **Repo:** ~/projects/compound-learning-ecosystem/agentbus/
+- **Status:** operational, QA + test suite complete
+- **Repo:** ~/workspace/.agentbus (laptop), /home/bizhou/workspace/.agentbus (VM, not git)
 - **Context:** NATS-backed messaging between laptop Claude and VM Claude agent
 - **What's working:**
   - Shell commands via AgentBus: tested ✓
   - Thinking tasks (claude -p on VM): tested ✓ (14s round-trip)
   - Session resume (multi-turn): tested ✓ (3-turn demo)
   - Async with Monitor (watch_result.py): tested ✓
-  - Auto mode (multi-round): implemented, not yet tested
+  - Auto mode (multi-round): implemented, outcome detection fixed (word-boundary regex)
   - NATS server + listener auto-start on VM login
-  - SSH tunnel auto-forward port 4222
+  - SSH tunnel on port 14222 (not 4222)
 - **Skill:** `/delegate` (merged from vm-remote + vm-agent)
+- **Last session (2026-04-12):**
+  - Validated external QA assessment (Architecture 8/10, Code 6/10, Tests 3/10, Docs 8/10, Idea 9/10)
+  - Wrote 109 new tests (143 total): ClaudeAdapter 77 tests, CLI 29 tests, e2e 22 tests
+  - Fixed fragile dispatch_auto success detection (word-boundary regex, _detect_outcome)
+  - Fixed _extract_shell_command (known-tool-first, removed brittle "in repo" regex)
+  - Fixed blocking subprocess.run in listener.py (asyncio.to_thread)
+  - Removed hardcoded NATS credentials from 4 files
+  - Removed sys.path hacks from 8 files
+  - Deduped send.py CLI (redirect to unified CLI)
+  - Deployed to VM via ssh cat pipe + systemd restart
+  - Commit: 1e59470, pushed to origin/main
 - **Next:**
-  - Test auto mode end-to-end
+  - A2A HTTP transport adapter (strategic priority — see strategy-a2a-alignment.md)
+  - Formal task lifecycle (create/get/cancel/status)
   - Explore teammate access (agent cards for team members)
   - Level 2 (streaming daemon) when needed
-  - Check NATS approval for LinkedIn VMs (ask #ask_sysops)
 
 ### Developer Productivity Tooling
 - **Started:** 2026-03-25

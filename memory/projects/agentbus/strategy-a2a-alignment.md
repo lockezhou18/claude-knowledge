@@ -42,6 +42,6 @@ Full audit at `~/workspace/qa/agentbus/findings.md` and `retest-report.md`.
 ## Next Steps
 
 1. A2A HTTP transport adapter in `agentbus/transports/a2a_http.py`
-2. Tests for ClaudeAdapter (the most critical untested module)
+2. ~~Tests for ClaudeAdapter~~ **DONE** (2026-04-12): 143 unit tests, adapter 77 tests, CLI 29 tests
 3. Formal task lifecycle (create/get/cancel/status) — align with A2A Tasks
 4. Fix remaining 3 low-severity issues (duplicate CLAUDE.md bullet, watch duplicate delivery, AGENTBUS_FROM undocumented)
