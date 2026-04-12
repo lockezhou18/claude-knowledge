@@ -217,9 +217,19 @@ curl -N -X POST http://localhost:8080/message/stream -H 'Content-Type: applicati
 curl -X POST http://localhost:8080/message/send -H 'Content-Type: application/json' -d '{"role":"user","parts":[{"type":"text","text":"<message>"}]}'
 ```
 
-For async, after getting the task_id:
+**CRITICAL — Subscribe-Before-Send for async:** Use Claude Code's **Monitor tool** to catch results in real-time. Start Monitor BEFORE firing the task — NATS drops events with no subscriber.
+
+```
+Step 1 → Bash: TASK_ID=$(python3 -c "import uuid; print(uuid.uuid4())")
+Step 2 → Monitor: cd $AGENTBUS_DIR && python3 -m agentbus.watch_result --task-id $TASK_ID --count 1 --timeout 600 --nats-url "$AGENTBUS_NATS_URL"
+Step 3 → Bash: cd $AGENTBUS_DIR && agentbus send --to $TARGET_AGENT -m "<message>" --async --task-id $TASK_ID --nats-url "$AGENTBUS_NATS_URL" --agents-dir $AGENTS_DIR
+```
+
+The Monitor runs in the background. When the result arrives via NATS, it's automatically injected into this conversation. No polling needed.
+
+**Safety net** (if Monitor times out): poll the task store:
 ```bash
-Monitor: cd $AGENTBUS_DIR && python3 -m agentbus.watch_result --task-id <task_id> --count 1 --timeout 600 --nats-url "$AGENTBUS_NATS_URL"
+cd $AGENTBUS_DIR && agentbus tasks --target $TARGET_AGENT <task_id>
 ```
 
 **Step C: Present result based on mode**

@@ -130,22 +130,49 @@ Assemble the `~/bin/vm-agent` command from the classification:
 ~/bin/vm-agent --new -t "<message>"
 ```
 
-## Step 3: For Async/Auto — Start Monitor
+## Step 3: For Async/Auto — Use Claude Monitor Tool
 
-After firing an async or auto task, start the Monitor to watch for results:
+**Use the Claude Code Monitor tool** to watch for async results. The Monitor runs a background process and feeds stdout back into this conversation in real-time — the user doesn't need to check anything.
 
-```bash
-# Get the task_id from the async response, then:
-# (run from ~/projects/compound-learning-ecosystem/agentbus)
+**CRITICAL: Subscribe-before-send.** NATS is fire-and-forget — start the Monitor BEFORE firing the task, or fast tasks have their results lost.
 
-# Async (one result):
-Monitor: python3 -m agentbus.watch_result --task-id <task_id> --count 1 --timeout 600
+**Execution order (3 tool calls in sequence):**
 
-# Auto (stream checkpoints):
-Monitor: python3 -m agentbus.watch_result --task-id <task_id> --count 0 --timeout 1800
+```
+Step 1: Generate task_id
+  → Bash: TASK_ID=$(python3 -c "import uuid; print(uuid.uuid4())")
+
+Step 2: Start Monitor FIRST (uses Claude Code's Monitor tool — subscribes to NATS)
+  → Monitor: cd $AGENTBUS_DIR && python3 -m agentbus.watch_result --task-id $TASK_ID --count 1 --timeout 600 --nats-url "$AGENTBUS_NATS_URL"
+
+Step 3: THEN fire the async task
+  → Bash: ~/bin/vm-agent --async --task-id $TASK_ID "<message>"
 ```
 
-Tell the user: "Task delegated. I'm watching for results — keep working."
+**For auto mode (stream checkpoints):**
+```
+  → Monitor: cd $AGENTBUS_DIR && python3 -m agentbus.watch_result --task-id $TASK_ID --count 0 --timeout 1800 --nats-url "$AGENTBUS_NATS_URL"
+  → Bash: ~/bin/vm-agent --auto --task-id $TASK_ID "<message>"
+```
+
+**How the Monitor delivers results:**
+- Monitor runs in the background — the conversation continues normally
+- When the NATS event arrives, Monitor prints it → Claude Code injects it into the conversation
+- The agent sees the result and presents it to the user
+- No polling, no manual checking — real-time push into the conversation
+
+**Fallback (if `--task-id` not supported by vm-agent yet):**
+```
+  → Monitor: cd $AGENTBUS_DIR && python3 -m agentbus.watch_result --subject "event.result.*" --count 1 --timeout 600 --nats-url "$AGENTBUS_NATS_URL"
+  → Bash: ~/bin/vm-agent --async "<message>"
+```
+
+**Safety net:** If Monitor times out with no result, poll the task store:
+```bash
+cd $AGENTBUS_DIR && agentbus tasks --target $TARGET_AGENT <task_id>
+```
+
+Tell the user: "Task delegated. Results will appear here automatically — keep working."
 
 ## Step 4: Present Result
 
