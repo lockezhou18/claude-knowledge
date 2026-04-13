@@ -1,13 +1,36 @@
 ---
 name: delegate
 description: "Delegate tasks to the VM agent. Just describe what you want in natural language — the skill figures out the mode, transport, and flags automatically."
-allowed-tools: Bash(bash -c "ssh vm*), Bash(bash -c "scp*), Bash(bash -c "rsync*), Bash(bash -c "cd * && vm-run*), Bash(bash -c "vm-run*), Bash(export PATH*vm-run*), Bash(~/bin/vm-agent*), Bash(cd *agentbus && agentbus tasks*), Bash(cd *agentbus && agentbus cancel*), Monitor
+allowed-tools: Bash(bash -c "ssh vm*), Bash(bash -c "scp*), Bash(bash -c "rsync*), Bash(bash -c "cd * && vm-run*), Bash(bash -c "vm-run*), Bash(export PATH*vm-run*), Bash(~/bin/vm-agent*), Bash(cd *agentbus && agentbus *), Bash(curl *), TaskOutput
 inputs: ["task"]
 ---
 
 # Delegate — Send Work to the VM Agent
 
 Just say what you want. The skill figures out the rest.
+
+## Step 0: Resolve Context (run once per session)
+
+Before any command, discover the environment. Read these to determine agent names, NATS URL, and paths:
+
+```bash
+# 1. Find agentbus dir
+AGENTBUS_DIR="${AGENTBUS_DIR:-$HOME/workspace/.agentbus}"
+AGENTS_DIR="$AGENTBUS_DIR/agents"
+
+# 2. Discover agents (read card files)
+ls $AGENTS_DIR/*.json $AGENTS_DIR/local/*.json 2>/dev/null
+
+# 3. Resolve NATS URL from env
+echo "${AGENTBUS_NATS_URL:-nats://localhost:4222}"
+```
+
+From the agent cards, determine:
+- **LOCAL_AGENT**: Card with "laptop" in name, or `AGENTBUS_FROM` env var
+- **TARGET_AGENT**: Card with "vm" in name, or the non-local agent
+- **NATS_URL**: `AGENTBUS_NATS_URL` env var
+
+Use these variables in ALL commands below. **Never hardcode agent names** — different users have different card names.
 
 ```
 /delegate review the latest PR for hp-ats-integration-mt
@@ -19,17 +42,50 @@ Just say what you want. The skill figures out the rest.
 /delegate what are the last 5 commits in hp-ats-integration-mt
 ```
 
-## Step 1: Understand the Request
+## Step 1: Understand the Request — Mode Decision Engine
 
-Read the user's natural language and determine:
+The skill chooses the right mode from natural language. Three layers of signals:
 
-**A. What mode?**
+### Layer 1: Explicit signals (highest priority)
 
-| Signal in user's words | Mode | How to execute |
-|------------------------|------|----------------|
-| "in the background", "async", "don't wait", "fire and forget" | **Async** | `vm-agent --async` + Monitor |
-| "keep going until", "fix and re-test", "loop until green" | **Auto** | `vm-agent --auto` + Monitor |
-| Everything else | **Sync** | Block until result |
+| User says | Mode |
+|-----------|------|
+| "in the background", "async", "don't wait", "fire and forget" | **Async** |
+| "keep going until", "fix and re-test", "loop until green" | **Auto** |
+| "talk to vm", "open a channel", "interactive", "chat with" | **Pipe** |
+| "stream it", "show me live", "watch progress", "real-time" | **SSE Streaming** |
+| "via http", "a2a", "send to gateway" | **A2A Sync** |
+
+### Layer 2: Task-type inference (if no explicit signal)
+
+| Task type | Default mode | Reason |
+|-----------|-------------|--------|
+| `mint build`, `mint test`, `gradlew`, full test suites | **Async** | Known long-running (30s+) |
+| `go-deploy`, `go-status` | **Sync** | Quick status checks |
+| `echo`, `ls`, `cat`, `uname`, `pwd` | **Sync** | Instant commands |
+| "review", "investigate", "analyze" (thinking) | **Sync** | User typically waits for reasoning |
+| "build then test then deploy" (multi-step) | **Auto** | Sequential loop |
+| Follow-up to a previous question | **Pipe** or resume same session | Conversational |
+
+### Layer 3: Conversation pattern (lowest priority)
+
+| Pattern | Mode |
+|---------|------|
+| Single question, expects one answer | **Sync** |
+| User asked 2+ follow-up questions to the same agent | Suggest **Pipe** |
+| User is monitoring external system | Suggest **SSE Streaming** |
+| User will switch to other work while waiting | **Async** |
+
+### Mode → Execution mapping
+
+| Mode | Execute with | Result delivery |
+|------|-------------|-----------------|
+| **Sync** | `~/bin/vm-agent "<cmd>"` or `~/bin/vm-agent -t "<msg>"` | Block, show result |
+| **Async** | `~/bin/vm-agent --async "<msg>"` + background watcher | Background, notify when done |
+| **Auto** | `~/bin/vm-agent --auto "<msg>"` + background watcher | Multi-round, stream checkpoints |
+| **Pipe** | `agentbus pipe --agent $LOCAL_AGENT --to $TARGET_AGENT` | Interactive bidirectional |
+| **SSE Streaming** | `curl -N POST http://localhost:8080/message/stream` | Real-time HTTP events |
+| **A2A Sync** | `curl POST http://localhost:8080/message/send` | HTTP request/response |
 
 **B. Shell or thinking?**
 
@@ -74,22 +130,49 @@ Assemble the `~/bin/vm-agent` command from the classification:
 ~/bin/vm-agent --new -t "<message>"
 ```
 
-## Step 3: For Async/Auto — Start Monitor
+## Step 3: For Async/Auto — Use Claude Monitor Tool
 
-After firing an async or auto task, start the Monitor to watch for results:
+**Use the Claude Code Monitor tool** to watch for async results. The Monitor runs a background process and feeds stdout back into this conversation in real-time — the user doesn't need to check anything.
 
-```bash
-# Get the task_id from the async response, then:
-# (run from ~/projects/compound-learning-ecosystem/agentbus)
+**CRITICAL: Subscribe-before-send.** NATS is fire-and-forget — start the Monitor BEFORE firing the task, or fast tasks have their results lost.
 
-# Async (one result):
-Monitor: python3 -m agentbus.watch_result --task-id <task_id> --count 1 --timeout 600
+**Execution order (3 tool calls in sequence):**
 
-# Auto (stream checkpoints):
-Monitor: python3 -m agentbus.watch_result --task-id <task_id> --count 0 --timeout 1800
+```
+Step 1: Generate task_id
+  → Bash: TASK_ID=$(python3 -c "import uuid; print(uuid.uuid4())")
+
+Step 2: Start Monitor FIRST (uses Claude Code's Monitor tool — subscribes to NATS)
+  → Monitor: cd $AGENTBUS_DIR && python3 -m agentbus.watch_result --task-id $TASK_ID --count 1 --timeout 600 --nats-url "$AGENTBUS_NATS_URL"
+
+Step 3: THEN fire the async task
+  → Bash: ~/bin/vm-agent --async --task-id $TASK_ID "<message>"
 ```
 
-Tell the user: "Task delegated. I'm watching for results — keep working."
+**For auto mode (stream checkpoints):**
+```
+  → Monitor: cd $AGENTBUS_DIR && python3 -m agentbus.watch_result --task-id $TASK_ID --count 0 --timeout 1800 --nats-url "$AGENTBUS_NATS_URL"
+  → Bash: ~/bin/vm-agent --auto --task-id $TASK_ID "<message>"
+```
+
+**How the Monitor delivers results:**
+- Monitor runs in the background — the conversation continues normally
+- When the NATS event arrives, Monitor prints it → Claude Code injects it into the conversation
+- The agent sees the result and presents it to the user
+- No polling, no manual checking — real-time push into the conversation
+
+**Fallback (if `--task-id` not supported by vm-agent yet):**
+```
+  → Monitor: cd $AGENTBUS_DIR && python3 -m agentbus.watch_result --subject "event.result.*" --count 1 --timeout 600 --nats-url "$AGENTBUS_NATS_URL"
+  → Bash: ~/bin/vm-agent --async "<message>"
+```
+
+**Safety net:** If Monitor times out with no result, poll the task store:
+```bash
+cd $AGENTBUS_DIR && agentbus tasks --target $TARGET_AGENT <task_id>
+```
+
+Tell the user: "Task delegated. Results will appear here automatically — keep working."
 
 ## Step 4: Present Result
 
@@ -130,40 +213,102 @@ After async/auto delegation, use the task store for lifecycle tracking. Tasks ar
 **A. Check task status:**
 ```bash
 # After async delegation returns task_id:
-cd $AGENTBUS_DIR && agentbus tasks --target bizhou-vm <task_id>
+cd $AGENTBUS_DIR && agentbus tasks --target $TARGET_AGENT <task_id>
 ```
 
 **B. List delegated tasks:**
 ```bash
-cd $AGENTBUS_DIR && agentbus tasks --target bizhou-vm
-cd $AGENTBUS_DIR && agentbus tasks --target bizhou-vm --state working    # what's in flight
-cd $AGENTBUS_DIR && agentbus tasks --target bizhou-vm --state completed  # what finished
+cd $AGENTBUS_DIR && agentbus tasks --target $TARGET_AGENT
+cd $AGENTBUS_DIR && agentbus tasks --target $TARGET_AGENT --state working    # what's in flight
+cd $AGENTBUS_DIR && agentbus tasks --target $TARGET_AGENT --state completed  # what finished
 ```
 
 **C. Cancel a running task:**
 ```bash
-cd $AGENTBUS_DIR && agentbus cancel <task_id> --target bizhou-vm
+cd $AGENTBUS_DIR && agentbus cancel <task_id> --target $TARGET_AGENT
 ```
 Tell user: "Task canceled. Note: the background process on VM may still be running (cancel is state-only in v0.3.0)."
 
 **D. Track multi-step delegations with context_id:**
 For auto-mode (`--auto`), the listener creates tasks with context_id. Query all tasks from a delegation:
 ```bash
-cd $AGENTBUS_DIR && agentbus tasks --target bizhou-vm --context <context_id>
+cd $AGENTBUS_DIR && agentbus tasks --target $TARGET_AGENT --context <context_id>
 ```
 
 ### Natural language → task command
 
 | User says | Action |
 |-----------|--------|
-| "what's the status", "how's it going", "is it done yet", "check on that" | `agentbus tasks --target bizhou-vm <last_task_id>` |
-| "cancel it", "stop that", "kill the build", "abort", "nevermind" | `agentbus cancel <last_task_id> --target bizhou-vm` |
-| "what's running", "anything in flight", "what's the vm doing" | `agentbus tasks --target bizhou-vm --state working` |
-| "show all tasks", "task history", "what did the vm do" | `agentbus tasks --target bizhou-vm` |
-| "what failed", "any errors", "what broke" | `agentbus tasks --target bizhou-vm --state failed` |
-| "show everything from that pipe session" | `agentbus tasks --target bizhou-vm --context <context_id>` |
+| "what's the status", "how's it going", "is it done yet", "check on that" | `agentbus tasks --target $TARGET_AGENT <last_task_id>` |
+| "cancel it", "stop that", "kill the build", "abort", "nevermind" | `agentbus cancel <last_task_id> --target $TARGET_AGENT` |
+| "what's running", "anything in flight", "what's the vm doing" | `agentbus tasks --target $TARGET_AGENT --state working` |
+| "show all tasks", "task history", "what did the vm do" | `agentbus tasks --target $TARGET_AGENT` |
+| "what failed", "any errors", "what broke" | `agentbus tasks --target $TARGET_AGENT --state failed` |
+| "show everything from that pipe session" | `agentbus tasks --target $TARGET_AGENT --context <context_id>` |
 
 **Remembering the last task_id:** After any async delegation, remember the returned `task_id` so follow-up questions ("is it done?", "cancel it") can reference it without the user repeating it.
+
+## Step 6: Interactive Pipe (v0.3.1)
+
+For ongoing conversation with the VM agent (not one-shot delegation):
+
+| User says | Interpretation | Command |
+|-----------|---------------|---------|
+| "open a channel", "start a pipe", "talk to vm" | Interactive pipe | `cd $AGENTBUS_DIR && agentbus pipe --agent $LOCAL_AGENT --to $TARGET_AGENT --nats-url "$AGENTBUS_NATS_URL" --agents-dir $AGENTS_DIR` |
+
+The pipe generates a `context_id` — all tasks created during the conversation are linked. Task state events (working → completed) appear inline. After closing, review with `agentbus tasks --context <session-id>`.
+
+## Step 7: A2A Streaming (v0.3.1)
+
+For external/HTTP clients, delegate via A2A gateway with real-time SSE streaming:
+
+| User says | Interpretation |
+|-----------|---------------|
+| "stream that to the gateway", "watch it via http" | Use A2A SSE endpoint |
+| "send via a2a" | Use A2A sync endpoint |
+
+```bash
+# SSE streaming — see submitted→working→completed in real-time:
+curl -N -X POST http://localhost:8080/message/stream \
+  -H 'Content-Type: application/json' \
+  -d '{"role":"user","parts":[{"type":"text","text":"<message>"}]}'
+
+# Sync (blocks until complete):
+curl -X POST http://localhost:8080/message/send \
+  -H 'Content-Type: application/json' \
+  -d '{"role":"user","parts":[{"type":"text","text":"<message>"}]}'
+```
+
+**Note:** A2A gateway must be running (`agentbus a2a-server --agent $TARGET_AGENT --port 8080`).
+
+## Step 8: Input Required (v0.3.1)
+
+If a delegated task pauses because Claude needs more information:
+
+1. Task transitions to `input_required` — you'll see this in task status or pipe events
+2. The question appears in the result: `"status": "input_required", "result": "Which branch should I use?"`
+3. Resume with follow-up:
+```bash
+echo '{"resume_task_id": "<task_id>", "message": "use the main branch"}' | cd $AGENTBUS_DIR && agentbus send --to $TARGET_AGENT --stdin
+```
+
+| User says | Interpretation |
+|-----------|---------------|
+| "it's asking a question", "answer with X" | Send resume with `resume_task_id` |
+| "which task needs input" | `agentbus tasks --target $TARGET_AGENT --state input_required` |
+
+## Step 9: Workflow Delegation (v0.3.1)
+
+For multi-step sequences (build → test → deploy):
+
+Workflows create a parent task with child steps. Each step runs sequentially. If a step fails, the workflow stops.
+
+Currently used programmatically. Natural language mapping:
+
+| User says | Interpretation |
+|-----------|---------------|
+| "build then test then deploy" | Use auto mode (`--auto`) — simpler than workflow for sequential |
+| "run these 3 things in order: X, Y, Z" | Consider workflow if steps are independent commands |
 
 ## Session Management
 
