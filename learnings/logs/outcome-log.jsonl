@@ -190,3 +190,20 @@
 {"ts": "2026-04-12T14:08:25.911268", "insight_id": "aha-006", "event": "retrieved", "prompt_preview": "can we actually use the  The Claude Code \"Monitor\" tool from that Reddit post wa"}
 {"ts": "2026-04-12T14:08:25.911298", "insight_id": "know-055", "event": "retrieved", "prompt_preview": "can we actually use the  The Claude Code \"Monitor\" tool from that Reddit post wa"}
 {"ts": "2026-04-12T14:08:25.911303", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can we actually use the  The Claude Code \"Monitor\" tool from that Reddit post wa"}
+{"ts": "2026-04-13T09:14:16.929020", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "the mint build is fine. Expect to fail as we not explicity point which project t"}
+{"ts": "2026-04-13T09:14:16.929067", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "the mint build is fine. Expect to fail as we not explicity point which project t"}
+{"ts": "2026-04-13T09:14:16.929072", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "the mint build is fine. Expect to fail as we not explicity point which project t"}
+{"ts": "2026-04-13T09:14:43.662002", "insight_id": "aha-006", "event": "retrieved", "prompt_preview": "have we dreamed last night, or pulled the latest from git"}
+{"ts": "2026-04-13T09:15:13.417743", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "meanwhile how do you feel the knowledge base"}
+{"ts": "2026-04-13T09:15:13.417786", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "meanwhile how do you feel the knowledge base"}
+{"ts": "2026-04-13T09:16:31.575359", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "I thought the comms skill only like invoke once, then forget, sorry about that"}
+{"ts": "2026-04-13T09:16:31.575429", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "I thought the comms skill only like invoke once, then forget, sorry about that"}
+{"ts": "2026-04-13T09:17:34.930293", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "is there a way we can optmize the skill"}
+{"ts": "2026-04-13T09:17:34.930353", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "is there a way we can optmize the skill"}
+{"ts": "2026-04-13T09:17:34.930361", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "is there a way we can optmize the skill"}
+{"ts": "2026-04-13T09:49:44.327689", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "cool. 1. compare vm-agent vs /commns skill 2 - seems like the blocker for the dr"}
+{"ts": "2026-04-13T09:49:44.327738", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "cool. 1. compare vm-agent vs /commns skill 2 - seems like the blocker for the dr"}
+{"ts": "2026-04-13T09:49:44.327742", "insight_id": "know-052", "event": "retrieved", "prompt_preview": "cool. 1. compare vm-agent vs /commns skill 2 - seems like the blocker for the dr"}
+{"ts": "2026-04-13T09:54:10.581177", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you check latest comms and delegate skills"}
+{"ts": "2026-04-13T09:54:10.581211", "insight_id": "aha-005", "event": "retrieved", "prompt_preview": "can you check latest comms and delegate skills"}
+{"ts": "2026-04-13T09:54:10.581216", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "can you check latest comms and delegate skills"}
