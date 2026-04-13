@@ -207,3 +207,10 @@
 {"ts": "2026-04-13T09:54:10.581177", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you check latest comms and delegate skills"}
 {"ts": "2026-04-13T09:54:10.581211", "insight_id": "aha-005", "event": "retrieved", "prompt_preview": "can you check latest comms and delegate skills"}
 {"ts": "2026-04-13T09:54:10.581216", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "can you check latest comms and delegate skills"}
+{"ts": "2026-04-13T09:59:23.905345", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "what do you think of this - \u23fa 1. vm-agent vs /comms\n\n  \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"}
+{"ts": "2026-04-13T09:59:23.905388", "insight_id": "know-060", "event": "retrieved", "prompt_preview": "what do you think of this - \u23fa 1. vm-agent vs /comms\n\n  \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"}
+{"ts": "2026-04-13T09:59:23.905393", "insight_id": "know-045", "event": "retrieved", "prompt_preview": "what do you think of this - \u23fa 1. vm-agent vs /comms\n\n  \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"}
+{"ts": "2026-04-13T10:00:59.848300", "insight_id": "know-049", "event": "retrieved", "prompt_preview": "another claude share that"}
+{"ts": "2026-04-13T10:04:07.392130", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "I feel like vm-agent and /commns has overlap, maybe we can simpplify. the comms "}
+{"ts": "2026-04-13T10:04:07.392194", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "I feel like vm-agent and /commns has overlap, maybe we can simpplify. the comms "}
+{"ts": "2026-04-13T10:04:07.392239", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "I feel like vm-agent and /commns has overlap, maybe we can simpplify. the comms "}
