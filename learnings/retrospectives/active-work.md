@@ -22,6 +22,23 @@
   - Test export status event FAILURE path
 - **Blockers:** ESPENG-57173 (Espresso key maxsize increase) — Espresso team analyzing
 
+### CSE-22440 — Admin Unable to Edit Jobs (Critical, due 2026-04-13)
+- **Started:** 2026-03-31, resumed 2026-04-13
+- **Status:** investigation incomplete — backend entitlements appear correct, root cause unclear
+- **Contracts:** 284759823, 221188751, 204933731
+- **Investigation findings (2026-04-13):**
+  - Original diagnosis (missing role assignments) was WRONG — queried legacy Espresso table
+  - All 3 contracts: RECRUITER type, seats have CAN_CREATE_HIRING_PROJECT + CAN_EDIT_HIRING_PROJECT
+  - All affected jobs are JobWrappingSource — BUT working case (221188751) is also wrapped
+  - ATS_FEATURES was PUT on contract 284759823 — needs revert (deprecated feature, not needed)
+  - No backend difference found between working and non-working cases
+- **Open hypotheses:**
+  1. talent-jobs-api `canEdit` has additional conditions (JobAdminSettings, allowEditAtsJobsBackendEnabled, lix)
+  2. Lix flag difference between contracts
+  3. Frontend/ts-web issue
+- **Next:** Check canEdit full code path in talent-jobs-api, compare lix treatments, revert ATS_FEATURES PUT
+- **Action items:** Revert `d2://purchasedHiringPlatformFeatures/urn:li:contract:284759823` (DELETE)
+
 ### Memory Migration — Single SoT
 - **Started:** 2026-04-09
 - **Status:** Phase 6 complete, Phases 7-10 remaining (improvements)

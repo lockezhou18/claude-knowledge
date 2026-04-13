@@ -217,3 +217,102 @@
 {"ts": "2026-04-13T10:22:28.412560", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "probably we can checkout a new repo, delete this one, and checkout the pr and re"}
 {"ts": "2026-04-13T10:22:28.412659", "insight_id": "scout-tee-dev-agent", "event": "retrieved", "prompt_preview": "probably we can checkout a new repo, delete this one, and checkout the pr and re"}
 {"ts": "2026-04-13T10:22:28.412670", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "probably we can checkout a new repo, delete this one, and checkout the pr and re"}
+{"ts": "2026-04-13T11:38:27.995709", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can you check this ticket - https://linkedin.atlassian.net/browse/CSE-22440, key"}
+{"ts": "2026-04-13T11:38:27.995756", "insight_id": "know-seat-entitlements-vs-seatroles", "event": "retrieved", "prompt_preview": "can you check this ticket - https://linkedin.atlassian.net/browse/CSE-22440, key"}
+{"ts": "2026-04-13T11:38:27.995761", "insight_id": "bug-002", "event": "retrieved", "prompt_preview": "can you check this ticket - https://linkedin.atlassian.net/browse/CSE-22440, key"}
+{"ts": "2026-04-13T11:52:15.630695", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "give me the curli for 2, meanwhile investigate 1 in para"}
+{"ts": "2026-04-13T11:52:15.630745", "insight_id": "know-seat-entitlements-vs-seatroles", "event": "retrieved", "prompt_preview": "give me the curli for 2, meanwhile investigate 1 in para"}
+{"ts": "2026-04-13T11:52:15.630751", "insight_id": "know-050", "event": "retrieved", "prompt_preview": "give me the curli for 2, meanwhile investigate 1 in para"}
+{"ts": "2026-04-13T11:58:53.405410", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can you perform code saerch, this is not in my local"}
+{"ts": "2026-04-13T11:58:53.405443", "insight_id": "aha-006", "event": "retrieved", "prompt_preview": "can you perform code saerch, this is not in my local"}
+{"ts": "2026-04-13T11:58:53.405448", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you perform code saerch, this is not in my local"}
+{"ts": "2026-04-13T12:05:32.895903", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can you proivde curli for the second - Contract 221188751, Seat 231507593 (MID 9"}
+{"ts": "2026-04-13T12:05:32.895935", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you proivde curli for the second - Contract 221188751, Seat 231507593 (MID 9"}
+{"ts": "2026-04-13T12:05:32.895940", "insight_id": "know-060", "event": "retrieved", "prompt_preview": "can you proivde curli for the second - Contract 221188751, Seat 231507593 (MID 9"}
+{"ts": "2026-04-13T12:08:38.196375", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you search for the curli, seems like not correct"}
+{"ts": "2026-04-13T12:08:38.196410", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can you search for the curli, seems like not correct"}
+{"ts": "2026-04-13T12:08:38.196415", "insight_id": "know-005", "event": "retrieved", "prompt_preview": "can you search for the curli, seems like not correct"}
+{"ts": "2026-04-13T12:12:54.702663", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "result for one - bizhou@bizhou-mn2425 ~ % curli --dv-auth SELF -f prod-ltx1 \"d2:"}
+{"ts": "2026-04-13T12:12:54.702704", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "result for one - bizhou@bizhou-mn2425 ~ % curli --dv-auth SELF -f prod-ltx1 \"d2:"}
+{"ts": "2026-04-13T12:12:54.702709", "insight_id": "know-seat-entitlements-vs-seatroles", "event": "retrieved", "prompt_preview": "result for one - bizhou@bizhou-mn2425 ~ % curli --dv-auth SELF -f prod-ltx1 \"d2:"}
+{"ts": "2026-04-13T12:15:36.485270", "insight_id": "know-seat-entitlements-vs-seatroles", "event": "retrieved", "prompt_preview": "yah it's role assignment missing, just use curli call to check what role assignm"}
+{"ts": "2026-04-13T12:15:36.485312", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "yah it's role assignment missing, just use curli call to check what role assignm"}
+{"ts": "2026-04-13T12:15:36.485318", "insight_id": "know-060", "event": "retrieved", "prompt_preview": "yah it's role assignment missing, just use curli call to check what role assignm"}
+{"ts": "2026-04-13T12:17:44.836275", "insight_id": "know-seat-entitlements-vs-seatroles", "event": "retrieved", "prompt_preview": "feel free to run for comparision, this is only read"}
+{"ts": "2026-04-13T12:17:44.836314", "insight_id": "know-062", "event": "retrieved", "prompt_preview": "feel free to run for comparision, this is only read"}
+{"ts": "2026-04-13T12:17:44.836319", "insight_id": "know-055", "event": "retrieved", "prompt_preview": "feel free to run for comparision, this is only read"}
+{"ts": "2026-04-13T12:32:07.621655", "insight_id": "eureka-007", "event": "retrieved", "prompt_preview": "just provide me curli for the seat 231507593 to hiring project - curli --dv-auth"}
+{"ts": "2026-04-13T12:32:07.621691", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "just provide me curli for the seat 231507593 to hiring project - curli --dv-auth"}
+{"ts": "2026-04-13T12:32:07.621696", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "just provide me curli for the seat 231507593 to hiring project - curli --dv-auth"}
+{"ts": "2026-04-13T12:38:05.543537", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "cool. based on that, can you check another seat for this - curli --dv-auth self "}
+{"ts": "2026-04-13T12:38:05.543579", "insight_id": "bug-010", "event": "retrieved", "prompt_preview": "cool. based on that, can you check another seat for this - curli --dv-auth self "}
+{"ts": "2026-04-13T12:38:05.543584", "insight_id": "know-046", "event": "retrieved", "prompt_preview": "cool. based on that, can you check another seat for this - curli --dv-auth self "}
+{"ts": "2026-04-13T12:39:58.547155", "insight_id": "know-seat-entitlements-vs-seatroles", "event": "retrieved", "prompt_preview": "for this seat - 284759823, can we just add some role assignment to fix"}
+{"ts": "2026-04-13T12:39:58.547191", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "for this seat - 284759823, can we just add some role assignment to fix"}
+{"ts": "2026-04-13T12:39:58.547196", "insight_id": "know-055", "event": "retrieved", "prompt_preview": "for this seat - 284759823, can we just add some role assignment to fix"}
+{"ts": "2026-04-13T12:41:04.979971", "insight_id": "know-062", "event": "retrieved", "prompt_preview": "get this error - @bizhou-mn2425 ~ % curli -X PUT --dv-auth SELF -f prod-ltx1 \"d2"}
+{"ts": "2026-04-13T12:41:04.980000", "insight_id": "know-041", "event": "retrieved", "prompt_preview": "get this error - @bizhou-mn2425 ~ % curli -X PUT --dv-auth SELF -f prod-ltx1 \"d2"}
+{"ts": "2026-04-13T12:41:04.980005", "insight_id": "know-016", "event": "retrieved", "prompt_preview": "get this error - @bizhou-mn2425 ~ % curli -X PUT --dv-auth SELF -f prod-ltx1 \"d2"}
+{"ts": "2026-04-13T12:42:13.203599", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "cool. can you check again - curli --dv-auth self -f prod-ltx1 \"d2://hiringProjec"}
+{"ts": "2026-04-13T12:44:35.091387", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "then any curli can prove the CAN_CREATE_HIRING_PROJECT exists for the seat"}
+{"ts": "2026-04-13T12:44:35.091438", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "then any curli can prove the CAN_CREATE_HIRING_PROJECT exists for the seat"}
+{"ts": "2026-04-13T12:44:35.091443", "insight_id": "know-011", "event": "retrieved", "prompt_preview": "then any curli can prove the CAN_CREATE_HIRING_PROJECT exists for the seat"}
+{"ts": "2026-04-13T12:46:08.518701", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "can you give me the curli to remove the ats_feature, and just the curli to creat"}
+{"ts": "2026-04-13T12:46:08.518740", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "can you give me the curli to remove the ats_feature, and just the curli to creat"}
+{"ts": "2026-04-13T12:46:08.518745", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you give me the curli to remove the ats_feature, and just the curli to creat"}
+{"ts": "2026-04-13T12:47:08.131845", "insight_id": "bug-006", "event": "retrieved", "prompt_preview": "yah the feature should be deprecated"}
+{"ts": "2026-04-13T13:04:25.657630", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you provide role assignment curli for this 284759823 212758451"}
+{"ts": "2026-04-13T13:04:25.657662", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can you provide role assignment curli for this 284759823 212758451"}
+{"ts": "2026-04-13T13:05:10.409265", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "I mean just the roleassignments get curli for that,"}
+{"ts": "2026-04-13T13:10:32.690476", "insight_id": "know-011", "event": "retrieved", "prompt_preview": "just find the linked hiring project id for this job"}
+{"ts": "2026-04-13T13:10:32.690504", "insight_id": "eureka-007", "event": "retrieved", "prompt_preview": "just find the linked hiring project id for this job"}
+{"ts": "2026-04-13T13:10:32.690508", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "just find the linked hiring project id for this job"}
+{"ts": "2026-04-13T13:11:40.940545", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "then can you check the roleassignment for this hiring project - 1353377201 for t"}
+{"ts": "2026-04-13T13:11:40.940586", "insight_id": "know-046", "event": "retrieved", "prompt_preview": "then can you check the roleassignment for this hiring project - 1353377201 for t"}
+{"ts": "2026-04-13T13:11:40.940591", "insight_id": "know-011", "event": "retrieved", "prompt_preview": "then can you check the roleassignment for this hiring project - 1353377201 for t"}
+{"ts": "2026-04-13T13:15:01.846091", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "what's the curli to check seat entitlment for this seat again 212758451"}
+{"ts": "2026-04-13T13:15:01.846141", "insight_id": "know-seat-entitlements-vs-seatroles", "event": "retrieved", "prompt_preview": "what's the curli to check seat entitlment for this seat again 212758451"}
+{"ts": "2026-04-13T13:15:01.846147", "insight_id": "know-055", "event": "retrieved", "prompt_preview": "what's the curli to check seat entitlment for this seat again 212758451"}
+{"ts": "2026-04-13T13:18:42.930120", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you check role assignments and seat entitlement for this - LIAM Approved: No"}
+{"ts": "2026-04-13T13:18:42.930162", "insight_id": "know-055", "event": "retrieved", "prompt_preview": "can you check role assignments and seat entitlement for this - LIAM Approved: No"}
+{"ts": "2026-04-13T13:18:42.930167", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can you check role assignments and seat entitlement for this - LIAM Approved: No"}
+{"ts": "2026-04-13T13:21:02.835334", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "can you give me the 3 curli and result,"}
+{"ts": "2026-04-13T13:21:02.835376", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you give me the 3 curli and result,"}
+{"ts": "2026-04-13T13:21:02.835381", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "can you give me the 3 curli and result,"}
+{"ts": "2026-04-13T13:21:38.136996", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "what's the hiring project related to the job 4376496247"}
+{"ts": "2026-04-13T13:21:38.137037", "insight_id": "know-003", "event": "retrieved", "prompt_preview": "what's the hiring project related to the job 4376496247"}
+{"ts": "2026-04-13T13:21:38.137041", "insight_id": "know-001", "event": "retrieved", "prompt_preview": "what's the hiring project related to the job 4376496247"}
+{"ts": "2026-04-13T13:28:17.965777", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "how you know the job is related to project 1567838484"}
+{"ts": "2026-04-13T13:28:17.965814", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "how you know the job is related to project 1567838484"}
+{"ts": "2026-04-13T13:28:17.965819", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "how you know the job is related to project 1567838484"}
+{"ts": "2026-04-13T13:28:51.911711", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can you try find it in the mcm-mt codebase"}
+{"ts": "2026-04-13T13:28:51.911742", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you try find it in the mcm-mt codebase"}
+{"ts": "2026-04-13T13:28:51.911747", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "can you try find it in the mcm-mt codebase"}
+{"ts": "2026-04-13T13:37:51.911904", "insight_id": "bug-006", "event": "retrieved", "prompt_preview": "what should be the expected source then"}
+{"ts": "2026-04-13T13:42:50.484957", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you give me the original curli for checking the seat - 288401796"}
+{"ts": "2026-04-13T13:42:50.484997", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can you give me the original curli for checking the seat - 288401796"}
+{"ts": "2026-04-13T13:42:50.485002", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "can you give me the original curli for checking the seat - 288401796"}
+{"ts": "2026-04-13T13:45:51.577408", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "cool. now the role assignment curli"}
+{"ts": "2026-04-13T13:47:49.456622", "insight_id": "bug-006", "event": "retrieved", "prompt_preview": "the hiring project should be  -1682298484"}
+{"ts": "2026-04-13T13:49:08.700998", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you give me the curli for grant the hiring project owner role assignment for"}
+{"ts": "2026-04-13T13:49:08.701035", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can you give me the curli for grant the hiring project owner role assignment for"}
+{"ts": "2026-04-13T13:49:08.701040", "insight_id": "know-011", "event": "retrieved", "prompt_preview": "can you give me the curli for grant the hiring project owner role assignment for"}
+{"ts": "2026-04-13T14:05:20.278486", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "Wonder what's the reason using the confident tone vs hypoesis as before"}
+{"ts": "2026-04-13T14:07:05.477554", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "let's add to the project rule, present hyposis with liklyhood"}
+{"ts": "2026-04-13T14:07:05.477590", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "let's add to the project rule, present hyposis with liklyhood"}
+{"ts": "2026-04-13T14:07:05.477595", "insight_id": "know-seat-entitlements-vs-seatroles", "event": "retrieved", "prompt_preview": "let's add to the project rule, present hyposis with liklyhood"}
+{"ts": "2026-04-13T14:07:25.390678", "insight_id": "know-seat-entitlements-vs-seatroles", "event": "retrieved", "prompt_preview": "let's add to the project rule, present hyposis with liklyhood for investigation,"}
+{"ts": "2026-04-13T14:07:25.390718", "insight_id": "eureka-007", "event": "retrieved", "prompt_preview": "let's add to the project rule, present hyposis with liklyhood for investigation,"}
+{"ts": "2026-04-13T14:07:25.390724", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "let's add to the project rule, present hyposis with liklyhood for investigation,"}
+{"ts": "2026-04-13T14:08:33.710236", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can we update in the claude.md"}
+{"ts": "2026-04-13T14:08:33.710269", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "can we update in the claude.md"}
+{"ts": "2026-04-13T14:08:33.710273", "insight_id": "aha-006", "event": "retrieved", "prompt_preview": "can we update in the claude.md"}
+{"ts": "2026-04-13T14:09:20.555099", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "how many lines for the claude.md"}
+{"ts": "2026-04-13T14:09:20.555158", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "how many lines for the claude.md"}
+{"ts": "2026-04-13T14:10:02.424754", "insight_id": "scout-tee-dev-agent", "event": "retrieved", "prompt_preview": "can we simplify, with examples of good and bad"}
+{"ts": "2026-04-13T14:10:02.424787", "insight_id": "know-004", "event": "retrieved", "prompt_preview": "can we simplify, with examples of good and bad"}
+{"ts": "2026-04-13T14:10:02.424792", "insight_id": "aha-005", "event": "retrieved", "prompt_preview": "can we simplify, with examples of good and bad"}
+{"ts": "2026-04-13T20:00:00Z", "insight_id": "know-seat-entitlements-vs-seatroles", "outcome": "helped", "detail": "Knew seatEntitlements endpoint exists from prior investigation. Correct D2 name and format."}
+{"ts": "2026-04-13T14:50:07.761361", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "Synthesis Opportunity\n\n  I notice bug-012 (assertion bias) and the existing beha"}
+{"ts": "2026-04-13T14:50:07.761401", "insight_id": "aha-006", "event": "retrieved", "prompt_preview": "Synthesis Opportunity\n\n  I notice bug-012 (assertion bias) and the existing beha"}
+{"ts": "2026-04-13T14:50:07.761406", "insight_id": "eureka-007", "event": "retrieved", "prompt_preview": "Synthesis Opportunity\n\n  I notice bug-012 (assertion bias) and the existing beha"}

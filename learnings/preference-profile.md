@@ -52,7 +52,7 @@ User corrected LinkedIn plugins from Engineering Principles → pipeline phases.
 
 | Dimension | Current Avg | Signals | Trend |
 |-----------|------------|---------|-------|
-| hypothesis_first | -0.15 | 16 | improving — behavioral gate in place |
+| hypothesis_first | -0.35 | 20 | **regressed** — 4 assertion failures in CSE-22440. NEVER assert added to CLAUDE.md |
 | solution_simplicity | -0.15 | 11 | watch — 4 gentle redirects this session toward simpler approach |
 | tool_choice | -0.05 | 4 | good — LinkedIn plugins wired |
 | ask_vs_assume | +0.30 | 14 | good — but 3 soft clarifications (auto-sync, auto-delegation, IDE) |
