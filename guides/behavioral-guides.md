@@ -1,8 +1,8 @@
-# Behavioral Gates
-# Eval-driven rules — updated by /improve-agent loop
+# Behavioral Guides
+# Eval-driven guidance — updated by /improve-agent loop
 # Last eval: 2026-04-08 | 35 sessions, 124 tasks, 76.2% agreement, 85.1% principle adherence
 
-## Gate: Approach Selection (12 wrong_approach failures)
+## Guide: Approach Selection (12 wrong_approach failures)
 
 **Core rules:**
 - **Ask which component FIRST.** "I think this involves [X]. Should I start there?" Do NOT assume.
@@ -25,7 +25,7 @@
 - MCP "still connecting" → suggest `/mcp` reconnect after 2 failures.
 - SSH fails → check auth/VPN, don't retry same command.
 
-## Gate: Debugging (validated 2026-04-14 — dream cron debug)
+## Guide: Debugging (validated 2026-04-14 — dream cron debug)
 
 When debugging anything that "doesn't work":
 1. **List ALL hypotheses upfront** — not one, ALL. Table format: hypothesis, evidence needed.
@@ -49,7 +49,7 @@ H6: SSH key missing in cron → ROOT CAUSE (no agent forwarding)
 
 Rule: **Hypotheses first, evidence second, action third.** Never jump to action without a theory.
 
-## Gate: Tool Selection (11 tool_misuse failures)
+## Guide: Tool Selection (11 tool_misuse failures)
 
 - **curli/grpcurli**: LOCAL first. VM only if local auth fails.
 - **Logs**: observe-agent FIRST. Not Slack, not KQL, not local grep.
@@ -59,14 +59,14 @@ Rule: **Hypotheses first, evidence second, action third.** Never jump to action 
 - **Slack bot fails**: 2 attempts → ask user to paste. Don't search 10 ways.
 - Rule: **Most direct tool.** Built-in > MCP > external. Local > remote.
 
-## Gate: Compound Learning (10% loop closure)
+## Guide: Compound Learning (10% loop closure)
 
 - **Every 3+ task session → generate >= 1 insight.**
 - **Log insight outcomes in real-time** (outcome-log.jsonl), not just at SessionEnd.
 - **Proactively suggest `/compound`** after: 5+ tasks, user redirection, bug fix, or 2+ hours.
 - **Check graduation/pruning** during `/compound`: use_count >= 3 + score >= 2.0 → graduate. score < -2 → prune.
 
-## Gate: Over-Engineering (10 failures)
+## Guide: Over-Engineering (10 failures)
 
 - When user gives clear direction → **execute, don't re-question.**
 - Don't present A/B/C options when user wants one recommendation.
@@ -74,7 +74,7 @@ Rule: **Hypotheses first, evidence second, action third.** Never jump to action 
 - Don't create helpers/utilities for one-time operations.
 - Rule: **Match ceremony to scope.** Bug fix = fix. Feature = feature. Not more.
 
-## Gate: Feedback Scoring (1 violation — inflated self-assessment)
+## Guide: Feedback Scoring (1 violation — inflated self-assessment)
 
 The agent scores feedback based on what IT did, not how the USER responded.
 - **Signal comes from the USER'S words**, not the agent's self-assessment of its own quality.
@@ -85,7 +85,7 @@ The agent scores feedback based on what IT did, not how the USER responded.
 - **When in doubt, score lower.** 0.0 is safer than +1.0. Over-scoring is sycophancy in reverse.
 - Rule: **Read the user's actual words. Score what THEY said, not what you think you deserve.**
 
-## Gate: Principle Adherence (61 violations across 32 sessions, 85.1% adherence)
+## Guide: Principle Adherence (61 violations across 32 sessions, 85.1% adherence)
 
 **#1 — Verify Own Understanding (14 violations, 23%)**
 The agent builds a mental model and runs with it without cross-checking.

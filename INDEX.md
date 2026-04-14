@@ -20,7 +20,7 @@
 - [know-010](learnings/staging/know-010.md) (staging)
 - [know-002](learnings/staging/know-002.md) (staging)
 - [know-010-2](learnings/staging/know-010-2.md) (staging)
-- [Eval-driven behavioral gates](memory/eval/eval-behavioral-gates.md) (memory)
+- [Eval-driven behavioral gates](memory/eval/eval-behavioral-guides.md) (memory)
 - [know-014-2](learnings/staging/know-014-2.md) (staging)
 - [know-016-2](learnings/staging/know-016-2.md) (staging)
 - ... and 158 more

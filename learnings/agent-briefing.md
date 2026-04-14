@@ -25,7 +25,7 @@
 - **Next:** Consider /recipe ai-usage-report parameterized by crew_id
 
 ## Last Session (2026-04-10/11)
-Three major builds. (1) Self-improving eval: Oracle pattern adapted → 35 sessions judged → 76.2% agreement, 85.1% principle adherence → 4 fix iterations on behavioral gates. (2) AgentBus VM agent: NATS messaging, Claude adapter, deployed on VM, e2e tested (shell + thinking + async + multi-turn). Monitor tool for real-time async. (3) /delegate skill: natural language, no flags. Key fixes: --bare auth bug, port 14222, L1/L2 triage prompt.
+Three major builds. (1) Self-improving eval: Oracle pattern adapted → 35 sessions judged → 76.2% agreement, 85.1% principle adherence → 4 fix iterations on behavioral guides. (2) AgentBus VM agent: NATS messaging, Claude adapter, deployed on VM, e2e tested (shell + thinking + async + multi-turn). Monitor tool for real-time async. (3) /delegate skill: natural language, no flags. Key fixes: --bare auth bug, port 14222, L1/L2 triage prompt.
 
 ## Hot Insights
 
