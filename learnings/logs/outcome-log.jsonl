@@ -66,3 +66,6 @@
 =======
 >>>>>>> 3f5cefb782173aefc5c3e1870ebc92491d63ae7a
 >>>>>>> f950771ab1ee41761cef19fe52dfce9847b6ac15
+{"ts": "2026-04-14T09:49:26.636867", "insight_id": "know-068", "event": "retrieved", "prompt_preview": "I feel the key for debug is let's list hypothesis with evidence, let's debug tog"}
+{"ts": "2026-04-14T09:49:26.636917", "insight_id": "know-002", "event": "retrieved", "prompt_preview": "I feel the key for debug is let's list hypothesis with evidence, let's debug tog"}
+{"ts": "2026-04-14T09:49:26.636922", "insight_id": "knowledge-venice-mental-model", "event": "retrieved", "prompt_preview": "I feel the key for debug is let's list hypothesis with evidence, let's debug tog"}

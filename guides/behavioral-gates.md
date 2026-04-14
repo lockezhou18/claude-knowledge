@@ -25,6 +25,30 @@
 - MCP "still connecting" → suggest `/mcp` reconnect after 2 failures.
 - SSH fails → check auth/VPN, don't retry same command.
 
+## Gate: Debugging (validated 2026-04-14 — dream cron debug)
+
+When debugging anything that "doesn't work":
+1. **List ALL hypotheses upfront** — not one, ALL. Table format: hypothesis, evidence needed.
+2. **Gather evidence for ALL in parallel** — don't investigate sequentially. One SSH command can test 3 hypotheses.
+3. **Eliminate fast** — most hypotheses die with one piece of evidence. The surviving one is your root cause.
+4. **Share the hypothesis table with the user** — debugging is collaborative. The user has context you don't.
+
+**Anti-pattern:** Try thing → fails → try another thing → fails → try another... (trial-and-error without theory)
+
+**Pattern:** List 6 hypotheses → gather evidence in 2 parallel commands → 5 eliminated → drill into the survivor → root cause in 5 minutes.
+
+**Example from this session:**
+```
+H1: Cron not executing     → DISPROVED (test cron fires)
+H2: PATH issue              → Not the blocker
+H3: Wrong output path       → Partially
+H4: ~/  expansion           → Not an issue
+H5: Git hangs               → DISPROVED (fails immediately)
+H6: SSH key missing in cron → ROOT CAUSE (no agent forwarding)
+```
+
+Rule: **Hypotheses first, evidence second, action third.** Never jump to action without a theory.
+
 ## Gate: Tool Selection (11 tool_misuse failures)
 
 - **curli/grpcurli**: LOCAL first. VM only if local auth fails.
