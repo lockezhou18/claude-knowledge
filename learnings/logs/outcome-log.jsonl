@@ -316,3 +316,27 @@
 {"ts": "2026-04-13T14:50:07.761361", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "Synthesis Opportunity\n\n  I notice bug-012 (assertion bias) and the existing beha"}
 {"ts": "2026-04-13T14:50:07.761401", "insight_id": "aha-006", "event": "retrieved", "prompt_preview": "Synthesis Opportunity\n\n  I notice bug-012 (assertion bias) and the existing beha"}
 {"ts": "2026-04-13T14:50:07.761406", "insight_id": "eureka-007", "event": "retrieved", "prompt_preview": "Synthesis Opportunity\n\n  I notice bug-012 (assertion bias) and the existing beha"}
+{"ts": "2026-04-13T20:12:46.180678", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "Would you want to fix the outcome scoring (teach /compound to judge \"did this re"}
+{"ts": "2026-04-13T20:12:46.180714", "insight_id": "eureka-005", "event": "retrieved", "prompt_preview": "Would you want to fix the outcome scoring (teach /compound to judge \"did this re"}
+{"ts": "2026-04-13T20:12:46.180719", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "Would you want to fix the outcome scoring (teach /compound to judge \"did this re"}
+{"ts": "2026-04-13T20:12:54.513441", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "Would you want to fix the outcome scoring (teach /compound to judge \"did this re"}
+{"ts": "2026-04-13T20:12:54.513488", "insight_id": "eureka-005", "event": "retrieved", "prompt_preview": "Would you want to fix the outcome scoring (teach /compound to judge \"did this re"}
+{"ts": "2026-04-13T20:12:54.513493", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "Would you want to fix the outcome scoring (teach /compound to judge \"did this re"}
+{"ts": "2026-04-13T20:18:50.136791", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "- Checking behavioral gates before every response    - The proactive suggestion "}
+{"ts": "2026-04-13T20:18:50.136831", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "- Checking behavioral gates before every response    - The proactive suggestion "}
+{"ts": "2026-04-13T20:18:50.136837", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "- Checking behavioral gates before every response    - The proactive suggestion "}
+{"ts": "2026-04-13T20:23:03.654206", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "cool. is that reduce your cognitive burden, or still too many as the rules"}
+{"ts": "2026-04-13T20:23:03.654231", "insight_id": "know-049", "event": "retrieved", "prompt_preview": "cool. is that reduce your cognitive burden, or still too many as the rules"}
+{"ts": "2026-04-13T20:23:03.654235", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "cool. is that reduce your cognitive burden, or still too many as the rules"}
+{"ts": "2026-04-13T20:25:45.048068", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "vm-routing, captain insights-rules, and test-envrionments are those that can bet"}
+{"ts": "2026-04-13T20:25:45.048123", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "vm-routing, captain insights-rules, and test-envrionments are those that can bet"}
+{"ts": "2026-04-13T20:25:45.048129", "insight_id": "aha-005", "event": "retrieved", "prompt_preview": "vm-routing, captain insights-rules, and test-envrionments are those that can bet"}
+{"ts": "2026-04-13T20:27:43.240522", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can you check this -  Auto-loaded (memory/MEMORY.md) \u2014 77 lines:                "}
+{"ts": "2026-04-13T20:27:43.240561", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "can you check this -  Auto-loaded (memory/MEMORY.md) \u2014 77 lines:                "}
+{"ts": "2026-04-13T20:27:43.240566", "insight_id": "aha-006", "event": "retrieved", "prompt_preview": "can you check this -  Auto-loaded (memory/MEMORY.md) \u2014 77 lines:                "}
+{"ts": "2026-04-13T20:28:24.926762", "insight_id": "know-055", "event": "retrieved", "prompt_preview": "cool. let's comment out       29 +- `guides/behavioral-gates.md` \u2014 Eval-driven b"}
+{"ts": "2026-04-13T20:28:24.926806", "insight_id": "know-053", "event": "retrieved", "prompt_preview": "cool. let's comment out       29 +- `guides/behavioral-gates.md` \u2014 Eval-driven b"}
+{"ts": "2026-04-13T20:28:24.926811", "insight_id": "know-051", "event": "retrieved", "prompt_preview": "cool. let's comment out       29 +- `guides/behavioral-gates.md` \u2014 Eval-driven b"}
+{"ts": "2026-04-13T20:29:48.763511", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "I mean not remove, just comment on, in the future we can just commnent out"}
+{"ts": "2026-04-13T20:29:48.763553", "insight_id": "aha-006", "event": "retrieved", "prompt_preview": "I mean not remove, just comment on, in the future we can just commnent out"}
+{"ts": "2026-04-13T20:29:48.763557", "insight_id": "know-031", "event": "retrieved", "prompt_preview": "I mean not remove, just comment on, in the future we can just commnent out"}

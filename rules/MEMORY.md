@@ -21,13 +21,13 @@ The foundation beneath all engineering principles. Not a rule — a lens.
 5. **Review** — Self-review diff, check common sins, run tests, PR review.
 6. **Compound** — Plan vs reality diff, generate actionable insights ("When X, do Y because Z"). See `compound-learning.md`.
 
-## Behavioral Gates (eval-driven — details in `behavioral-gates.md`)
-- **Approach**: Ask which component FIRST. Present 2-3 hypotheses. Wait for confirmation. "Check" = read-only.
-- **Tools**: curli LOCAL first. observe-agent for logs. Built-in > MCP > external. 3-strike rule.
-- **Principles**: Verify before asserting. Never guess values. Assume complex. Cite file:line.
-- **Compound**: Every 3+ task session > generate >= 1 insight. Proactive suggestions — see `proactive-suggestions.md`.
-
 ## On-Demand Guides (read when needed — `~/claude-knowledge/guides/`)
-- `guides/compound-learning.md` — "Compound learning quick reference — insight lifecycle, outcome tracking, dre...
-- `guides/engineering-pipeline.md` — "6-phase engineering pipeline with gates — loaded on demand for non-trivial t...
-- `guides/skill-tiers.md` — "Skill tier definitions — loaded on demand when routing to skills/recipes"
+- `guides/vm-routing.md` — VM vs local routing rules — read when delegating builds, tests, or thinking tasks
+- `guides/captain.md` — LinkedIn plugin/tool priority — read when selecting MCP tools
+- `guides/insights-rules.md` — LinkedIn-specific patterns (curli-first, observe-agent) — read during oncall/debugging
+- `guides/test-environments.md` — Greenhouse sandbox credentials — read when testing Connected Projects
+<!-- - `guides/behavioral-gates.md` — Eval-driven behavioral rules — approach selection, tool selection -->
+- `guides/proactive-suggestions.md` — When to suggest skills — reference list
+- `guides/compound-learning.md` — Insight lifecycle, outcome tracking, dream cycle
+- `guides/engineering-pipeline.md` — 6-phase engineering pipeline with gates
+- `guides/skill-tiers.md` — Skill tier definitions for routing

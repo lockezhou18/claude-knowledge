@@ -20,9 +20,25 @@ Also check recent git history: `git log --oneline -20` in the current repo.
 Summarize to the user:
 - What was accomplished this session
 - Where you deviated from plan and why
-- Were any past insights helpful or misleading? Log to `outcome-log.jsonl`: `{timestamp, insight_id, outcome: "helped"|"wrong", detail: "..."}`
 
-## Step 3: Generate Insights
+## Step 3: Score Retrieved Insights
+
+This is how insights earn scores and eventually graduate or get pruned. Without this step, insights accumulate retrievals but never get judged.
+
+1. **Check what was retrieved**: Read `outcome-log.jsonl` for `"retrieved"` events from this session
+2. **For each retrieved insight**, judge honestly:
+   - **helped** (+1.0) — I acted on this insight and it led to a better outcome than I would have reached without it
+   - **irrelevant** (0) — It was retrieved but didn't apply to what I was doing
+   - **wrong** (-1.0) — Following this insight would have led me astray, or it contained outdated/incorrect information
+3. **Log scored outcomes** to `outcome-log.jsonl`:
+   ```json
+   {"timestamp": "ISO", "insight_id": "know-XXX", "event": "scored", "delta": 1.0, "detail": "why it helped/was wrong"}
+   ```
+4. **Bias check**: Default to `irrelevant` (0) when uncertain. Only score `helped` if you can point to a specific action that was better because of the insight. The bar for `helped` is: "I would have done something worse without this."
+
+**Why this matters**: The dream engine decays scores over time (Ebbinghaus). Without positive `helped` scores flowing in, every insight slowly decays to 0 and nothing ever graduates. This step is the pump that keeps the system alive.
+
+## Step 4: Generate Insights
 
 Identify learnings using **6 analytical perspectives** (inspired by Pluton dreaming system):
 
@@ -47,7 +63,7 @@ Append each insight to `~/.claude/learnings/manifest.jsonl` with `summary_tokens
 
 **Before writing**: check manifest for overlap. Update existing insight if high overlap. Don't create duplicates.
 
-## Step 4: Reflection
+## Step 5: Reflection
 
 Actively look for synthesis opportunities:
 
@@ -57,7 +73,7 @@ Actively look for synthesis opportunities:
 4. If approved, write the semantic insight with `synthesized_from: [source IDs]` and mark sources with `synthesized_into`
 5. Also check: are there 2+ wrong-approach feedback signals on the same dimension? If so, propose an **anti-pattern** insight: "When [X], do NOT [Y] because [past failures Z1, Z2]"
 
-## Step 5: Maintenance
+## Step 6: Maintenance
 
 - Increment `use_count` and update `outcome_score` for insights used this session
 - Flag insights past their `rot_rate` threshold as `status: stale`
@@ -72,7 +88,7 @@ Actively look for synthesis opportunities:
   This preserves the full chain: plan → implementation → PR → learnings. Future sessions can trace back to why something was built a certain way.
 - Trim JSONL logs to last 50 entries
 
-## Step 6: Rebuild Briefing
+## Step 7: Rebuild Briefing
 
 Regenerate `~/.claude/learnings/agent-briefing.md` with:
 - Active work (from active-work.md)
@@ -86,7 +102,7 @@ Rebuild `manifest-hot.jsonl`: entries from manifest.jsonl where `use_count > 0` 
 
 Write `last-session-summary.txt` as backup handoff (under 100 words).
 
-## Step 7: Feedback Classification (Behavioral RL)
+## Step 8: Feedback Classification (Behavioral RL)
 
 Review the full conversation and classify each user response as a feedback signal. This is how the agent learns to behave better, not just know more.
 
@@ -155,7 +171,7 @@ Read `~/.claude/learnings/preference-profile.md`. For each behavioral dimension:
 
 If the agent pushed back on the user's suggestion AND the user ultimately agreed → score +2.0 on "intellectual_honesty" dimension. This prevents sycophancy — the system should reward successful pushback, not just agreement.
 
-## Step 8: Skill Proposals
+## Step 9: Skill Proposals
 
 Review what happened this session and look for new skill opportunities:
 
@@ -177,7 +193,7 @@ Review what happened this session and look for new skill opportunities:
 
 Let the user decide. If approved, create the skill file in `~/.claude/commands/`.
 
-## Step 8: Present Summary
+## Step 10: Present Summary
 
 Show the user:
 - Insights generated (count and one-line summaries)
