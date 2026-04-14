@@ -1,344 +1,3 @@
-{"ts": "2026-04-12T07:48:36.346688", "insight_id": "bug-008", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>b3s62sc3k</task-id>\n<tool-use-id>toolu_01TduwaReq4s"}
-{"ts": "2026-04-12T07:48:36.346718", "insight_id": "eureka-007", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>b3s62sc3k</task-id>\n<tool-use-id>toolu_01TduwaReq4s"}
-{"ts": "2026-04-12T07:48:54.152907", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can you debug why the cron not run"}
-{"ts": "2026-04-12T07:48:54.152937", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you debug why the cron not run"}
-{"ts": "2026-04-12T07:48:54.152942", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "can you debug why the cron not run"}
-{"ts": "2026-04-12T07:50:12.278186", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "it's back, can you check"}
-{"ts": "2026-04-12T07:51:09.273680", "insight_id": "aha-006", "event": "retrieved", "prompt_preview": "what's on the remote branch"}
-{"ts": "2026-04-12T08:04:20.225739", "insight_id": "know-062", "event": "retrieved", "prompt_preview": "have we fixed this -   2. The real problem: two separate repos on VM. The dream "}
-{"ts": "2026-04-12T08:04:20.225781", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "have we fixed this -   2. The real problem: two separate repos on VM. The dream "}
-{"ts": "2026-04-12T08:04:20.225786", "insight_id": "aha-006", "event": "retrieved", "prompt_preview": "have we fixed this -   2. The real problem: two separate repos on VM. The dream "}
-{"ts": "2026-04-12T08:05:04.938853", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "what's the ai safety link again"}
-{"ts": "2026-04-12T08:05:30.133864", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "LinkedIn's internal AI tools policy (approved tools, usage guidelines)? this one"}
-{"ts": "2026-04-12T08:05:30.133898", "insight_id": "eureka-003", "event": "retrieved", "prompt_preview": "LinkedIn's internal AI tools policy (approved tools, usage guidelines)? this one"}
-{"ts": "2026-04-12T08:06:00.149830", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "cool, can we close the branches -  auto/feat-listener-sink-async-delegation-*   "}
-{"ts": "2026-04-12T08:06:00.149878", "insight_id": "eureka-005", "event": "retrieved", "prompt_preview": "cool, can we close the branches -  auto/feat-listener-sink-async-delegation-*   "}
-{"ts": "2026-04-12T08:06:00.149883", "insight_id": "know-055", "event": "retrieved", "prompt_preview": "cool, can we close the branches -  auto/feat-listener-sink-async-delegation-*   "}
-{"ts": "2026-04-12T08:10:16.895721", "insight_id": "know-060", "event": "retrieved", "prompt_preview": "are we in snyc, like local push to the git repo, vm pull and dream then push to "}
-{"ts": "2026-04-12T08:10:16.895752", "insight_id": "know-047", "event": "retrieved", "prompt_preview": "are we in snyc, like local push to the git repo, vm pull and dream then push to "}
-{"ts": "2026-04-12T08:10:16.895757", "insight_id": "know-045", "event": "retrieved", "prompt_preview": "are we in snyc, like local push to the git repo, vm pull and dream then push to "}
-{"ts": "2026-04-12T08:35:32.111000", "insight_id": "know-051", "event": "retrieved", "prompt_preview": "cool. Now is the claude-knowledge repo true single SoT to reflect our system"}
-{"ts": "2026-04-12T08:35:32.111025", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "cool. Now is the claude-knowledge repo true single SoT to reflect our system"}
-{"ts": "2026-04-12T08:35:32.111029", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "cool. Now is the claude-knowledge repo true single SoT to reflect our system"}
-{"ts": "2026-04-12T10:38:16.198146", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "how about the delegate skill, and how about the new streaming feature, please up"}
-{"ts": "2026-04-12T10:38:16.198187", "insight_id": "know-036", "event": "retrieved", "prompt_preview": "how about the delegate skill, and how about the new streaming feature, please up"}
-{"ts": "2026-04-12T10:38:16.198192", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "how about the delegate skill, and how about the new streaming feature, please up"}
-{"ts": "2026-04-12T10:40:00.278268", "insight_id": "know-seat-entitlements-vs-seatroles", "event": "retrieved", "prompt_preview": "are these 2 skill context dependent to see which cli to use"}
-{"ts": "2026-04-12T10:40:00.278325", "insight_id": "know-055", "event": "retrieved", "prompt_preview": "are these 2 skill context dependent to see which cli to use"}
-{"ts": "2026-04-12T10:40:00.278334", "insight_id": "eureka-008", "event": "retrieved", "prompt_preview": "are these 2 skill context dependent to see which cli to use"}
-{"ts": "2026-04-12T10:40:19.933185", "insight_id": "eureka-008", "event": "retrieved", "prompt_preview": "are these 2 skill context dependent to see which cli to use, the goal is the 2 s"}
-{"ts": "2026-04-12T10:40:19.933213", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "are these 2 skill context dependent to see which cli to use, the goal is the 2 s"}
-{"ts": "2026-04-12T10:40:19.933218", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "are these 2 skill context dependent to see which cli to use, the goal is the 2 s"}
-{"ts": "2026-04-12T10:42:15.081333", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "meanwhile which mode to choose (sync, async, pipe, streaming) for the 2 skills a"}
-{"ts": "2026-04-12T10:42:15.081364", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "meanwhile which mode to choose (sync, async, pipe, streaming) for the 2 skills a"}
-{"ts": "2026-04-12T10:42:15.081369", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "meanwhile which mode to choose (sync, async, pipe, streaming) for the 2 skills a"}
-{"ts": "2026-04-12T10:44:30.878128", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "the /comms skill and /delegate skill is updated. /review and /qa"}
-{"ts": "2026-04-12T10:44:30.878170", "insight_id": "know-052", "event": "retrieved", "prompt_preview": "the /comms skill and /delegate skill is updated. /review and /qa"}
-{"ts": "2026-04-12T10:44:30.878175", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "the /comms skill and /delegate skill is updated. /review and /qa"}
-{"ts": "2026-04-12T10:54:41.856913", "insight_id": "eureka-007", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>b8wiz3y5p</task-id>\n<tool-use-id>toolu_01Dk87jkPHAQ"}
-{"ts": "2026-04-12T10:54:41.856950", "insight_id": "bug-008", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>b8wiz3y5p</task-id>\n<tool-use-id>toolu_01Dk87jkPHAQ"}
-{"ts": "2026-04-12T10:57:44.288247", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you check -  /Users/bizhou/workspace/qa/agentbus/e2e-report-skills.md"}
-{"ts": "2026-04-12T11:02:33.477028", "insight_id": "know-055", "event": "retrieved", "prompt_preview": "please use option 1, and update the comms skill either"}
-{"ts": "2026-04-12T11:02:33.477065", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "please use option 1, and update the comms skill either"}
-{"ts": "2026-04-12T11:02:33.477069", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "please use option 1, and update the comms skill either"}
-{"ts": "2026-04-12T11:03:04.960380", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you give some example for test the streaming"}
-{"ts": "2026-04-12T11:03:04.960485", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "can you give some example for test the streaming"}
-{"ts": "2026-04-12T11:03:04.960495", "insight_id": "eureka-007", "event": "retrieved", "prompt_preview": "can you give some example for test the streaming"}
-{"ts": "2026-04-12T11:06:41.105425", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "can you check this - Build delegated to VM. Watching two ways:\n  1. NATS monitor"}
-{"ts": "2026-04-12T11:06:41.105464", "insight_id": "bug-009", "event": "retrieved", "prompt_preview": "can you check this - Build delegated to VM. Watching two ways:\n  1. NATS monitor"}
-{"ts": "2026-04-12T11:06:41.105469", "insight_id": "know-seat-entitlements-vs-seatroles", "event": "retrieved", "prompt_preview": "can you check this - Build delegated to VM. Watching two ways:\n  1. NATS monitor"}
-{"ts": "2026-04-12T11:08:31.350437", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you output into a file for this bug"}
-{"ts": "2026-04-12T11:08:31.350477", "insight_id": "eureka-007", "event": "retrieved", "prompt_preview": "can you output into a file for this bug"}
-{"ts": "2026-04-12T11:08:31.350482", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can you output into a file for this bug"}
-{"ts": "2026-04-12T11:09:52.441137", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you check /Users/bizhou/workspace/qa/agentbus/findings-subscribe-before-send"}
-{"ts": "2026-04-12T11:10:14.435365", "insight_id": "know-045", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>bc17t31kx</task-id>\n<tool-use-id>toolu_01SjhoGt9qDw"}
-{"ts": "2026-04-12T11:10:14.435400", "insight_id": "bug-008", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>bc17t31kx</task-id>\n<tool-use-id>toolu_01SjhoGt9qDw"}
-{"ts": "2026-04-12T11:12:28.595104", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "cool. User wants to test again, any gap"}
-{"ts": "2026-04-12T11:12:28.595148", "insight_id": "know-045", "event": "retrieved", "prompt_preview": "cool. User wants to test again, any gap"}
-{"ts": "2026-04-12T11:12:28.595155", "insight_id": "eureka-007", "event": "retrieved", "prompt_preview": "cool. User wants to test again, any gap"}
-{"ts": "2026-04-12T11:15:21.531467", "insight_id": "eureka-008", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>bciyag510</task-id>\n<tool-use-id>toolu_01N4gVrz5jxN"}
-{"ts": "2026-04-12T11:15:21.531500", "insight_id": "eureka-007", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>bciyag510</task-id>\n<tool-use-id>toolu_01N4gVrz5jxN"}
-{"ts": "2026-04-12T11:15:21.531505", "insight_id": "bug-004", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>bciyag510</task-id>\n<tool-use-id>toolu_01N4gVrz5jxN"}
-{"ts": "2026-04-12T11:17:17.201125", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "get this /comms vm run hp-ats-integration-mt mint build\n\n\u23fa mint build on hp-ats-"}
-{"ts": "2026-04-12T11:17:17.201161", "insight_id": "eureka-008", "event": "retrieved", "prompt_preview": "get this /comms vm run hp-ats-integration-mt mint build\n\n\u23fa mint build on hp-ats-"}
-{"ts": "2026-04-12T11:17:17.201166", "insight_id": "aha-006", "event": "retrieved", "prompt_preview": "get this /comms vm run hp-ats-integration-mt mint build\n\n\u23fa mint build on hp-ats-"}
-{"ts": "2026-04-12T11:19:01.564052", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "please, meanwhile the issue is fixed and user can test again right?"}
-{"ts": "2026-04-12T11:19:01.564093", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "please, meanwhile the issue is fixed and user can test again right?"}
-{"ts": "2026-04-12T11:19:01.564097", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "please, meanwhile the issue is fixed and user can test again right?"}
-{"ts": "2026-04-12T11:19:44.057861", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you check /Users/bizhou/workspace/qa/agentbus/findings-nats-auth-loop.md"}
-{"ts": "2026-04-12T11:20:57.126072", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "key question does the task monitor works or not"}
-{"ts": "2026-04-12T11:20:57.126111", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "key question does the task monitor works or not"}
-{"ts": "2026-04-12T11:20:57.126116", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "key question does the task monitor works or not"}
-{"ts": "2026-04-12T11:23:01.643648", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "key question does the task monitor works or not"}
-{"ts": "2026-04-12T11:23:01.643685", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "key question does the task monitor works or not"}
-{"ts": "2026-04-12T11:23:01.643690", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "key question does the task monitor works or not"}
-{"ts": "2026-04-12T11:23:31.808978", "insight_id": "aha-007", "event": "retrieved", "prompt_preview": "3, this is for testing task delegation"}
-{"ts": "2026-04-12T11:24:33.856707", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "get this -  Bash(~/bin/vm-agent --async \"cd ~/workspace/connected_project_phase2"}
-{"ts": "2026-04-12T11:24:33.856748", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "get this -  Bash(~/bin/vm-agent --async \"cd ~/workspace/connected_project_phase2"}
-{"ts": "2026-04-12T11:24:33.856753", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "get this -  Bash(~/bin/vm-agent --async \"cd ~/workspace/connected_project_phase2"}
-{"ts": "2026-04-12T11:25:53.638172", "insight_id": "eureka-007", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>b0ja6yxe0</task-id>\n<tool-use-id>toolu_014b1k3t3K9n"}
-{"ts": "2026-04-12T11:27:39.516815", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "for the watch result, can we leverage the claude monitor tool"}
-{"ts": "2026-04-12T11:27:39.516850", "insight_id": "know-055", "event": "retrieved", "prompt_preview": "for the watch result, can we leverage the claude monitor tool"}
-{"ts": "2026-04-12T11:27:39.516855", "insight_id": "eureka-007", "event": "retrieved", "prompt_preview": "for the watch result, can we leverage the claude monitor tool"}
-{"ts": "2026-04-12T11:29:53.727428", "insight_id": "eureka-007", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>brn9a41yk</task-id>\n<tool-use-id>toolu_01Pjm3d9mj2i"}
-{"ts": "2026-04-12T11:32:18.176520", "insight_id": "know-060", "event": "retrieved", "prompt_preview": "why the user get the authorization violation - Bash(basename $(pwd))\n  \u23bf \u00a0connec"}
-{"ts": "2026-04-12T11:32:18.176545", "insight_id": "know-055", "event": "retrieved", "prompt_preview": "why the user get the authorization violation - Bash(basename $(pwd))\n  \u23bf \u00a0connec"}
-{"ts": "2026-04-12T11:32:18.176550", "insight_id": "know-045", "event": "retrieved", "prompt_preview": "why the user get the authorization violation - Bash(basename $(pwd))\n  \u23bf \u00a0connec"}
-{"ts": "2026-04-12T11:33:42.206757", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you restore all the changes"}
-{"ts": "2026-04-12T11:33:42.206786", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can you restore all the changes"}
-{"ts": "2026-04-12T11:33:42.206790", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "can you restore all the changes"}
-{"ts": "2026-04-12T11:37:19.086778", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "seems like the export doesn't work for every session to pick it up, and it needs"}
-{"ts": "2026-04-12T11:37:19.086807", "insight_id": "know-055", "event": "retrieved", "prompt_preview": "seems like the export doesn't work for every session to pick it up, and it needs"}
-{"ts": "2026-04-12T11:37:19.086812", "insight_id": "know-046", "event": "retrieved", "prompt_preview": "seems like the export doesn't work for every session to pick it up, and it needs"}
-{"ts": "2026-04-12T11:43:15.281469", "insight_id": "know-055", "event": "retrieved", "prompt_preview": "cool, let the vm do web search for the current location and whether"}
-{"ts": "2026-04-12T11:43:15.281513", "insight_id": "know-046", "event": "retrieved", "prompt_preview": "cool, let the vm do web search for the current location and whether"}
-{"ts": "2026-04-12T11:43:15.281518", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "cool, let the vm do web search for the current location and whether"}
-{"ts": "2026-04-12T11:44:31.371814", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you check why you can, but he cannot, both of you are running same claude ri"}
-{"ts": "2026-04-12T11:44:31.371867", "insight_id": "know-051", "event": "retrieved", "prompt_preview": "can you check why you can, but he cannot, both of you are running same claude ri"}
-{"ts": "2026-04-12T11:44:31.371872", "insight_id": "aha-006", "event": "retrieved", "prompt_preview": "can you check why you can, but he cannot, both of you are running same claude ri"}
-{"ts": "2026-04-12T11:47:37.586533", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "can you check - cool, let the vm do web search for the current location and whet"}
-{"ts": "2026-04-12T11:47:37.586579", "insight_id": "aha-006", "event": "retrieved", "prompt_preview": "can you check - cool, let the vm do web search for the current location and whet"}
-{"ts": "2026-04-12T11:47:37.586584", "insight_id": "eureka-008", "event": "retrieved", "prompt_preview": "can you check - cool, let the vm do web search for the current location and whet"}
-{"ts": "2026-04-12T11:47:40.454224", "insight_id": "eureka-007", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>bxbhc87px</task-id>\n<tool-use-id>toolu_01EzeJCnEW2D"}
-{"ts": "2026-04-12T11:47:40.454257", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>bxbhc87px</task-id>\n<tool-use-id>toolu_01EzeJCnEW2D"}
-{"ts": "2026-04-12T11:50:49.888572", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "So the agentbus running in seperate shell?"}
-{"ts": "2026-04-12T11:50:49.888606", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "So the agentbus running in seperate shell?"}
-{"ts": "2026-04-12T11:50:49.888611", "insight_id": "aha-006", "event": "retrieved", "prompt_preview": "So the agentbus running in seperate shell?"}
-{"ts": "2026-04-12T11:52:17.803073", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you output this to a file"}
-{"ts": "2026-04-12T11:52:17.803110", "insight_id": "eureka-008", "event": "retrieved", "prompt_preview": "can you output this to a file"}
-{"ts": "2026-04-12T11:52:17.803115", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "can you output this to a file"}
-{"ts": "2026-04-12T11:54:01.205873", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you check ~/claude-knowledge/memory/global/agentbus-shell-path.md"}
-{"ts": "2026-04-12T11:55:19.959370", "insight_id": "know-044", "event": "retrieved", "prompt_preview": "can you fix   Invalid Settings\n  /Users/bizhou/.claude/settings.json\n   \u2514 permis"}
-{"ts": "2026-04-12T11:55:19.959418", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you fix   Invalid Settings\n  /Users/bizhou/.claude/settings.json\n   \u2514 permis"}
-{"ts": "2026-04-12T11:56:00.905080", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you test 3c8d00c"}
-{"ts": "2026-04-12T12:04:37.133703", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you check /Users/bizhou/workspace/qa/agentbus/findings-login-shell.md"}
-{"ts": "2026-04-12T12:07:14.382011", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "the question is should be start subshell, or just directly use the login shell"}
-{"ts": "2026-04-12T12:07:14.382055", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "the question is should be start subshell, or just directly use the login shell"}
-{"ts": "2026-04-12T12:07:14.382060", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "the question is should be start subshell, or just directly use the login shell"}
-{"ts": "2026-04-12T12:14:52.836105", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "can we just dispatch to the claude for the agentbus comms"}
-{"ts": "2026-04-12T12:14:52.836152", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "can we just dispatch to the claude for the agentbus comms"}
-{"ts": "2026-04-12T12:14:52.836157", "insight_id": "know-seat-entitlements-vs-seatroles", "event": "retrieved", "prompt_preview": "can we just dispatch to the claude for the agentbus comms"}
-{"ts": "2026-04-12T12:26:20.988808", "insight_id": "aha-006", "event": "retrieved", "prompt_preview": "list the git history of the repo"}
-{"ts": "2026-04-12T12:31:31.186425", "insight_id": "know-055", "event": "retrieved", "prompt_preview": "If we want to run specific commands, we can use vm skills. /comms and /delegate "}
-{"ts": "2026-04-12T12:31:31.186460", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "If we want to run specific commands, we can use vm skills. /comms and /delegate "}
-{"ts": "2026-04-12T12:31:31.186465", "insight_id": "know-seat-entitlements-vs-seatroles", "event": "retrieved", "prompt_preview": "If we want to run specific commands, we can use vm skills. /comms and /delegate "}
-{"ts": "2026-04-12T12:35:57.912926", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can you check the vm folder that syncing with this"}
-{"ts": "2026-04-12T12:35:57.912961", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you check the vm folder that syncing with this"}
-{"ts": "2026-04-12T12:35:57.912966", "insight_id": "know-046", "event": "retrieved", "prompt_preview": "can you check the vm folder that syncing with this"}
-{"ts": "2026-04-12T12:37:03.319785", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "are we establish auto sync for the repo,"}
-{"ts": "2026-04-12T12:42:50.761013", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can we have a skill for the autosync"}
-{"ts": "2026-04-12T12:42:50.761050", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can we have a skill for the autosync"}
-{"ts": "2026-04-12T12:42:50.761055", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "can we have a skill for the autosync"}
-{"ts": "2026-04-12T13:18:17.737001", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "qq why not receive the result"}
-{"ts": "2026-04-12T13:18:17.737040", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "qq why not receive the result"}
-{"ts": "2026-04-12T13:18:17.737045", "insight_id": "aha-006", "event": "retrieved", "prompt_preview": "qq why not receive the result"}
-{"ts": "2026-04-12T13:19:04.668861", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can you double check, the monitor tool is from anthropic"}
-{"ts": "2026-04-12T13:19:04.668899", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you double check, the monitor tool is from anthropic"}
-{"ts": "2026-04-12T13:19:04.668904", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "can you double check, the monitor tool is from anthropic"}
-{"ts": "2026-04-12T13:20:33.131558", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you try this again"}
-{"ts": "2026-04-12T13:21:08.316268", "insight_id": "eureka-007", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>bv8irvxax</task-id>\n<tool-use-id>toolu_014kdLuHBr9N"}
-{"ts": "2026-04-12T13:21:08.316305", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>bv8irvxax</task-id>\n<tool-use-id>toolu_014kdLuHBr9N"}
-{"ts": "2026-04-12T13:21:08.316310", "insight_id": "aha-007", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>bv8irvxax</task-id>\n<tool-use-id>toolu_014kdLuHBr9N"}
-{"ts": "2026-04-12T13:22:26.232058", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "I like this - \n  Stats\n\n  - Duration: 110s, 34 turns, thinking mode\n  - Session:"}
-{"ts": "2026-04-12T13:22:26.232095", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "I like this - \n  Stats\n\n  - Duration: 110s, 34 turns, thinking mode\n  - Session:"}
-{"ts": "2026-04-12T13:22:26.232101", "insight_id": "know-055", "event": "retrieved", "prompt_preview": "I like this - \n  Stats\n\n  - Duration: 110s, 34 turns, thinking mode\n  - Session:"}
-{"ts": "2026-04-12T13:23:40.683183", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "is this - The subscribe-before-send approach eliminates the drift entirely. I'll"}
-{"ts": "2026-04-12T13:23:40.683214", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "is this - The subscribe-before-send approach eliminates the drift entirely. I'll"}
-{"ts": "2026-04-12T13:23:40.683219", "insight_id": "know-062", "event": "retrieved", "prompt_preview": "is this - The subscribe-before-send approach eliminates the drift entirely. I'll"}
-{"ts": "2026-04-12T13:24:31.012869", "insight_id": "know-051", "event": "retrieved", "prompt_preview": "should this write to global memory or anywhere"}
-{"ts": "2026-04-12T13:26:16.178396", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "claude has a monitor tool right"}
-{"ts": "2026-04-12T13:26:16.178434", "insight_id": "aha-006", "event": "retrieved", "prompt_preview": "claude has a monitor tool right"}
-{"ts": "2026-04-12T13:33:29.173162", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can we install the agentbus cli as global"}
-{"ts": "2026-04-12T13:33:29.173205", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "can we install the agentbus cli as global"}
-{"ts": "2026-04-12T13:38:46.985738", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "can we restore to preivous monitor tool, restore the changes to the 2 skills"}
-{"ts": "2026-04-12T13:38:46.985767", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "can we restore to preivous monitor tool, restore the changes to the 2 skills"}
-{"ts": "2026-04-12T13:38:46.985771", "insight_id": "know-001", "event": "retrieved", "prompt_preview": "can we restore to preivous monitor tool, restore the changes to the 2 skills"}
-{"ts": "2026-04-12T13:41:12.104440", "insight_id": "know-045", "event": "retrieved", "prompt_preview": "cool. /comms vm claude run mint build on hp-ats-integration-mt"}
-{"ts": "2026-04-12T13:41:12.104477", "insight_id": "know-060", "event": "retrieved", "prompt_preview": "cool. /comms vm claude run mint build on hp-ats-integration-mt"}
-{"ts": "2026-04-12T13:41:12.104482", "insight_id": "know-012", "event": "retrieved", "prompt_preview": "cool. /comms vm claude run mint build on hp-ats-integration-mt"}
-{"ts": "2026-04-12T13:45:57.338838", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you list recent changes for the comms and delegation skill in this session"}
-{"ts": "2026-04-12T13:45:57.338871", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can you list recent changes for the comms and delegation skill in this session"}
-{"ts": "2026-04-12T13:45:57.338876", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "can you list recent changes for the comms and delegation skill in this session"}
-{"ts": "2026-04-12T13:46:26.566867", "insight_id": "eureka-007", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>blr2w9mg1</task-id>\n<tool-use-id>toolu_01CAQ25k9k6o"}
-{"ts": "2026-04-12T13:46:50.102964", "insight_id": "eureka-007", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>bpe4yjqbs</task-id>\n<tool-use-id>toolu_015sZFgrvAXC"}
-{"ts": "2026-04-12T13:46:50.103001", "insight_id": "aha-007", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>bpe4yjqbs</task-id>\n<tool-use-id>toolu_015sZFgrvAXC"}
-{"ts": "2026-04-12T13:47:24.153165", "insight_id": "know-055", "event": "retrieved", "prompt_preview": "is the background watcher use monitor tool or?"}
-{"ts": "2026-04-12T13:47:24.153206", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "is the background watcher use monitor tool or?"}
-{"ts": "2026-04-12T13:47:24.153211", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "is the background watcher use monitor tool or?"}
-{"ts": "2026-04-12T13:49:50.936179", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "key question why monitor tool not avaiable in the session, why not in tool list?"}
-{"ts": "2026-04-12T13:49:50.936218", "insight_id": "aha-006", "event": "retrieved", "prompt_preview": "key question why monitor tool not avaiable in the session, why not in tool list?"}
-{"ts": "2026-04-12T13:49:50.936222", "insight_id": "know-031", "event": "retrieved", "prompt_preview": "key question why monitor tool not avaiable in the session, why not in tool list?"}
-{"ts": "2026-04-12T13:51:03.091296", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "Can you add it to the tool list, the monitor tool"}
-{"ts": "2026-04-12T13:51:03.091327", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "Can you add it to the tool list, the monitor tool"}
-{"ts": "2026-04-12T13:51:03.091332", "insight_id": "know-seat-entitlements-vs-seatroles", "event": "retrieved", "prompt_preview": "Can you add it to the tool list, the monitor tool"}
-{"ts": "2026-04-12T13:52:25.043893", "insight_id": "know-044", "event": "retrieved", "prompt_preview": "can you check and fix this \n  Invalid Settings\n  /Users/bizhou/.claude/settings."}
-{"ts": "2026-04-12T13:52:25.043930", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you check and fix this \n  Invalid Settings\n  /Users/bizhou/.claude/settings."}
-{"ts": "2026-04-12T13:52:25.043935", "insight_id": "aha-005", "event": "retrieved", "prompt_preview": "can you check and fix this \n  Invalid Settings\n  /Users/bizhou/.claude/settings."}
-{"ts": "2026-04-12T13:53:25.347202", "insight_id": "eureka-007", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>byijldctp</task-id>\n<tool-use-id>toolu_01E7Q1njuoiV"}
-{"ts": "2026-04-12T13:53:35.431568", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "Can you fix instead of delete"}
-{"ts": "2026-04-12T13:59:57.980862", "insight_id": "eureka-007", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>bv77c6er2</task-id>\n<tool-use-id>toolu_01XQ4UBAU8k4"}
-{"ts": "2026-04-12T14:00:09.388610", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can you examine the subscribe-before-send in the /comms and /delegate skill"}
-{"ts": "2026-04-12T14:00:09.388649", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you examine the subscribe-before-send in the /comms and /delegate skill"}
-{"ts": "2026-04-12T14:00:09.388654", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "can you examine the subscribe-before-send in the /comms and /delegate skill"}
-{"ts": "2026-04-12T14:00:50.247858", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "can you give me the full result of this task"}
-{"ts": "2026-04-12T14:00:50.247891", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you give me the full result of this task"}
-{"ts": "2026-04-12T14:00:50.247896", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can you give me the full result of this task"}
-{"ts": "2026-04-12T14:02:35.853386", "insight_id": "know-055", "event": "retrieved", "prompt_preview": "why we not use the monitor tool"}
-{"ts": "2026-04-12T14:02:35.853415", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "why we not use the monitor tool"}
-{"ts": "2026-04-12T14:02:35.853420", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "why we not use the monitor tool"}
-{"ts": "2026-04-12T14:04:53.162961", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you examine this - https://code.claude.com/docs/en/monitoring-usage"}
-{"ts": "2026-04-12T14:08:25.911268", "insight_id": "aha-006", "event": "retrieved", "prompt_preview": "can we actually use the  The Claude Code \"Monitor\" tool from that Reddit post wa"}
-{"ts": "2026-04-12T14:08:25.911298", "insight_id": "know-055", "event": "retrieved", "prompt_preview": "can we actually use the  The Claude Code \"Monitor\" tool from that Reddit post wa"}
-{"ts": "2026-04-12T14:08:25.911303", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can we actually use the  The Claude Code \"Monitor\" tool from that Reddit post wa"}
-{"ts": "2026-04-13T09:14:16.929020", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "the mint build is fine. Expect to fail as we not explicity point which project t"}
-{"ts": "2026-04-13T09:14:16.929067", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "the mint build is fine. Expect to fail as we not explicity point which project t"}
-{"ts": "2026-04-13T09:14:16.929072", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "the mint build is fine. Expect to fail as we not explicity point which project t"}
-{"ts": "2026-04-13T09:14:43.662002", "insight_id": "aha-006", "event": "retrieved", "prompt_preview": "have we dreamed last night, or pulled the latest from git"}
-{"ts": "2026-04-13T09:15:13.417743", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "meanwhile how do you feel the knowledge base"}
-{"ts": "2026-04-13T09:15:13.417786", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "meanwhile how do you feel the knowledge base"}
-{"ts": "2026-04-13T09:16:31.575359", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "I thought the comms skill only like invoke once, then forget, sorry about that"}
-{"ts": "2026-04-13T09:16:31.575429", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "I thought the comms skill only like invoke once, then forget, sorry about that"}
-{"ts": "2026-04-13T09:17:34.930293", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "is there a way we can optmize the skill"}
-{"ts": "2026-04-13T09:17:34.930353", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "is there a way we can optmize the skill"}
-{"ts": "2026-04-13T09:17:34.930361", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "is there a way we can optmize the skill"}
-{"ts": "2026-04-13T09:49:44.327689", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "cool. 1. compare vm-agent vs /commns skill 2 - seems like the blocker for the dr"}
-{"ts": "2026-04-13T09:49:44.327738", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "cool. 1. compare vm-agent vs /commns skill 2 - seems like the blocker for the dr"}
-{"ts": "2026-04-13T09:49:44.327742", "insight_id": "know-052", "event": "retrieved", "prompt_preview": "cool. 1. compare vm-agent vs /commns skill 2 - seems like the blocker for the dr"}
-{"ts": "2026-04-13T09:54:10.581177", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you check latest comms and delegate skills"}
-{"ts": "2026-04-13T09:54:10.581211", "insight_id": "aha-005", "event": "retrieved", "prompt_preview": "can you check latest comms and delegate skills"}
-{"ts": "2026-04-13T09:54:10.581216", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "can you check latest comms and delegate skills"}
-{"ts": "2026-04-13T09:59:23.905345", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "what do you think of this - \u23fa 1. vm-agent vs /comms\n\n  \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"}
-{"ts": "2026-04-13T09:59:23.905388", "insight_id": "know-060", "event": "retrieved", "prompt_preview": "what do you think of this - \u23fa 1. vm-agent vs /comms\n\n  \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"}
-{"ts": "2026-04-13T09:59:23.905393", "insight_id": "know-045", "event": "retrieved", "prompt_preview": "what do you think of this - \u23fa 1. vm-agent vs /comms\n\n  \u250c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u252c\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"}
-{"ts": "2026-04-13T10:00:59.848300", "insight_id": "know-049", "event": "retrieved", "prompt_preview": "another claude share that"}
-{"ts": "2026-04-13T10:04:07.392130", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "I feel like vm-agent and /commns has overlap, maybe we can simpplify. the comms "}
-{"ts": "2026-04-13T10:04:07.392194", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "I feel like vm-agent and /commns has overlap, maybe we can simpplify. the comms "}
-{"ts": "2026-04-13T10:04:07.392239", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "I feel like vm-agent and /commns has overlap, maybe we can simpplify. the comms "}
-{"ts": "2026-04-13T10:22:28.412560", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "probably we can checkout a new repo, delete this one, and checkout the pr and re"}
-{"ts": "2026-04-13T10:22:28.412659", "insight_id": "scout-tee-dev-agent", "event": "retrieved", "prompt_preview": "probably we can checkout a new repo, delete this one, and checkout the pr and re"}
-{"ts": "2026-04-13T10:22:28.412670", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "probably we can checkout a new repo, delete this one, and checkout the pr and re"}
-{"ts": "2026-04-13T11:38:27.995709", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can you check this ticket - https://linkedin.atlassian.net/browse/CSE-22440, key"}
-{"ts": "2026-04-13T11:38:27.995756", "insight_id": "know-seat-entitlements-vs-seatroles", "event": "retrieved", "prompt_preview": "can you check this ticket - https://linkedin.atlassian.net/browse/CSE-22440, key"}
-{"ts": "2026-04-13T11:38:27.995761", "insight_id": "bug-002", "event": "retrieved", "prompt_preview": "can you check this ticket - https://linkedin.atlassian.net/browse/CSE-22440, key"}
-{"ts": "2026-04-13T11:52:15.630695", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "give me the curli for 2, meanwhile investigate 1 in para"}
-{"ts": "2026-04-13T11:52:15.630745", "insight_id": "know-seat-entitlements-vs-seatroles", "event": "retrieved", "prompt_preview": "give me the curli for 2, meanwhile investigate 1 in para"}
-{"ts": "2026-04-13T11:52:15.630751", "insight_id": "know-050", "event": "retrieved", "prompt_preview": "give me the curli for 2, meanwhile investigate 1 in para"}
-{"ts": "2026-04-13T11:58:53.405410", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can you perform code saerch, this is not in my local"}
-{"ts": "2026-04-13T11:58:53.405443", "insight_id": "aha-006", "event": "retrieved", "prompt_preview": "can you perform code saerch, this is not in my local"}
-{"ts": "2026-04-13T11:58:53.405448", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you perform code saerch, this is not in my local"}
-{"ts": "2026-04-13T12:05:32.895903", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can you proivde curli for the second - Contract 221188751, Seat 231507593 (MID 9"}
-{"ts": "2026-04-13T12:05:32.895935", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you proivde curli for the second - Contract 221188751, Seat 231507593 (MID 9"}
-{"ts": "2026-04-13T12:05:32.895940", "insight_id": "know-060", "event": "retrieved", "prompt_preview": "can you proivde curli for the second - Contract 221188751, Seat 231507593 (MID 9"}
-{"ts": "2026-04-13T12:08:38.196375", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you search for the curli, seems like not correct"}
-{"ts": "2026-04-13T12:08:38.196410", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can you search for the curli, seems like not correct"}
-{"ts": "2026-04-13T12:08:38.196415", "insight_id": "know-005", "event": "retrieved", "prompt_preview": "can you search for the curli, seems like not correct"}
-{"ts": "2026-04-13T12:12:54.702663", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "result for one - bizhou@bizhou-mn2425 ~ % curli --dv-auth SELF -f prod-ltx1 \"d2:"}
-{"ts": "2026-04-13T12:12:54.702704", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "result for one - bizhou@bizhou-mn2425 ~ % curli --dv-auth SELF -f prod-ltx1 \"d2:"}
-{"ts": "2026-04-13T12:12:54.702709", "insight_id": "know-seat-entitlements-vs-seatroles", "event": "retrieved", "prompt_preview": "result for one - bizhou@bizhou-mn2425 ~ % curli --dv-auth SELF -f prod-ltx1 \"d2:"}
-{"ts": "2026-04-13T12:15:36.485270", "insight_id": "know-seat-entitlements-vs-seatroles", "event": "retrieved", "prompt_preview": "yah it's role assignment missing, just use curli call to check what role assignm"}
-{"ts": "2026-04-13T12:15:36.485312", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "yah it's role assignment missing, just use curli call to check what role assignm"}
-{"ts": "2026-04-13T12:15:36.485318", "insight_id": "know-060", "event": "retrieved", "prompt_preview": "yah it's role assignment missing, just use curli call to check what role assignm"}
-{"ts": "2026-04-13T12:17:44.836275", "insight_id": "know-seat-entitlements-vs-seatroles", "event": "retrieved", "prompt_preview": "feel free to run for comparision, this is only read"}
-{"ts": "2026-04-13T12:17:44.836314", "insight_id": "know-062", "event": "retrieved", "prompt_preview": "feel free to run for comparision, this is only read"}
-{"ts": "2026-04-13T12:17:44.836319", "insight_id": "know-055", "event": "retrieved", "prompt_preview": "feel free to run for comparision, this is only read"}
-{"ts": "2026-04-13T12:32:07.621655", "insight_id": "eureka-007", "event": "retrieved", "prompt_preview": "just provide me curli for the seat 231507593 to hiring project - curli --dv-auth"}
-{"ts": "2026-04-13T12:32:07.621691", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "just provide me curli for the seat 231507593 to hiring project - curli --dv-auth"}
-{"ts": "2026-04-13T12:32:07.621696", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "just provide me curli for the seat 231507593 to hiring project - curli --dv-auth"}
-{"ts": "2026-04-13T12:38:05.543537", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "cool. based on that, can you check another seat for this - curli --dv-auth self "}
-{"ts": "2026-04-13T12:38:05.543579", "insight_id": "bug-010", "event": "retrieved", "prompt_preview": "cool. based on that, can you check another seat for this - curli --dv-auth self "}
-{"ts": "2026-04-13T12:38:05.543584", "insight_id": "know-046", "event": "retrieved", "prompt_preview": "cool. based on that, can you check another seat for this - curli --dv-auth self "}
-{"ts": "2026-04-13T12:39:58.547155", "insight_id": "know-seat-entitlements-vs-seatroles", "event": "retrieved", "prompt_preview": "for this seat - 284759823, can we just add some role assignment to fix"}
-{"ts": "2026-04-13T12:39:58.547191", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "for this seat - 284759823, can we just add some role assignment to fix"}
-{"ts": "2026-04-13T12:39:58.547196", "insight_id": "know-055", "event": "retrieved", "prompt_preview": "for this seat - 284759823, can we just add some role assignment to fix"}
-{"ts": "2026-04-13T12:41:04.979971", "insight_id": "know-062", "event": "retrieved", "prompt_preview": "get this error - @bizhou-mn2425 ~ % curli -X PUT --dv-auth SELF -f prod-ltx1 \"d2"}
-{"ts": "2026-04-13T12:41:04.980000", "insight_id": "know-041", "event": "retrieved", "prompt_preview": "get this error - @bizhou-mn2425 ~ % curli -X PUT --dv-auth SELF -f prod-ltx1 \"d2"}
-{"ts": "2026-04-13T12:41:04.980005", "insight_id": "know-016", "event": "retrieved", "prompt_preview": "get this error - @bizhou-mn2425 ~ % curli -X PUT --dv-auth SELF -f prod-ltx1 \"d2"}
-{"ts": "2026-04-13T12:42:13.203599", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "cool. can you check again - curli --dv-auth self -f prod-ltx1 \"d2://hiringProjec"}
-{"ts": "2026-04-13T12:44:35.091387", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "then any curli can prove the CAN_CREATE_HIRING_PROJECT exists for the seat"}
-{"ts": "2026-04-13T12:44:35.091438", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "then any curli can prove the CAN_CREATE_HIRING_PROJECT exists for the seat"}
-{"ts": "2026-04-13T12:44:35.091443", "insight_id": "know-011", "event": "retrieved", "prompt_preview": "then any curli can prove the CAN_CREATE_HIRING_PROJECT exists for the seat"}
-{"ts": "2026-04-13T12:46:08.518701", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "can you give me the curli to remove the ats_feature, and just the curli to creat"}
-{"ts": "2026-04-13T12:46:08.518740", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "can you give me the curli to remove the ats_feature, and just the curli to creat"}
-{"ts": "2026-04-13T12:46:08.518745", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you give me the curli to remove the ats_feature, and just the curli to creat"}
-{"ts": "2026-04-13T12:47:08.131845", "insight_id": "bug-006", "event": "retrieved", "prompt_preview": "yah the feature should be deprecated"}
-{"ts": "2026-04-13T13:04:25.657630", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you provide role assignment curli for this 284759823 212758451"}
-{"ts": "2026-04-13T13:04:25.657662", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can you provide role assignment curli for this 284759823 212758451"}
-{"ts": "2026-04-13T13:05:10.409265", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "I mean just the roleassignments get curli for that,"}
-{"ts": "2026-04-13T13:10:32.690476", "insight_id": "know-011", "event": "retrieved", "prompt_preview": "just find the linked hiring project id for this job"}
-{"ts": "2026-04-13T13:10:32.690504", "insight_id": "eureka-007", "event": "retrieved", "prompt_preview": "just find the linked hiring project id for this job"}
-{"ts": "2026-04-13T13:10:32.690508", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "just find the linked hiring project id for this job"}
-{"ts": "2026-04-13T13:11:40.940545", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "then can you check the roleassignment for this hiring project - 1353377201 for t"}
-{"ts": "2026-04-13T13:11:40.940586", "insight_id": "know-046", "event": "retrieved", "prompt_preview": "then can you check the roleassignment for this hiring project - 1353377201 for t"}
-{"ts": "2026-04-13T13:11:40.940591", "insight_id": "know-011", "event": "retrieved", "prompt_preview": "then can you check the roleassignment for this hiring project - 1353377201 for t"}
-{"ts": "2026-04-13T13:15:01.846091", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "what's the curli to check seat entitlment for this seat again 212758451"}
-{"ts": "2026-04-13T13:15:01.846141", "insight_id": "know-seat-entitlements-vs-seatroles", "event": "retrieved", "prompt_preview": "what's the curli to check seat entitlment for this seat again 212758451"}
-{"ts": "2026-04-13T13:15:01.846147", "insight_id": "know-055", "event": "retrieved", "prompt_preview": "what's the curli to check seat entitlment for this seat again 212758451"}
-{"ts": "2026-04-13T13:18:42.930120", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you check role assignments and seat entitlement for this - LIAM Approved: No"}
-{"ts": "2026-04-13T13:18:42.930162", "insight_id": "know-055", "event": "retrieved", "prompt_preview": "can you check role assignments and seat entitlement for this - LIAM Approved: No"}
-{"ts": "2026-04-13T13:18:42.930167", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can you check role assignments and seat entitlement for this - LIAM Approved: No"}
-{"ts": "2026-04-13T13:21:02.835334", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "can you give me the 3 curli and result,"}
-{"ts": "2026-04-13T13:21:02.835376", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you give me the 3 curli and result,"}
-{"ts": "2026-04-13T13:21:02.835381", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "can you give me the 3 curli and result,"}
-{"ts": "2026-04-13T13:21:38.136996", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "what's the hiring project related to the job 4376496247"}
-{"ts": "2026-04-13T13:21:38.137037", "insight_id": "know-003", "event": "retrieved", "prompt_preview": "what's the hiring project related to the job 4376496247"}
-{"ts": "2026-04-13T13:21:38.137041", "insight_id": "know-001", "event": "retrieved", "prompt_preview": "what's the hiring project related to the job 4376496247"}
-{"ts": "2026-04-13T13:28:17.965777", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "how you know the job is related to project 1567838484"}
-{"ts": "2026-04-13T13:28:17.965814", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "how you know the job is related to project 1567838484"}
-{"ts": "2026-04-13T13:28:17.965819", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "how you know the job is related to project 1567838484"}
-{"ts": "2026-04-13T13:28:51.911711", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can you try find it in the mcm-mt codebase"}
-{"ts": "2026-04-13T13:28:51.911742", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you try find it in the mcm-mt codebase"}
-{"ts": "2026-04-13T13:28:51.911747", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "can you try find it in the mcm-mt codebase"}
-{"ts": "2026-04-13T13:37:51.911904", "insight_id": "bug-006", "event": "retrieved", "prompt_preview": "what should be the expected source then"}
-{"ts": "2026-04-13T13:42:50.484957", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you give me the original curli for checking the seat - 288401796"}
-{"ts": "2026-04-13T13:42:50.484997", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can you give me the original curli for checking the seat - 288401796"}
-{"ts": "2026-04-13T13:42:50.485002", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "can you give me the original curli for checking the seat - 288401796"}
-{"ts": "2026-04-13T13:45:51.577408", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "cool. now the role assignment curli"}
-{"ts": "2026-04-13T13:47:49.456622", "insight_id": "bug-006", "event": "retrieved", "prompt_preview": "the hiring project should be  -1682298484"}
-{"ts": "2026-04-13T13:49:08.700998", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you give me the curli for grant the hiring project owner role assignment for"}
-{"ts": "2026-04-13T13:49:08.701035", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can you give me the curli for grant the hiring project owner role assignment for"}
-{"ts": "2026-04-13T13:49:08.701040", "insight_id": "know-011", "event": "retrieved", "prompt_preview": "can you give me the curli for grant the hiring project owner role assignment for"}
-{"ts": "2026-04-13T14:05:20.278486", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "Wonder what's the reason using the confident tone vs hypoesis as before"}
-{"ts": "2026-04-13T14:07:05.477554", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "let's add to the project rule, present hyposis with liklyhood"}
-{"ts": "2026-04-13T14:07:05.477590", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "let's add to the project rule, present hyposis with liklyhood"}
-{"ts": "2026-04-13T14:07:05.477595", "insight_id": "know-seat-entitlements-vs-seatroles", "event": "retrieved", "prompt_preview": "let's add to the project rule, present hyposis with liklyhood"}
-{"ts": "2026-04-13T14:07:25.390678", "insight_id": "know-seat-entitlements-vs-seatroles", "event": "retrieved", "prompt_preview": "let's add to the project rule, present hyposis with liklyhood for investigation,"}
-{"ts": "2026-04-13T14:07:25.390718", "insight_id": "eureka-007", "event": "retrieved", "prompt_preview": "let's add to the project rule, present hyposis with liklyhood for investigation,"}
-{"ts": "2026-04-13T14:07:25.390724", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "let's add to the project rule, present hyposis with liklyhood for investigation,"}
-{"ts": "2026-04-13T14:08:33.710236", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can we update in the claude.md"}
-{"ts": "2026-04-13T14:08:33.710269", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "can we update in the claude.md"}
-{"ts": "2026-04-13T14:08:33.710273", "insight_id": "aha-006", "event": "retrieved", "prompt_preview": "can we update in the claude.md"}
-{"ts": "2026-04-13T14:09:20.555099", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "how many lines for the claude.md"}
-{"ts": "2026-04-13T14:09:20.555158", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "how many lines for the claude.md"}
-{"ts": "2026-04-13T14:10:02.424754", "insight_id": "scout-tee-dev-agent", "event": "retrieved", "prompt_preview": "can we simplify, with examples of good and bad"}
-{"ts": "2026-04-13T14:10:02.424787", "insight_id": "know-004", "event": "retrieved", "prompt_preview": "can we simplify, with examples of good and bad"}
-{"ts": "2026-04-13T14:10:02.424792", "insight_id": "aha-005", "event": "retrieved", "prompt_preview": "can we simplify, with examples of good and bad"}
-{"ts": "2026-04-13T20:00:00Z", "insight_id": "know-seat-entitlements-vs-seatroles", "outcome": "helped", "detail": "Knew seatEntitlements endpoint exists from prior investigation. Correct D2 name and format."}
-{"ts": "2026-04-13T14:50:07.761361", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "Synthesis Opportunity\n\n  I notice bug-012 (assertion bias) and the existing beha"}
-{"ts": "2026-04-13T14:50:07.761401", "insight_id": "aha-006", "event": "retrieved", "prompt_preview": "Synthesis Opportunity\n\n  I notice bug-012 (assertion bias) and the existing beha"}
-{"ts": "2026-04-13T14:50:07.761406", "insight_id": "eureka-007", "event": "retrieved", "prompt_preview": "Synthesis Opportunity\n\n  I notice bug-012 (assertion bias) and the existing beha"}
-{"ts": "2026-04-13T20:12:46.180678", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "Would you want to fix the outcome scoring (teach /compound to judge \"did this re"}
-{"ts": "2026-04-13T20:12:46.180714", "insight_id": "eureka-005", "event": "retrieved", "prompt_preview": "Would you want to fix the outcome scoring (teach /compound to judge \"did this re"}
-{"ts": "2026-04-13T20:12:46.180719", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "Would you want to fix the outcome scoring (teach /compound to judge \"did this re"}
-{"ts": "2026-04-13T20:12:54.513441", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "Would you want to fix the outcome scoring (teach /compound to judge \"did this re"}
-{"ts": "2026-04-13T20:12:54.513488", "insight_id": "eureka-005", "event": "retrieved", "prompt_preview": "Would you want to fix the outcome scoring (teach /compound to judge \"did this re"}
-{"ts": "2026-04-13T20:12:54.513493", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "Would you want to fix the outcome scoring (teach /compound to judge \"did this re"}
-{"ts": "2026-04-13T20:18:50.136791", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "- Checking behavioral gates before every response    - The proactive suggestion "}
-{"ts": "2026-04-13T20:18:50.136831", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "- Checking behavioral gates before every response    - The proactive suggestion "}
-{"ts": "2026-04-13T20:18:50.136837", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "- Checking behavioral gates before every response    - The proactive suggestion "}
-{"ts": "2026-04-13T20:23:03.654206", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "cool. is that reduce your cognitive burden, or still too many as the rules"}
-{"ts": "2026-04-13T20:23:03.654231", "insight_id": "know-049", "event": "retrieved", "prompt_preview": "cool. is that reduce your cognitive burden, or still too many as the rules"}
-{"ts": "2026-04-13T20:23:03.654235", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "cool. is that reduce your cognitive burden, or still too many as the rules"}
-{"ts": "2026-04-13T20:25:45.048068", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "vm-routing, captain insights-rules, and test-envrionments are those that can bet"}
-{"ts": "2026-04-13T20:25:45.048123", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "vm-routing, captain insights-rules, and test-envrionments are those that can bet"}
-{"ts": "2026-04-13T20:25:45.048129", "insight_id": "aha-005", "event": "retrieved", "prompt_preview": "vm-routing, captain insights-rules, and test-envrionments are those that can bet"}
-{"ts": "2026-04-13T20:27:43.240522", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can you check this -  Auto-loaded (memory/MEMORY.md) \u2014 77 lines:                "}
-{"ts": "2026-04-13T20:27:43.240561", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "can you check this -  Auto-loaded (memory/MEMORY.md) \u2014 77 lines:                "}
-{"ts": "2026-04-13T20:27:43.240566", "insight_id": "aha-006", "event": "retrieved", "prompt_preview": "can you check this -  Auto-loaded (memory/MEMORY.md) \u2014 77 lines:                "}
-{"ts": "2026-04-13T20:28:24.926762", "insight_id": "know-055", "event": "retrieved", "prompt_preview": "cool. let's comment out       29 +- `guides/behavioral-gates.md` \u2014 Eval-driven b"}
-{"ts": "2026-04-13T20:28:24.926806", "insight_id": "know-053", "event": "retrieved", "prompt_preview": "cool. let's comment out       29 +- `guides/behavioral-gates.md` \u2014 Eval-driven b"}
-{"ts": "2026-04-13T20:28:24.926811", "insight_id": "know-051", "event": "retrieved", "prompt_preview": "cool. let's comment out       29 +- `guides/behavioral-gates.md` \u2014 Eval-driven b"}
-{"ts": "2026-04-13T20:29:48.763511", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "I mean not remove, just comment on, in the future we can just commnent out"}
-{"ts": "2026-04-13T20:29:48.763553", "insight_id": "aha-006", "event": "retrieved", "prompt_preview": "I mean not remove, just comment on, in the future we can just commnent out"}
 {"ts": "2026-04-13T20:29:48.763557", "insight_id": "know-031", "event": "retrieved", "prompt_preview": "I mean not remove, just comment on, in the future we can just commnent out"}
 {"ts": "2026-04-13T20:32:11.733358", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "for the test-envrionment, I feel like it's more like a tool/skill, can you cross"}
 {"ts": "2026-04-13T20:32:11.733397", "insight_id": "know-046", "event": "retrieved", "prompt_preview": "for the test-envrionment, I feel like it's more like a tool/skill, can you cross"}
@@ -353,3 +12,40 @@
 {"ts": "2026-04-13T20:45:37.254131", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "what's in the global ememory now, full"}
 {"ts": "2026-04-13T20:45:37.254164", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "what's in the global ememory now, full"}
 {"ts": "2026-04-13T20:45:37.254169", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "what's in the global ememory now, full"}
+{"insight_id": "know-053", "event": "scored", "delta": 1.0, "detail": "Rules files without globs load every prompt \u2014 directly informed moving 6 files from rules/ to guides/", "timestamp": "2026-04-14T16:20:30Z"}
+{"insight_id": "know-032", "event": "scored", "delta": 1.0, "detail": "Compound learning reward system insight \u2014 directly relevant to diagnosing why scores stay at 0", "timestamp": "2026-04-14T16:20:30Z"}
+{"insight_id": "eureka-006", "event": "scored", "delta": 0, "detail": "Retrieved but not relevant to memory optimization session", "timestamp": "2026-04-14T16:20:30Z"}
+{"insight_id": "eureka-004", "event": "scored", "delta": 0, "detail": "Retrieved but not relevant to memory optimization session", "timestamp": "2026-04-14T16:20:30Z"}
+{"insight_id": "eureka-001", "event": "scored", "delta": 0, "detail": "Retrieved but not relevant to memory optimization session", "timestamp": "2026-04-14T16:20:30Z"}
+{"insight_id": "eureka-005", "event": "scored", "delta": 0, "detail": "Retrieved but not relevant to memory optimization session", "timestamp": "2026-04-14T16:20:30Z"}
+{"insight_id": "eureka-007", "event": "scored", "delta": 0, "detail": "Retrieved but not relevant to memory optimization session", "timestamp": "2026-04-14T16:20:30Z"}
+{"insight_id": "eureka-008", "event": "scored", "delta": 0, "detail": "Retrieved but not relevant to memory optimization session", "timestamp": "2026-04-14T16:20:30Z"}
+{"insight_id": "aha-003", "event": "scored", "delta": 0, "detail": "Retrieved but not relevant to memory optimization session", "timestamp": "2026-04-14T16:20:30Z"}
+{"insight_id": "aha-005", "event": "scored", "delta": 0, "detail": "Retrieved but not relevant to memory optimization session", "timestamp": "2026-04-14T16:20:30Z"}
+{"insight_id": "aha-006", "event": "scored", "delta": 0, "detail": "Retrieved but not relevant to memory optimization session", "timestamp": "2026-04-14T16:20:30Z"}
+{"insight_id": "know-001", "event": "scored", "delta": 0, "detail": "Retrieved but not relevant to memory optimization session", "timestamp": "2026-04-14T16:20:30Z"}
+{"insight_id": "know-002", "event": "scored", "delta": 0, "detail": "Retrieved but not relevant to memory optimization session", "timestamp": "2026-04-14T16:20:30Z"}
+{"insight_id": "know-003", "event": "scored", "delta": 0, "detail": "Retrieved but not relevant to memory optimization session", "timestamp": "2026-04-14T16:20:30Z"}
+{"insight_id": "know-004", "event": "scored", "delta": 0, "detail": "Retrieved but not relevant to memory optimization session", "timestamp": "2026-04-14T16:20:30Z"}
+{"insight_id": "know-005", "event": "scored", "delta": 0, "detail": "Retrieved but not relevant to memory optimization session", "timestamp": "2026-04-14T16:20:30Z"}
+{"insight_id": "know-011", "event": "scored", "delta": 0, "detail": "Retrieved but not relevant to memory optimization session", "timestamp": "2026-04-14T16:20:30Z"}
+{"insight_id": "know-016", "event": "scored", "delta": 0, "detail": "Retrieved but not relevant to memory optimization session", "timestamp": "2026-04-14T16:20:30Z"}
+{"insight_id": "know-031", "event": "scored", "delta": 0, "detail": "Retrieved but not relevant to memory optimization session", "timestamp": "2026-04-14T16:20:30Z"}
+{"insight_id": "know-041", "event": "scored", "delta": 0, "detail": "Retrieved but not relevant to memory optimization session", "timestamp": "2026-04-14T16:20:30Z"}
+{"insight_id": "know-045", "event": "scored", "delta": 0, "detail": "Retrieved but not relevant to memory optimization session", "timestamp": "2026-04-14T16:20:30Z"}
+{"insight_id": "know-046", "event": "scored", "delta": 0, "detail": "Retrieved but not relevant to memory optimization session", "timestamp": "2026-04-14T16:20:30Z"}
+{"insight_id": "know-049", "event": "scored", "delta": 0, "detail": "Retrieved but not relevant to memory optimization session", "timestamp": "2026-04-14T16:20:30Z"}
+{"insight_id": "know-050", "event": "scored", "delta": 0, "detail": "Retrieved but not relevant to memory optimization session", "timestamp": "2026-04-14T16:20:30Z"}
+{"insight_id": "know-051", "event": "scored", "delta": 0, "detail": "Retrieved but not relevant to memory optimization session", "timestamp": "2026-04-14T16:20:30Z"}
+{"insight_id": "know-052", "event": "scored", "delta": 0, "detail": "Retrieved but not relevant to memory optimization session", "timestamp": "2026-04-14T16:20:30Z"}
+{"insight_id": "know-055", "event": "scored", "delta": 0, "detail": "Retrieved but not relevant to memory optimization session", "timestamp": "2026-04-14T16:20:30Z"}
+{"insight_id": "know-060", "event": "scored", "delta": 0, "detail": "Retrieved but not relevant to memory optimization session", "timestamp": "2026-04-14T16:20:30Z"}
+{"insight_id": "know-062", "event": "scored", "delta": 0, "detail": "Retrieved but not relevant to memory optimization session", "timestamp": "2026-04-14T16:20:30Z"}
+{"insight_id": "know-063", "event": "scored", "delta": 0, "detail": "Retrieved but not relevant to memory optimization session", "timestamp": "2026-04-14T16:20:30Z"}
+{"insight_id": "know-seat-entitlements-vs-seatroles", "event": "scored", "delta": 0, "detail": "Retrieved but not relevant to memory optimization session", "timestamp": "2026-04-14T16:20:30Z"}
+{"insight_id": "scout-tee-dev-agent", "event": "scored", "delta": 0, "detail": "Retrieved but not relevant to memory optimization session", "timestamp": "2026-04-14T16:20:30Z"}
+{"insight_id": "bug-002", "event": "scored", "delta": 0, "detail": "Retrieved but not relevant to memory optimization session", "timestamp": "2026-04-14T16:20:30Z"}
+{"insight_id": "bug-006", "event": "scored", "delta": 0, "detail": "Retrieved but not relevant to memory optimization session", "timestamp": "2026-04-14T16:20:30Z"}
+{"insight_id": "bug-010", "event": "scored", "delta": 0, "detail": "Retrieved but not relevant to memory optimization session", "timestamp": "2026-04-14T16:20:30Z"}
+{"insight_id": "test-grad", "event": "scored", "delta": 0, "detail": "Retrieved but not relevant to memory optimization session", "timestamp": "2026-04-14T16:20:30Z"}
+{"ts": "2026-04-14T09:24:26.233911", "insight_id": "know-051", "event": "retrieved", "prompt_preview": "cool. nie session. Need to restart computer, see you later"}
