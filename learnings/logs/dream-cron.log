@@ -151,3 +151,9 @@ Dream cycle completed at 2026-04-14T16:35:03.486978
 
 Dream cycle complete.
 Step 4: commit + push
+[main 531d351] dream: vm 2026-04-14
+ 43 files changed, 254 insertions(+), 469 deletions(-)
+ create mode 100755 scripts/dream-cron-wrapper.sh
+ create mode 100755 scripts/resolve-jsonl-conflicts.sh
+push failed
+=== Dream cron finished: Tue Apr 14 16:35:04 UTC 2026 ===
