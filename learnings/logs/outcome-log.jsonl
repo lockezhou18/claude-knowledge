@@ -49,3 +49,14 @@
 {"insight_id": "bug-010", "event": "scored", "delta": 0, "detail": "Retrieved but not relevant to memory optimization session", "timestamp": "2026-04-14T16:20:30Z"}
 {"insight_id": "test-grad", "event": "scored", "delta": 0, "detail": "Retrieved but not relevant to memory optimization session", "timestamp": "2026-04-14T16:20:30Z"}
 {"ts": "2026-04-14T09:24:26.233911", "insight_id": "know-051", "event": "retrieved", "prompt_preview": "cool. nie session. Need to restart computer, see you later"}
+{"ts": "2026-04-14T09:27:43.340426", "insight_id": "know-052", "event": "retrieved", "prompt_preview": "check the dream cron, let's boil the ocean and debug together"}
+{"ts": "2026-04-14T09:27:43.340474", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "check the dream cron, let's boil the ocean and debug together"}
+{"ts": "2026-04-14T09:27:43.340479", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "check the dream cron, let's boil the ocean and debug together"}
+{"ts": "2026-04-14T09:42:49.880982", "insight_id": "know-060", "event": "retrieved", "prompt_preview": "I recall I login git in the vm before"}
+{"ts": "2026-04-14T09:42:49.881017", "insight_id": "know-047", "event": "retrieved", "prompt_preview": "I recall I login git in the vm before"}
+{"ts": "2026-04-14T09:42:49.881022", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "I recall I login git in the vm before"}
+{"ts":"2026-04-14T16:45:00","insight_id":"know-032","event":"scored","delta":1.0,"detail":"Knowledge-vs-behavior gap insight directly relevant — identified that outcome scoring IS the behavior gap preventing graduation"}
+{"ts":"2026-04-14T16:45:00","insight_id":"aha-003","event":"scored","delta":0,"detail":"Tier 1.5 capability concept retrieved but not directly used in this debugging session"}
+{"ts":"2026-04-14T16:45:00","insight_id":"know-060","event":"scored","delta":1.0,"detail":"AgentBus deploy insight helped — knew NATS port 14222, knew about systemd services, used vm-agent for debugging"}
+{"ts":"2026-04-14T16:45:00","insight_id":"know-047","event":"scored","delta":0,"detail":"VM parity checklist retrieved but not directly applicable — we were debugging cron, not setting up VM"}
+{"ts":"2026-04-14T16:45:00","insight_id":"eureka-006","event":"scored","delta":0,"detail":"Agent-as-connective-tissue concept not directly used in this debugging session"}
