@@ -2,16 +2,16 @@
 id: know-011
 track: knowledge
 type: semantic
-repos: ["mcm-mt", "hp-ats-integration-mt"]
-tags: ["phase2", "writeback", "mcm-mt", "e2e", "connected-projects", "lix", "entity-mapping"]
+repos: [mcm-mt, hp-ats-integration-mt]
+tags: [phase2, writeback, mcm-mt, e2e, connected-projects, lix, entity-mapping]
 severity: high
 created: "2026-04-01"
 last_verified: "2026-04-01"
-use_count: 0
+use_count: 4
 outcome_score: 0
 rot_rate: slow
 status: active
-paths: ["**/HiringProjectCandidatesServiceImpl.java", "**/ConnectedProjectCandidateService.java"]
+paths: [**/HiringProjectCandidatesServiceImpl.java, **/ConnectedProjectCandidateService.java]
 ---
 
 ## mcm-mt → ActionWriteBack: 3 Prerequisites for Write-Back to Trigger

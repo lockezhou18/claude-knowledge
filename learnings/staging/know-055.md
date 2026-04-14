@@ -8,7 +8,7 @@ created: 2026-04-11
 last_verified: 2026-04-11
 repos: [memory-migration]
 tags: [markitdown, docx, xlsx, pptx, tool, conversion]
-use_count: 0
+use_count: 17
 outcome_score: 0.0
 rot_rate: slow
 ---

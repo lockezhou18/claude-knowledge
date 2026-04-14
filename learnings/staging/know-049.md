@@ -9,7 +9,7 @@ rot_rate: permanent
 status: active
 created: 2026-04-08
 last_verified: 2026-04-08
-use_count: 6
+use_count: 8
 outcome_score: 0
 origin_skill: learn
 ---

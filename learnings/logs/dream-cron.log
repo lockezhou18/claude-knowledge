@@ -62,3 +62,92 @@ Dream cycle completed at 2026-04-11T14:25:01.507940
 
 
 Dream cycle complete.
+=== Dream cron started: Tue Apr 14 16:35:02 UTC 2026 ===
+Step 1: git pull
+git pull failed (continuing)
+Step 2: resolve conflicts
+Step 3: dream.py
+Dream cycle starting...
+  Knowledge dir: /home/bizhou/claude-knowledge
+  Memory dir: /home/bizhou/claude-knowledge/memory
+  Staging dir: /home/bizhou/claude-knowledge/learnings/staging
+
+Phase 1: NREM (Compress + Score)
+  No outcomes to process
+
+Phase 2: REM (Graduate + Prune + Stale)
+  Graduated: 0, Pruned: 0, Stale: 0
+
+Phase Sort: Classify and organize flat files
+  Sorted: 0, Unsorted: 0
+
+Phase 3: Rebuild global MEMORY.md index
+  Index: 77 lines, 7 sections, 61 files
+
+Phase 5: Per-Project Memory Maintenance
+
+  Project: agentbus (2 files)
+    Index: 5 lines, 1 files
+
+  Project: connected-projects (13 files)
+    Index: 21 lines, 15 files
+
+  Project: connected-projects-bug-bash (2 files)
+    Index: 5 lines, 1 files
+
+  Project: general (3 files)
+    Index: 6 lines, 2 files
+
+  Project: memory-migration (4 files)
+    Index: 7 lines, 3 files
+
+  Project: oncall (15 files)
+    Index: 18 lines, 14 files
+
+  Project: -home-bizhou-workspace (2 files)
+    Index: 5 lines, 1 files
+
+  Processed 7 projects, 0 stale, 0 potential duplicates
+
+Phase Synthesize: Bridge project memories ↔ insights
+  LINK: insight:know-052 ↔ project:memory-migration
+  LINK: insight:"know-056" ↔ project:agentbus
+  LINK: insight:know-053 ↔ project:memory-migration
+  LINK: insight:know-051 ↔ project:memory-migration
+  LINK: insight:know-055 ↔ project:memory-migration
+  LINK: insight:know-054 ↔ project:agentbus
+  LINK: insight:know-054 ↔ project:memory-migration
+  LINK: insight:bug-011 ↔ project:oncall
+  LINK: insight:know-065 ↔ project:agentbus
+  LINK: insight:know-066 ↔ project:agentbus
+  LINK: insight:bug-010 ↔ project:memory-migration
+  LINK: insight:"know-058" ↔ project:agentbus
+  LINK: insight:eureka-009 ↔ project:memory-migration
+  LINK: insight:know-064 ↔ project:agentbus
+  LINK: insight:bug-012 ↔ project:oncall
+  LINK: insight:know-067 ↔ project:oncall
+
+  Cross-project patterns: 0
+  Insight↔project links: 16
+  Promoted to staging: 0 (heuristic)
+
+Phase 4: Report
+Dream cycle completed at 2026-04-14T16:35:03.486978
+  Host: bizhou-ld2.linkedin.biz
+  Outcomes processed: 0
+  Graduated: 0
+  Pruned: 0
+  Flagged stale: 0
+  Sorted files: 0
+  Unsorted files: 0
+  Cross-project patterns: 0
+  Insight↔project links: 16
+  Promoted to staging: 0
+  Index lines: 77
+  Projects processed: 7
+  Project stale files: 0
+  Project duplicates: 0
+
+
+Dream cycle complete.
+Step 4: commit + push
