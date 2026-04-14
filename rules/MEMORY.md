@@ -25,7 +25,7 @@ The foundation beneath all engineering principles. Not a rule — a lens.
 - `guides/vm-routing.md` — VM vs local routing rules — read when delegating builds, tests, or thinking tasks
 - `guides/captain.md` — LinkedIn plugin/tool priority — read when selecting MCP tools
 - `guides/insights-rules.md` — LinkedIn-specific patterns (curli-first, observe-agent) — read during oncall/debugging
-- `guides/test-environments.md` — Greenhouse sandbox credentials — read when testing Connected Projects
+<!-- - `guides/test-environments.md` — DELETED: expired creds, duplicated in greenhouse-e2e recipe -->
 <!-- - `guides/behavioral-gates.md` — Eval-driven behavioral rules — approach selection, tool selection -->
 - `guides/proactive-suggestions.md` — When to suggest skills — reference list
 - `guides/compound-learning.md` — Insight lifecycle, outcome tracking, dream cycle

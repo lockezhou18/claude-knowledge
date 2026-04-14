@@ -340,3 +340,16 @@
 {"ts": "2026-04-13T20:29:48.763511", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "I mean not remove, just comment on, in the future we can just commnent out"}
 {"ts": "2026-04-13T20:29:48.763553", "insight_id": "aha-006", "event": "retrieved", "prompt_preview": "I mean not remove, just comment on, in the future we can just commnent out"}
 {"ts": "2026-04-13T20:29:48.763557", "insight_id": "know-031", "event": "retrieved", "prompt_preview": "I mean not remove, just comment on, in the future we can just commnent out"}
+{"ts": "2026-04-13T20:32:11.733358", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "for the test-envrionment, I feel like it's more like a tool/skill, can you cross"}
+{"ts": "2026-04-13T20:32:11.733397", "insight_id": "know-046", "event": "retrieved", "prompt_preview": "for the test-envrionment, I feel like it's more like a tool/skill, can you cross"}
+{"ts": "2026-04-13T20:32:11.733401", "insight_id": "know-002", "event": "retrieved", "prompt_preview": "for the test-envrionment, I feel like it's more like a tool/skill, can you cross"}
+{"ts": "2026-04-13T20:35:43.902582", "insight_id": "know-003", "event": "retrieved", "prompt_preview": "that's good. I want to enrich you with tools/skills/knowledge infra. As many as "}
+{"ts": "2026-04-13T20:38:25.439977", "insight_id": "know-053", "event": "retrieved", "prompt_preview": "this one -   - The memory/MEMORY.md index has ~73 entries, most project-specific"}
+{"ts": "2026-04-13T20:38:25.440013", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "this one -   - The memory/MEMORY.md index has ~73 entries, most project-specific"}
+{"ts": "2026-04-13T20:38:25.440017", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "this one -   - The memory/MEMORY.md index has ~73 entries, most project-specific"}
+{"ts": "2026-04-13T20:42:06.301721", "insight_id": "know-seat-entitlements-vs-seatroles", "event": "retrieved", "prompt_preview": "especially for this 2 -  HP / Connected Projects \u2502 ~31     \u2502 All connected-proje"}
+{"ts": "2026-04-13T20:42:06.301770", "insight_id": "eureka-008", "event": "retrieved", "prompt_preview": "especially for this 2 -  HP / Connected Projects \u2502 ~31     \u2502 All connected-proje"}
+{"ts": "2026-04-13T20:42:06.301776", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "especially for this 2 -  HP / Connected Projects \u2502 ~31     \u2502 All connected-proje"}
+{"ts": "2026-04-13T20:45:37.254131", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "what's in the global ememory now, full"}
+{"ts": "2026-04-13T20:45:37.254164", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "what's in the global ememory now, full"}
+{"ts": "2026-04-13T20:45:37.254169", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "what's in the global ememory now, full"}
