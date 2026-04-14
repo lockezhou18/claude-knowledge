@@ -7,7 +7,7 @@ tags: [vm, setup, infrastructure, claude-code, parity, checklist]
 severity: high
 created: "2026-04-08"
 last_verified: "2026-04-08"
-use_count: 9
+use_count: 10
 outcome_score: 0.0
 status: active
 rot_rate: slow

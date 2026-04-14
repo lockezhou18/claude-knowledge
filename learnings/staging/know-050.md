@@ -2,17 +2,17 @@
 id: know-050
 track: knowledge
 type: semantic
-repos: ["mcm-mt", "*"]
-tags: ["curli", "rest-li", "d2", "debugging", "association", "finder", "protocol", "complex-key"]
+repos: [mcm-mt, *]
+tags: [curli, rest-li, d2, debugging, association, finder, protocol, complex-key]
 severity: high
 rot_rate: permanent
 status: active
 created: 2026-04-09
 last_verified: 2026-04-09
-use_count: 1
+use_count: 2
 outcome_score: 1
 origin_skill: learn
-related_to: ["know-049"]
+related_to: [know-049]
 ---
 
 # RestLiAssociation Finders Require v1 Protocol (No X-RestLi-Protocol-Version:2.0.0)

@@ -1,3 +1,5 @@
+<<<<<<< HEAD
+=======
 {"ts": "2026-04-13T20:29:48.763557", "insight_id": "know-031", "event": "retrieved", "prompt_preview": "I mean not remove, just comment on, in the future we can just commnent out"}
 {"ts": "2026-04-13T20:32:11.733358", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "for the test-envrionment, I feel like it's more like a tool/skill, can you cross"}
 {"ts": "2026-04-13T20:32:11.733397", "insight_id": "know-046", "event": "retrieved", "prompt_preview": "for the test-envrionment, I feel like it's more like a tool/skill, can you cross"}
@@ -49,6 +51,7 @@
 {"insight_id": "bug-010", "event": "scored", "delta": 0, "detail": "Retrieved but not relevant to memory optimization session", "timestamp": "2026-04-14T16:20:30Z"}
 {"insight_id": "test-grad", "event": "scored", "delta": 0, "detail": "Retrieved but not relevant to memory optimization session", "timestamp": "2026-04-14T16:20:30Z"}
 {"ts": "2026-04-14T09:24:26.233911", "insight_id": "know-051", "event": "retrieved", "prompt_preview": "cool. nie session. Need to restart computer, see you later"}
+<<<<<<< HEAD
 {"ts": "2026-04-14T09:27:43.340426", "insight_id": "know-052", "event": "retrieved", "prompt_preview": "check the dream cron, let's boil the ocean and debug together"}
 {"ts": "2026-04-14T09:27:43.340474", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "check the dream cron, let's boil the ocean and debug together"}
 {"ts": "2026-04-14T09:27:43.340479", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "check the dream cron, let's boil the ocean and debug together"}
@@ -60,3 +63,6 @@
 {"ts":"2026-04-14T16:45:00","insight_id":"know-060","event":"scored","delta":1.0,"detail":"AgentBus deploy insight helped — knew NATS port 14222, knew about systemd services, used vm-agent for debugging"}
 {"ts":"2026-04-14T16:45:00","insight_id":"know-047","event":"scored","delta":0,"detail":"VM parity checklist retrieved but not directly applicable — we were debugging cron, not setting up VM"}
 {"ts":"2026-04-14T16:45:00","insight_id":"eureka-006","event":"scored","delta":0,"detail":"Agent-as-connective-tissue concept not directly used in this debugging session"}
+=======
+>>>>>>> 3f5cefb782173aefc5c3e1870ebc92491d63ae7a
+>>>>>>> f950771ab1ee41761cef19fe52dfce9847b6ac15

@@ -7,7 +7,7 @@ tags: [eureka, mental-model, cross-boundary, design, frontend, backend, infrastr
 severity: critical
 created: '2026-04-03'
 last_verified: '2026-04-03'
-use_count: 67
+use_count: 118
 outcome_score: 0.0
 rot_rate: permanent
 status: active

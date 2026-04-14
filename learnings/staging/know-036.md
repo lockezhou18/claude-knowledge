@@ -2,25 +2,14 @@
 id: know-036
 track: knowledge
 type: semantic
-repos:
-  - hp-ats-integration-mt
-  - "*"
-tags:
-  - kafka
-  - xinfra
-  - northguard
-  - brooklin
-  - streaming
-  - infrastructure
-  - mental-model
-  - nearline
-  - multi-colo
+repos: 
+tags: 
 severity: high
 rot_rate: slow
 status: active
 created: "2026-04-03"
 last_verified: "2026-04-03"
-use_count: 0
+use_count: 1
 outcome_score: 0
 ---
 

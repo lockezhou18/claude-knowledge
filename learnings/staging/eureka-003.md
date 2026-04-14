@@ -2,12 +2,12 @@
 id: eureka-003
 track: knowledge
 type: semantic
-repos: ["*"]
-tags: ["eureka", "workflow", "ship", "ci-cd", "wait-for", "automation", "cross-session"]
+repos: [*]
+tags: [eureka, workflow, ship, ci-cd, wait-for, automation, cross-session]
 severity: critical
 created: "2026-04-02"
 last_verified: "2026-04-02"
-use_count: 0
+use_count: 1
 outcome_score: 0
 rot_rate: permanent
 status: active

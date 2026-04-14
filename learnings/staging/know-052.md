@@ -8,7 +8,7 @@ created: 2026-04-10
 last_verified: 2026-04-10
 repos: [memory-migration]
 tags: [claude-code, auto-dream, memory, consolidation, broken]
-use_count: 10
+use_count: 12
 outcome_score: 0.0
 rot_rate: fast
 ---
