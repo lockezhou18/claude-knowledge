@@ -135,11 +135,12 @@
 
 ### Claude-Native Memory Migration
 - **Started:** 2026-04-09
-- **Status:** planning complete, Phase 0 test deployed
+- **Status:** Phase 1 partially complete — rules/ trimmed to 2 files, memory/MEMORY.md trimmed from 77 to 28 lines, project memory scoped
 - **Context:** Restructure ecosystem so Auto Memory/Dream is the knowledge foundation
 - **Location:** ~/projects/compound-learning-ecosystem/memory-migration/
 - **Risk gate:** Phase 0 — test-frontmatter.md deployed to memory/, waiting for Auto Dream cycle
-- **Next:** Check Phase 0 results, then Phase 1 (slim MEMORY.md to 50 lines)
+- **Last session (2026-04-14):** Moved 6 rules to guides/, deleted expired test-environments.md, added insight scoring to /compound Step 3, scoped project memory with triage index
+- **Next:** Phase 2 (rewrite scout for better relevance — 2/36 hit rate this session), compound scoring validation after 3+ sessions
 
 ### Backlog — System Evolution (do when data supports it)
 - [ ] Merge overlapping skills (identify via usage data — which pairs are always invoked together?)
