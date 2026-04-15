@@ -7,7 +7,7 @@ tags: [eureka, phase2, connected-projects, architecture, pattern, pipeline-sync,
 severity: critical
 created: '2026-04-03'
 last_verified: '2026-04-03'
-use_count: 14
+use_count: 16
 outcome_score: 0.0
 rot_rate: permanent
 status: active

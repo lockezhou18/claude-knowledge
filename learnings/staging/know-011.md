@@ -7,7 +7,7 @@ tags: [phase2, writeback, mcm-mt, e2e, connected-projects, lix, entity-mapping]
 severity: high
 created: "2026-04-01"
 last_verified: "2026-04-01"
-use_count: 4
+use_count: 5
 outcome_score: 0
 rot_rate: slow
 status: active

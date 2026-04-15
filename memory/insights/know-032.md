@@ -1,17 +1,19 @@
 ---
 id: know-032
 track: knowledge
-type: semantic
+type: reference
 repos: [*]
 tags: [meta, compound-learning, behavior, reward-system, aha]
 severity: high
 rot_rate: permanent
 created: "2026-04-02"
 last_verified: "2026-04-02"
-use_count: 39
-outcome_score: 0
-status: active
+use_count: 44
+outcome_score: 2.0
+status: graduated
 synthesized_into: "aha-005"
+graduated: 2026-04-15
+from: know-032
 ---
 
 ## Context

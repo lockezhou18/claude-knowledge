@@ -7,7 +7,7 @@ tags: [eureka, goal-driven, paradigm, context-repo, execution, design-driven, cr
 severity: critical
 created: '2026-04-05'
 last_verified: '2026-04-05'
-use_count: 10
+use_count: 12
 outcome_score: 0.0
 rot_rate: permanent
 status: active

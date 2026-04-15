@@ -7,7 +7,7 @@ tags: [k8s, kubernetes, ksap, nimbus, lideployment, infrastructure, deployment, 
 severity: high
 created: "2026-04-02"
 last_verified: "2026-04-02"
-use_count: 2
+use_count: 3
 outcome_score: 0
 rot_rate: slow
 status: active

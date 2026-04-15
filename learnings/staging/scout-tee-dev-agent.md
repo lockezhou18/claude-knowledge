@@ -6,7 +6,7 @@ tags: [scout, agent-systems, ralph-loop, convention-audit, autonomous-coding, pr
 severity: info
 created: "2026-04-07"
 last_verified: "2026-04-07"
-use_count: 5
+use_count: 6
 outcome_score: 0
 status: active
 rot_rate: slow

@@ -8,8 +8,8 @@ created: 2026-04-10
 last_verified: 2026-04-10
 repos: [memory-migration]
 tags: [claude-code, rules, context-window, optimization, loading]
-use_count: 1
-outcome_score: 0.0
+use_count: 3
+outcome_score: 1.0
 rot_rate: slow
 ---
 

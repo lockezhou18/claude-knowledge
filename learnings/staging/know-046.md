@@ -7,7 +7,7 @@ tags: [vm, tmux, clipboard, osc52, iterm2, ssh, infrastructure]
 severity: medium
 created: "2026-04-08"
 last_verified: "2026-04-08"
-use_count: 15
+use_count: 17
 outcome_score: 0.0
 status: active
 rot_rate: permanent

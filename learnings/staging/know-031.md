@@ -8,7 +8,7 @@ severity: high
 rot_rate: slow
 created: "2026-04-02"
 last_verified: "2026-04-02"
-use_count: 6
+use_count: 8
 outcome_score: 0
 status: active
 ---

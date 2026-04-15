@@ -2,16 +2,16 @@
 id: know-068
 track: knowledge
 type: semantic
-repos: ["*"]
-tags: ["metacognitive", "assertion-bias", "hypothesis", "investigation", "anti-pattern", "verify-understanding"]
+repos: [*]
+tags: [metacognitive, assertion-bias, hypothesis, investigation, anti-pattern, verify-understanding]
 severity: critical
 rot_rate: permanent
 status: active
 created: "2026-04-13"
 last_verified: "2026-04-13"
-use_count: 0
+use_count: 3
 outcome_score: 0
-synthesized_from: ["bug-012", "eval-behavioral-gates:verify-own-understanding"]
+synthesized_from: [bug-012, eval-behavioral-gates:verify-own-understanding]
 ---
 
 ## Anti-pattern: Assert-Before-Verify

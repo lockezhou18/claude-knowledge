@@ -7,7 +7,7 @@ tags: [eureka, workflow, cron, async, cross-session, polling, automation]
 severity: critical
 created: "2026-04-02"
 last_verified: "2026-04-02"
-use_count: 31
+use_count: 38
 outcome_score: 0
 rot_rate: permanent
 status: active

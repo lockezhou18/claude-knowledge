@@ -6,7 +6,7 @@ tags: [venice, derived-data, storage, infrastructure, ml-features, embeddings]
 severity: low
 created: "2026-04-03"
 last_verified: "2026-04-03"
-use_count: 0
+use_count: 1
 outcome_score: 0
 status: active
 rot_rate: slow

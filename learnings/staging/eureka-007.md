@@ -7,7 +7,7 @@ tags: [eureka, context-repo, team-sharing, knowledge-management, claude-code, on
 severity: critical
 created: '2026-04-04'
 last_verified: '2026-04-04'
-use_count: 28
+use_count: 29
 outcome_score: 0.0
 rot_rate: permanent
 status: active
