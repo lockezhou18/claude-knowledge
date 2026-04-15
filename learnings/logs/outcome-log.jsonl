@@ -21,3 +21,26 @@
 {"ts":"2026-04-15T11:00:00","insight_id":"know-069","event":"scored","delta":1.0,"detail":"Outcome scoring gap insight directly led to building dream-agent.sh — the judgment step we were missing"}
 {"ts":"2026-04-15T11:00:00","insight_id":"know-032","event":"scored","delta":1.0,"detail":"Knowledge-vs-behavior gap — graduated tonight, confirming the insight was accurate and actionable"}
 {"ts": "2026-04-15T10:39:45.004164", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "btw what's the project/folder path for the eco-sys evoluation"}
+{"ts": "2026-04-15T10:43:34.063186", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "Engineering cybernetics may be the right lens for agentic systems: agents are pr"}
+{"ts": "2026-04-15T10:43:34.063217", "insight_id": "know-seat-entitlements-vs-seatroles", "event": "retrieved", "prompt_preview": "Engineering cybernetics may be the right lens for agentic systems: agents are pr"}
+{"ts": "2026-04-15T10:43:34.063225", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "Engineering cybernetics may be the right lens for agentic systems: agents are pr"}
+{"ts": "2026-04-15T10:45:38.972603", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "meanwhile let's have deep research agent for the cybernetics theory from academi"}
+{"ts": "2026-04-15T10:45:38.972623", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "meanwhile let's have deep research agent for the cybernetics theory from academi"}
+{"ts": "2026-04-15T10:45:38.972627", "insight_id": "eureka-007", "event": "retrieved", "prompt_preview": "meanwhile let's have deep research agent for the cybernetics theory from academi"}
+{"ts": "2026-04-15T10:48:04.646540", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "probably wiki is good starting point, let's read the theory and perform deep res"}
+{"ts": "2026-04-15T10:48:04.646567", "insight_id": "know-052", "event": "retrieved", "prompt_preview": "probably wiki is good starting point, let's read the theory and perform deep res"}
+{"ts": "2026-04-15T10:48:04.646571", "insight_id": "eureka-007", "event": "retrieved", "prompt_preview": "probably wiki is good starting point, let's read the theory and perform deep res"}
+{"ts": "2026-04-15T10:48:11.792018", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "probably wiki is good starting point, let's read the theory and perform deep res"}
+{"ts": "2026-04-15T10:48:11.792049", "insight_id": "know-062", "event": "retrieved", "prompt_preview": "probably wiki is good starting point, let's read the theory and perform deep res"}
+{"ts": "2026-04-15T10:48:11.792054", "insight_id": "know-052", "event": "retrieved", "prompt_preview": "probably wiki is good starting point, let's read the theory and perform deep res"}
+{"ts": "2026-04-15T10:56:06.234595", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>a3c7306494cd2af41</task-id>\n<tool-use-id>toolu_011D"}
+{"ts": "2026-04-15T10:56:06.234635", "insight_id": "eureka-007", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>a3c7306494cd2af41</task-id>\n<tool-use-id>toolu_011D"}
+{"ts": "2026-04-15T10:56:06.234639", "insight_id": "aha-004", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>a3c7306494cd2af41</task-id>\n<tool-use-id>toolu_011D"}
+{"ts": "2026-04-15T10:56:27.720117", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>a71ac1f8e7b6dfc2c</task-id>\n<tool-use-id>toolu_018L"}
+{"ts": "2026-04-15T10:56:27.720165", "insight_id": "eureka-007", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>a71ac1f8e7b6dfc2c</task-id>\n<tool-use-id>toolu_018L"}
+{"ts": "2026-04-15T10:56:27.720169", "insight_id": "aha-006", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>a71ac1f8e7b6dfc2c</task-id>\n<tool-use-id>toolu_018L"}
+{"ts": "2026-04-15T10:59:30.075334", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>a1f833d71f60cc4e5</task-id>\n<tool-use-id>toolu_01RH"}
+{"ts": "2026-04-15T10:59:30.075357", "insight_id": "eureka-007", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>a1f833d71f60cc4e5</task-id>\n<tool-use-id>toolu_01RH"}
+{"ts": "2026-04-15T10:59:30.075361", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>a1f833d71f60cc4e5</task-id>\n<tool-use-id>toolu_01RH"}
+{"ts": "2026-04-15T11:03:33.043014", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>a6a0e8e48dce3f0ac</task-id>\n<tool-use-id>toolu_01KV"}
+{"ts": "2026-04-15T11:03:33.043054", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>a6a0e8e48dce3f0ac</task-id>\n<tool-use-id>toolu_01KV"}
