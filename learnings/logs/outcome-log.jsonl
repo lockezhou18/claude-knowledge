@@ -49,3 +49,7 @@
 {"ts": "2026-04-15T11:06:45.725326", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "a session under tmux, I close the tmux, then the session is gone. Can you check"}
 {"ts": "2026-04-15T11:06:45.725386", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "a session under tmux, I close the tmux, then the session is gone. Can you check"}
 {"ts": "2026-04-15T11:06:45.725391", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "a session under tmux, I close the tmux, then the session is gone. Can you check"}
+{"ts": "2026-04-15T11:46:29.150939", "insight_id": "scout-tee-dev-agent", "event": "retrieved", "prompt_preview": "a session talk about and research about cybernetics engineering"}
+{"ts": "2026-04-15T11:47:27.527726", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "seems like get this - \nbizhou@bizhou-mn2425 ~ % claude resume f0ba1463-8a19-4c92"}
+{"ts": "2026-04-15T11:47:27.527761", "insight_id": "aha-006", "event": "retrieved", "prompt_preview": "seems like get this - \nbizhou@bizhou-mn2425 ~ % claude resume f0ba1463-8a19-4c92"}
+{"ts": "2026-04-15T11:47:27.527766", "insight_id": "eureka-007", "event": "retrieved", "prompt_preview": "seems like get this - \nbizhou@bizhou-mn2425 ~ % claude resume f0ba1463-8a19-4c92"}
