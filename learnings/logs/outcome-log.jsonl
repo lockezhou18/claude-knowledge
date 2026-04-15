@@ -74,3 +74,87 @@
 {"ts": "2026-04-15T12:12:56.024138", "insight_id": "eureka-003", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>aff60af568e574a71</task-id>\n<tool-use-id>toolu_01X6"}
 {"ts": "2026-04-15T12:16:26.473372", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "continue for the (~/.claude/learnings/retrospectives/active-work.md)"}
 {"ts": "2026-04-15T12:17:31.286497", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "what do you think have a research agent"}
+{"ts": "2026-04-15T12:19:12.704271", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "just did some research - @~/claude-knowledge/docs/cybernetics/README.md What do "}
+{"ts": "2026-04-15T12:19:12.704304", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "just did some research - @~/claude-knowledge/docs/cybernetics/README.md What do "}
+{"ts": "2026-04-15T12:19:12.704316", "insight_id": "aha-007", "event": "retrieved", "prompt_preview": "just did some research - @~/claude-knowledge/docs/cybernetics/README.md What do "}
+{"ts": "2026-04-15T12:20:56.842821", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "that looks good! One thing as he is agent, - Follows your 4-layer research pipel"}
+{"ts": "2026-04-15T12:20:56.842870", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "that looks good! One thing as he is agent, - Follows your 4-layer research pipel"}
+{"ts": "2026-04-15T12:20:56.842875", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "that looks good! One thing as he is agent, - Follows your 4-layer research pipel"}
+{"ts": "2026-04-15T12:23:43.651430", "insight_id": "aha-006", "event": "retrieved", "prompt_preview": "probably thinking in this way, how we want to build/iterate agentbus as a concre"}
+{"ts": "2026-04-15T12:23:43.651465", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "probably thinking in this way, how we want to build/iterate agentbus as a concre"}
+{"ts": "2026-04-15T12:23:43.651469", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "probably thinking in this way, how we want to build/iterate agentbus as a concre"}
+{"ts": "2026-04-15T12:26:38.666949", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "meanwhile, 1 - how do you feel this skill - https://github.com/lockezhou18/claud"}
+{"ts": "2026-04-15T12:26:38.666986", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "meanwhile, 1 - how do you feel this skill - https://github.com/lockezhou18/claud"}
+{"ts": "2026-04-15T12:26:38.666991", "insight_id": "know-055", "event": "retrieved", "prompt_preview": "meanwhile, 1 - how do you feel this skill - https://github.com/lockezhou18/claud"}
+{"ts": "2026-04-15T12:30:08.615305", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "Firstly let's think about for the agentbus system, what's our goal actually"}
+{"ts": "2026-04-15T12:30:08.615340", "insight_id": "aha-007", "event": "retrieved", "prompt_preview": "Firstly let's think about for the agentbus system, what's our goal actually"}
+{"ts": "2026-04-15T12:32:25.167280", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "for 1, actually I like your original statement, the research skill is just a too"}
+{"ts": "2026-04-15T12:32:25.167305", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "for 1, actually I like your original statement, the research skill is just a too"}
+{"ts": "2026-04-15T12:32:25.167309", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "for 1, actually I like your original statement, the research skill is just a too"}
+{"ts": "2026-04-15T12:35:38.390861", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "cool for the authority-sources.md, it's also just a reference/experience for enr"}
+{"ts": "2026-04-15T12:35:38.390890", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "cool for the authority-sources.md, it's also just a reference/experience for enr"}
+{"ts": "2026-04-15T12:35:38.390894", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "cool for the authority-sources.md, it's also just a reference/experience for enr"}
+{"ts": "2026-04-15T12:41:27.739850", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "there's case study in the cybernetics folder."}
+{"ts": "2026-04-15T12:41:27.739882", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "there's case study in the cybernetics folder."}
+{"ts": "2026-04-15T12:41:27.739887", "insight_id": "aha-006", "event": "retrieved", "prompt_preview": "there's case study in the cybernetics folder."}
+{"ts": "2026-04-15T12:41:56.281470", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "there's case study in the cybernetics folder, and harness engineering like pract"}
+{"ts": "2026-04-15T12:41:56.281497", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "there's case study in the cybernetics folder, and harness engineering like pract"}
+{"ts": "2026-04-15T12:41:56.281501", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "there's case study in the cybernetics folder, and harness engineering like pract"}
+{"ts": "2026-04-15T12:42:06.244318", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "there's case study in the cybernetics folder, and harness engineering like pract"}
+{"ts": "2026-04-15T12:42:06.244337", "insight_id": "know-060", "event": "retrieved", "prompt_preview": "there's case study in the cybernetics folder, and harness engineering like pract"}
+{"ts": "2026-04-15T12:42:06.244340", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "there's case study in the cybernetics folder, and harness engineering like pract"}
+{"ts": "2026-04-15T12:43:05.270123", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "nice! Is the researcher live now"}
+{"ts": "2026-04-15T12:43:05.270170", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "nice! Is the researcher live now"}
+{"ts": "2026-04-15T12:43:05.270174", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "nice! Is the researcher live now"}
+{"ts": "2026-04-15T12:46:39.605097", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "nice. Let's add the /comms and /delegate skills either in the agentbus scope."}
+{"ts": "2026-04-15T12:46:39.605127", "insight_id": "know-seat-entitlements-vs-seatroles", "event": "retrieved", "prompt_preview": "nice. Let's add the /comms and /delegate skills either in the agentbus scope."}
+{"ts": "2026-04-15T12:46:39.605132", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "nice. Let's add the /comms and /delegate skills either in the agentbus scope."}
+{"ts": "2026-04-15T12:47:28.821743", "insight_id": "bug-010", "event": "retrieved", "prompt_preview": "spawn a researcher agent on topic - engineering principle"}
+{"ts": "2026-04-15T12:47:28.821803", "insight_id": "aha-006", "event": "retrieved", "prompt_preview": "spawn a researcher agent on topic - engineering principle"}
+{"ts": "2026-04-15T12:59:54.333713", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>a8b67728c3d7bbd6a</task-id>\n<tool-use-id>toolu_016U"}
+{"ts": "2026-04-15T12:59:54.333745", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>a8b67728c3d7bbd6a</task-id>\n<tool-use-id>toolu_016U"}
+{"ts": "2026-04-15T12:59:54.333749", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>a8b67728c3d7bbd6a</task-id>\n<tool-use-id>toolu_016U"}
+{"ts": "2026-04-15T13:05:19.363239", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "I think we have a comparsion with agent teams, subagent, and the agentbus, can y"}
+{"ts": "2026-04-15T13:05:19.363265", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "I think we have a comparsion with agent teams, subagent, and the agentbus, can y"}
+{"ts": "2026-04-15T13:05:19.363270", "insight_id": "know-068", "event": "retrieved", "prompt_preview": "I think we have a comparsion with agent teams, subagent, and the agentbus, can y"}
+{"ts": "2026-04-15T13:08:36.363010", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "I mean thinking how we can apply the research theory to develop the agentbus. I "}
+{"ts": "2026-04-15T13:08:36.363041", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "I mean thinking how we can apply the research theory to develop the agentbus. I "}
+{"ts": "2026-04-15T13:08:36.363045", "insight_id": "know-001", "event": "retrieved", "prompt_preview": "I mean thinking how we can apply the research theory to develop the agentbus. I "}
+{"ts": "2026-04-15T13:14:01.169839", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "let's enhance the agentbus. I feel like now the agentbus comms not that easily t"}
+{"ts": "2026-04-15T13:14:01.169871", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "let's enhance the agentbus. I feel like now the agentbus comms not that easily t"}
+{"ts": "2026-04-15T13:14:01.169876", "insight_id": "bug-011", "event": "retrieved", "prompt_preview": "let's enhance the agentbus. I feel like now the agentbus comms not that easily t"}
+{"ts": "2026-04-15T13:20:50.169410", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "I might not ask the right question. How we want to support agent communication/d"}
+{"ts": "2026-04-15T13:20:50.169448", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "I might not ask the right question. How we want to support agent communication/d"}
+{"ts": "2026-04-15T13:20:50.169453", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "I might not ask the right question. How we want to support agent communication/d"}
+{"ts": "2026-04-15T13:21:48.517614", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "I might not ask the right question. How we want to support agent communication/d"}
+{"ts": "2026-04-15T13:21:48.517681", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "I might not ask the right question. How we want to support agent communication/d"}
+{"ts": "2026-04-15T13:21:48.517690", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "I might not ask the right question. How we want to support agent communication/d"}
+{"ts": "2026-04-15T13:21:50.574391", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "I might not ask the right question. How we want to support agent communication/d"}
+{"ts": "2026-04-15T13:21:50.574429", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "I might not ask the right question. How we want to support agent communication/d"}
+{"ts": "2026-04-15T13:21:50.574433", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "I might not ask the right question. How we want to support agent communication/d"}
+{"ts": "2026-04-15T13:23:20.999382", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "Agentic systems should be designed cybernetically: use harnesses, memory, reflec"}
+{"ts": "2026-04-15T13:23:20.999408", "insight_id": "aha-005", "event": "retrieved", "prompt_preview": "Agentic systems should be designed cybernetically: use harnesses, memory, reflec"}
+{"ts": "2026-04-15T13:23:20.999412", "insight_id": "know-seat-entitlements-vs-seatroles", "event": "retrieved", "prompt_preview": "Agentic systems should be designed cybernetically: use harnesses, memory, reflec"}
+{"ts": "2026-04-15T14:06:40.719357", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "I mean let's add/update the plan with the sandbox, so it can test/get feedback/i"}
+{"ts": "2026-04-15T14:06:40.719385", "insight_id": "know-068", "event": "retrieved", "prompt_preview": "I mean let's add/update the plan with the sandbox, so it can test/get feedback/i"}
+{"ts": "2026-04-15T14:06:40.719389", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "I mean let's add/update the plan with the sandbox, so it can test/get feedback/i"}
+{"ts": "2026-04-15T14:50:53.030665", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "probably agent-teams create another agent in vm sandbox to invoke the skill as r"}
+{"ts": "2026-04-15T14:50:53.030711", "insight_id": "bug-013", "event": "retrieved", "prompt_preview": "probably agent-teams create another agent in vm sandbox to invoke the skill as r"}
+{"ts": "2026-04-15T14:50:53.030721", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "probably agent-teams create another agent in vm sandbox to invoke the skill as r"}
+{"ts": "2026-04-15T14:57:36.403330", "insight_id": "know-045", "event": "retrieved", "prompt_preview": "The plan lgtm. can we move the plan to the vm proper folder/project, let's start"}
+{"ts": "2026-04-15T14:57:36.403354", "insight_id": "test-grad", "event": "retrieved", "prompt_preview": "The plan lgtm. can we move the plan to the vm proper folder/project, let's start"}
+{"ts": "2026-04-15T14:57:36.403358", "insight_id": "know-047", "event": "retrieved", "prompt_preview": "The plan lgtm. can we move the plan to the vm proper folder/project, let's start"}
+{"ts": "2026-04-15T15:00:39.725380", "insight_id": "know-046", "event": "retrieved", "prompt_preview": "what's the vm path for the plan"}
+{"ts": "2026-04-15T15:00:39.725404", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "what's the vm path for the plan"}
+{"ts": "2026-04-15T15:01:30.825118", "insight_id": "know-060", "event": "retrieved", "prompt_preview": "I login the vm machine and open claude, seems like - ~/workspace/.agentbus/docs/"}
+{"ts": "2026-04-15T15:01:30.825149", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "I login the vm machine and open claude, seems like - ~/workspace/.agentbus/docs/"}
+{"ts": "2026-04-15T15:01:30.825154", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "I login the vm machine and open claude, seems like - ~/workspace/.agentbus/docs/"}
+{"ts": "2026-04-15T15:01:43.850438", "insight_id": "know-060", "event": "retrieved", "prompt_preview": "I login the vm machine and open claude, seems like - ~/workspace/.agentbus/docs/"}
+{"ts": "2026-04-15T15:01:43.850481", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "I login the vm machine and open claude, seems like - ~/workspace/.agentbus/docs/"}
+{"ts": "2026-04-15T15:01:43.850486", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "I login the vm machine and open claude, seems like - ~/workspace/.agentbus/docs/"}
+{"ts": "2026-04-15T15:01:54.899262", "insight_id": "know-060", "event": "retrieved", "prompt_preview": "I login the vm machine and open claude, seems like - ~/workspace/.agentbus/docs/"}
+{"ts": "2026-04-15T15:01:54.899293", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "I login the vm machine and open claude, seems like - ~/workspace/.agentbus/docs/"}
+{"ts": "2026-04-15T15:01:54.899297", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "I login the vm machine and open claude, seems like - ~/workspace/.agentbus/docs/"}
+{"ts": "2026-04-15T15:03:04.017463", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "can we initiate a new project/folder, and scp the plan at there, I don't want to"}
+{"ts": "2026-04-15T15:03:04.017496", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can we initiate a new project/folder, and scp the plan at there, I don't want to"}
+{"ts": "2026-04-15T15:03:04.017501", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "can we initiate a new project/folder, and scp the plan at there, I don't want to"}
