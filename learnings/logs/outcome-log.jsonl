@@ -46,3 +46,6 @@
 {"ts": "2026-04-15T11:03:33.043054", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>a6a0e8e48dce3f0ac</task-id>\n<tool-use-id>toolu_01KV"}
 {"ts": "2026-04-15T11:04:58.360497", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you list recent sessions, I unintentionally close one important session"}
 {"ts": "2026-04-15T11:04:58.360556", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can you list recent sessions, I unintentionally close one important session"}
+{"ts": "2026-04-15T11:06:45.725326", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "a session under tmux, I close the tmux, then the session is gone. Can you check"}
+{"ts": "2026-04-15T11:06:45.725386", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "a session under tmux, I close the tmux, then the session is gone. Can you check"}
+{"ts": "2026-04-15T11:06:45.725391", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "a session under tmux, I close the tmux, then the session is gone. Can you check"}
