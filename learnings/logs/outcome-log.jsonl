@@ -44,3 +44,5 @@
 {"ts": "2026-04-15T10:59:30.075361", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>a1f833d71f60cc4e5</task-id>\n<tool-use-id>toolu_01RH"}
 {"ts": "2026-04-15T11:03:33.043014", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>a6a0e8e48dce3f0ac</task-id>\n<tool-use-id>toolu_01KV"}
 {"ts": "2026-04-15T11:03:33.043054", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "<task-notification>\n<task-id>a6a0e8e48dce3f0ac</task-id>\n<tool-use-id>toolu_01KV"}
+{"ts": "2026-04-15T11:04:58.360497", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you list recent sessions, I unintentionally close one important session"}
+{"ts": "2026-04-15T11:04:58.360556", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can you list recent sessions, I unintentionally close one important session"}
