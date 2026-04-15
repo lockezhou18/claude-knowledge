@@ -94,9 +94,15 @@
   - **Phase 2 (P2):** Message dedup + task locking + message state tracking
   - **Phase 3 (P2):** Workflow primitives (hierarchical tasks, parallel, conditional)
   - **Phase 4 (P2):** MCP bridge + streaming (Level 2 adapter)
+- **Last session (2026-04-14/15):**
+  - Deep comparison: AgentBus vs Claude Agent Teams vs subagents
+  - Enriched `docs/comparison-cutting-edge.md` Section 3 with detailed Agent Teams analysis
+  - Created `docs/agent-teams-bridge-plan.md` — 3-layer integration plan
+  - Key finding: Agent Teams are strictly single-machine/single-process. No native cross-machine coordination.
 - **Next immediate:**
+  - Layer 1: Create `.claude/agents/vm-operator.md` and test with Agent Teams
+  - Layer 2: Add `--agent` flag support to `adapters/claude.py` (~10 lines)
   - Phase 1: FileTaskStore (persist tasks to disk)
-  - Upgrade VM to Python 3.10+ (or keep relaxed constraint)
 
 ### Developer Productivity Tooling
 - **Started:** 2026-03-25
