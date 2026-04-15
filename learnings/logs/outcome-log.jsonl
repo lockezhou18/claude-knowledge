@@ -1,0 +1,22 @@
+{"ts": "2026-04-15T10:21:32.379041", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "we have the behaivoral system. This is very nice feedback."}
+{"ts": "2026-04-15T10:21:32.379067", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "we have the behaivoral system. This is very nice feedback."}
+{"ts": "2026-04-15T10:21:32.379072", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "we have the behaivoral system. This is very nice feedback."}
+{"ts": "2026-04-15T10:22:34.644749", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "yah. Probably looking into the current behavioral system, and see"}
+{"ts": "2026-04-15T10:22:34.644782", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "yah. Probably looking into the current behavioral system, and see"}
+{"ts": "2026-04-15T10:22:34.644787", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "yah. Probably looking into the current behavioral system, and see"}
+{"ts": "2026-04-15T10:28:26.444894", "insight_id": "know-068", "event": "retrieved", "prompt_preview": "I feel like we have tracking the good thing. Can you check"}
+{"ts": "2026-04-15T10:28:26.444916", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "I feel like we have tracking the good thing. Can you check"}
+{"ts": "2026-04-15T10:28:26.444921", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "I feel like we have tracking the good thing. Can you check"}
+{"ts": "2026-04-15T10:29:20.387933", "insight_id": "eureka-001", "event": "retrieved", "prompt_preview": "maybe list of couple of search states/hypothesis first, for the gap"}
+{"ts": "2026-04-15T10:29:20.388007", "insight_id": "aha-006", "event": "retrieved", "prompt_preview": "maybe list of couple of search states/hypothesis first, for the gap"}
+{"ts": "2026-04-15T10:32:47.575119", "insight_id": "know-049", "event": "retrieved", "prompt_preview": "I recall that enabled claude agent teams. Could you help checking,"}
+{"ts": "2026-04-15T10:32:47.575151", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "I recall that enabled claude agent teams. Could you help checking,"}
+{"ts": "2026-04-15T10:36:33.432936", "insight_id": "know-068", "event": "retrieved", "prompt_preview": "what if agentbus is done"}
+{"ts": "2026-04-15T10:36:33.432964", "insight_id": "know-062", "event": "retrieved", "prompt_preview": "what if agentbus is done"}
+{"ts": "2026-04-15T10:36:40.388011", "insight_id": "know-068", "event": "retrieved", "prompt_preview": "what if agentbus is done"}
+{"ts": "2026-04-15T10:36:40.388048", "insight_id": "know-062", "event": "retrieved", "prompt_preview": "what if agentbus is done"}
+{"ts": "2026-04-15T10:37:24.839104", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "so once the local macbook is open, it will comms, is that true"}
+{"ts": "2026-04-15T10:37:24.839135", "insight_id": "know-032", "event": "retrieved", "prompt_preview": "so once the local macbook is open, it will comms, is that true"}
+{"ts": "2026-04-15T10:37:24.839140", "insight_id": "eureka-005", "event": "retrieved", "prompt_preview": "so once the local macbook is open, it will comms, is that true"}
+{"ts":"2026-04-15T11:00:00","insight_id":"know-069","event":"scored","delta":1.0,"detail":"Outcome scoring gap insight directly led to building dream-agent.sh — the judgment step we were missing"}
+{"ts":"2026-04-15T11:00:00","insight_id":"know-032","event":"scored","delta":1.0,"detail":"Knowledge-vs-behavior gap — graduated tonight, confirming the insight was accurate and actionable"}

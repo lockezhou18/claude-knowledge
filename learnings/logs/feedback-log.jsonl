@@ -176,3 +176,6 @@
 {"ts": "2026-04-14T16:23:25Z", "signal": 0.5, "act": "MILD_POSITIVE", "dimension": "other", "agent_action": "/compound invoked at session end", "user_context": "/compound", "tags": ["compound-learning"]}
 {"ts":"2026-04-14T16:50:00Z","signal":1.0,"act":"ACCEPTANCE","dimension":"research_depth","agent_action":"Systematic dream cron debugging with 6 hypotheses","user_context":"cool. let's boil the ocean and debug together","tags":["debugging","cron","dream"]}
 {"ts":"2026-04-14T16:50:00Z","signal":0.5,"act":"SKILL_INVOCATION","dimension":"other","agent_action":"Session compound","user_context":"/compound","skill":"compound"}
+{"ts":"2026-04-15T11:00:00Z","signal":1.0,"act":"ACCEPTANCE","dimension":"research_depth","agent_action":"Confirmed dream ran, showed graduation, resolved conflicts","user_context":"cool, have we dreamed last night","tags":["dream","verification"]}
+{"ts":"2026-04-15T11:00:00Z","signal":1.0,"act":"ACCEPTANCE","dimension":"solution_simplicity","agent_action":"Dream agent uses claude -p directly, not AgentBus","user_context":"what if agentbus is down — so once the local macbook is open, it will comms","tags":["dream","architecture"]}
+{"ts":"2026-04-15T11:00:00Z","signal":0.5,"act":"SKILL_INVOCATION","dimension":"other","agent_action":"Session compound","user_context":"/compound","skill":"compound"}
