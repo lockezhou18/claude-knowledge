@@ -158,3 +158,12 @@
 {"ts": "2026-04-15T15:03:04.017463", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "can we initiate a new project/folder, and scp the plan at there, I don't want to"}
 {"ts": "2026-04-15T15:03:04.017496", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can we initiate a new project/folder, and scp the plan at there, I don't want to"}
 {"ts": "2026-04-15T15:03:04.017501", "insight_id": "eureka-004", "event": "retrieved", "prompt_preview": "can we initiate a new project/folder, and scp the plan at there, I don't want to"}
+{"ts": "2026-04-15T16:30:14.371566", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "how we change the cmux that installed in the computer's themem"}
+{"ts": "2026-04-15T16:30:14.371597", "insight_id": "aha-006", "event": "retrieved", "prompt_preview": "how we change the cmux that installed in the computer's themem"}
+{"ts": "2026-04-15T16:30:14.371602", "insight_id": "aha-003", "event": "retrieved", "prompt_preview": "how we change the cmux that installed in the computer's themem"}
+{"ts": "2026-04-15T16:31:48.913748", "insight_id": "aha-006", "event": "retrieved", "prompt_preview": "can you check, I've installed a cmux on the computer,"}
+{"ts": "2026-04-15T16:31:48.913778", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "can you check, I've installed a cmux on the computer,"}
+{"ts": "2026-04-15T16:31:48.913783", "insight_id": "eureka-006", "event": "retrieved", "prompt_preview": "can you check, I've installed a cmux on the computer,"}
+{"ts": "2026-04-15T16:49:43.036699", "insight_id": "know-068", "event": "retrieved", "prompt_preview": "why I don't get any notification for the cmux if need my attention,"}
+{"ts": "2026-04-15T16:49:43.036726", "insight_id": "know-063", "event": "retrieved", "prompt_preview": "why I don't get any notification for the cmux if need my attention,"}
+{"ts": "2026-04-15T16:49:43.036730", "insight_id": "know-011", "event": "retrieved", "prompt_preview": "why I don't get any notification for the cmux if need my attention,"}
