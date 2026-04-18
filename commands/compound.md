@@ -2,6 +2,30 @@
 
 Run Phase 6 of the engineering pipeline: extract learnings from this session and prepare the knowledge base for the next one.
 
+## Step 0: Consume In-Session Captures (tier chain)
+
+`/compound` is the **end-of-session batch processor** for the tier capture chain:
+
+```
+/learn (fact, +1.0)
+   ↓ (escalates when 3+ learns cluster)
+/aha (connection, +1.5)
+   ↓ (escalates when approach changes)
+/eureka (breakthrough, +2.0)
+   ↓ (end-of-session)
+/compound (batch synthesis + routing)
+```
+
+Before running Step 1, read any in-session captures to include them in synthesis:
+
+- `~/.claude/learnings/staging/learn-*.md` — raw facts captured mid-session
+- `~/.claude/learnings/staging/aha-*.md` — connections across learns
+- `~/.claude/learnings/staging/eureka-*.md` — breakthroughs
+
+Each will have `origin_skill: learn|aha|eureka` frontmatter and a pre-scored tier (+1.0 / +1.5 / +2.0). Treat these as **privileged input** — they were captured with intent at the moment of insight, not reconstructed after the fact.
+
+If the user hasn't used `/learn` / `/aha` / `/eureka` this session (common), skip this step silently.
+
 ## Step 1: Gather Context
 
 Read these files to understand what happened this session:
